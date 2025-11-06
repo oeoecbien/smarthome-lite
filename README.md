@@ -1,2 +1,44 @@
-SmartHome Lite est un système de domotique distribué et embarqué conçu dans le cadre du projet académique SAE BUT3 FA 2025. L’objectif est de développer une solution intelligente de gestion d’éclairage et d’appareils électriques intégrant détection de présence et automatisation par intelligence artificielle. L’architecture repose sur trois couches : un **Raspberry Pi** assurant le contrôle des capteurs et actionneurs via Flask ; un **serveur backend** développé avec **FastAPI** gérant la logique métier, la base de données **PostgreSQL**, le moteur de règles et le module d’IA ; et une **application mobile Android** (Kotlin + Jetpack Compose) permettant le pilotage et la visualisation en temps réel.
-L’intelligence artificielle, basée sur un **Decision Tree Classifier**, classe automatiquement les contextes d’utilisation en scénarios (jour, nuit, absence, soirée) afin d’adapter les automatisations. Les échanges entre composants utilisent des API REST sécurisées (JWT, API Key). Le système permet le contrôle manuel et automatique des appareils, l’historisation des événements, et l’exécution de règles conditionnelles. SmartHome Lite se distingue par une architecture modulaire, une implémentation complète des contraintes techniques et une intégration cohérente entre IoT, backend et mobile, offrant une base robuste pour l’évolution vers une domotique prédictive et contextuelle.
+# SmartHome Lite
+
+## Abstract
+SmartHome Lite est un système de domotique distribué et embarqué développé pour le projet académique SAE BUT3 FA 2025. Il combine un Raspberry Pi pour la supervision matérielle, un backend FastAPI pour la logique métier et la persistance (PostgreSQL), et une application mobile Android (Kotlin + Jetpack Compose) pour le pilotage et la visualisation. Un classifieur Decision Tree adapte automatiquement les scénarios (jour, nuit, absence, soirée) pour optimiser l’éclairage et le contrôle des appareils. Les échanges se font via des API REST sécurisées (JWT, API Key). L’architecture privilégie la modularité, l’historisation des événements et l’intégration de règles et d’IA pour une domotique contextuelle et évolutive.
+
+---
+
+## Principales fonctionnalités
+- Contrôle manuel et automatisé des éclairages et appareils.
+- Détection de présence et scénarios contextuels basés sur un Decision Tree.
+- Moteur de règles pour exécuter des automatisations conditionnelles.
+- Historisation des événements et état des appareils (base PostgreSQL).
+- API REST sécurisée (JWT pour les utilisateurs, clés API pour les périphériques).
+- Application mobile Android pour supervision en temps réel.
+
+## Architecture
+- Bord (Edge) : Raspberry Pi exécutant un service Flask pour capteurs/actionneurs.
+- Backend : FastAPI (logique métier, API, moteur de règles, module IA).
+- Base de données : PostgreSQL.
+- Client mobile : Kotlin + Jetpack Compose (Android).
+- Communication : API REST (HTTPS), JWT, API Keys.
+
+## Intelligence artificielle
+- Modèle : Decision Tree Classifier.
+- Objectif : classifier le contexte d’utilisation pour sélectionner le scénario adapté (ex. jour, nuit, absence, soirée).
+- Usage : ajuster automatiquement les règles et les paramètres d’actionneurs.
+
+## Sécurité
+- Authentification des utilisateurs via JWT.
+- Authentification des périphériques via clés API.
+- Recommandation : utiliser TLS/HTTPS en production et rotation des clés.
+
+## Déploiement rapide (local / dev)
+1. Préparer PostgreSQL et créer la base.
+2. Lancer le backend FastAPI (uvicorn).
+3. Déployer le service Flask sur le Raspberry Pi et connecter à l’API backend.
+4. Installer l’application Android sur un appareil de test.
+5. Charger ou entraîner le Decision Tree avec les données d’historique.
+
+## Structure du dépôt
+- /backend — FastAPI, logique métier, IA, migrations.
+- /raspberrypi — service Flask pour capteurs/actionneurs.
+- /mobile — application Android (Kotlin + Jetpack Compose).
+- /db — scripts SQL / migrations.
