@@ -1,0 +1,27 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Configuration locale
+config.py
+config.local.py
+.env
+*.env
+
+# Logs & cache
+*.log
+logs/
+.cache/
+
+# Données temporaires
+*.tmp
+*.bak
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

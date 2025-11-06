@@ -1,0 +1,35 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Dépendances et configuration
+.env
+*.env
+.env.*
+
+# Cache et logs
+*.log
+logs/
+.cache/
+*.sqlite3
+
+# Build & artefacts
+dist/
+build/
+*.egg-info/
+
+# Données d'entraînement / modèles IA
+ml/__pycache__/
+ml/*.pkl
+ml/*.joblib
+ml/*.csv
+ml/*.json
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

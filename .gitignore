@@ -1,0 +1,36 @@
+# Système
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Environnements virtuels
+venv/
+env/
+.venv/
+
+# Cache
+__pycache__/
+*.log
+*.tmp
+.cache/
+
+# Fichiers sensibles
+*.env
+.env.*
+key.properties
+
+# Artefacts / build globaux
+dist/
+build/
+*.egg-info/
+
+# Android APKs
+*.apk
+*.aab
+
+# Sauvegardes / données locales
+*.bak
+*.old
