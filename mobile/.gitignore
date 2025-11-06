@@ -1,17 +1,17 @@
-# === Java / Kotlin ===
+# Fichiers de configuration
 *.class
-*.kt~          # Fichiers temporaires Kotlin
-*.kts~         # Scripts Gradle temporaires
+*.kt~
+*.kts~
 
-# === Logs ===
+# Logs
 *.log
 logs/
 logcat.txt
 
-# === BlueJ (non utilisé mais conservé par sécurité) ===
+# Fichiers temporaires/backup
 *.ctxt
 
-# === Archives et Packages ===
+# Artefacts de build
 *.jar
 *.war
 *.nar
@@ -20,14 +20,14 @@ logcat.txt
 *.tar.gz
 *.rar
 
-# === JVM Crash Logs ===
+# Fichiers de crash
 hs_err_pid*
 replay_pid*
 
-# === Kotlin Gradle Plugin Data ===
+# Dossiers de build IDE
 .kotlin/
 
-# === Gradle ===
+# Gradle
 .gradle/
 build/
 **/build/
@@ -36,7 +36,7 @@ build/
 !gradlew.bat
 !gradle/**/wrapper/gradle-wrapper.properties
 
-# === Android Studio / IntelliJ ===
+# IDE
 .idea/
 *.iml
 *.ipr
@@ -47,31 +47,31 @@ captures/
 *.hprof
 *.cxx/
 
-# === Android Outputs ===
+# Android Studio
 *.apk
 *.ap_
 *.aab
 outputs/
 
-# === Keystores & Credentials ===
+# Fichiers de signature
 *.keystore
 *.jks
 key.properties
 release-signing.properties
 
-# === Cache et temporaire ===
+# Environnements virtuels
 .cache/
 tmp/
 *.tmp
 *.bak
 
-# === OS spécifiques ===
+# Système
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# 
+# Fichiers d'édition
 *.orig
 *.rej
 *.swp
