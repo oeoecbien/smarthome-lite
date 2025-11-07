@@ -1,36 +1,37 @@
-# Système
-.DS_Store
-Thumbs.db
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# Secrets
+.env
+*.key
+config.local.py
 
 # IDE
 .vscode/
 .idea/
+*.swp
 
-# Environnements virtuels
-venv/
-env/
-.venv/
+# Raspberry Pi
+*.pkl
+*.h5
 
-# Cache
-__pycache__/
-*.log
-*.tmp
-.cache/
-
-# Fichiers sensibles
-*.env
-.env.*
-key.properties
-
-# Artefacts / build globaux
-dist/
-build/
-*.egg-info/
-
-# Android APKs
+# Android
 *.apk
 *.aab
+.gradle/
+build/
+local.properties
 
-# Sauvegardes / données locales
-*.bak
-*.old
+# Base de donnĂ©es
+*.db
+*.sqlite
+
+# Logs
+*.log

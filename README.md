@@ -14,7 +14,7 @@ SmartHome Lite est un système de domotique distribué et embarqué développé 
 - Application mobile Android pour supervision en temps réel.
 
 ## Architecture
-- Bord (Edge) : Raspberry Pi exécutant un service Flask pour capteurs/actionneurs.
+- Raspberry Pi exécutant un service Flask pour capteurs/actionneurs.
 - Backend : FastAPI (logique métier, API, moteur de règles, module IA).
 - Base de données : PostgreSQL.
 - Client mobile : Kotlin + Jetpack Compose (Android).
@@ -42,3 +42,4 @@ SmartHome Lite est un système de domotique distribué et embarqué développé 
 - /raspberrypi — service Flask pour capteurs/actionneurs.
 - /mobile — application Android (Kotlin + Jetpack Compose).
 - /db — scripts SQL / migrations.
+- /docs — documentation supplémentaire.
