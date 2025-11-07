@@ -93,6 +93,20 @@ class DeviceService:
         self.db.commit()
         self.db.refresh(device)
         
+        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
+        if source != "automatic":
+            try:
+                from app.services.rule_engine import RuleEngine
+                rule_engine = RuleEngine(self.db)
+                executed_rules = rule_engine.evaluate_rules(
+                    trigger_event="state_changed",
+                    trigger_data={"device_id": device.id, "state": state}
+                )
+                if executed_rules:
+                    logger.info(f"Règles exécutées après changement d'état: {len(executed_rules)}")
+            except Exception as e:
+                logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
+        
         logger.info(f"Device {device.name} state changed to {state} (source: {source})")
         
         return device
@@ -141,6 +155,20 @@ class DeviceService:
         self.db.add(event)
         self.db.commit()
         self.db.refresh(device)
+        
+        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
+        if source != "automatic":
+            try:
+                from app.services.rule_engine import RuleEngine
+                rule_engine = RuleEngine(self.db)
+                executed_rules = rule_engine.evaluate_rules(
+                    trigger_event="brightness_changed",
+                    trigger_data={"device_id": device.id, "brightness": brightness}
+                )
+                if executed_rules:
+                    logger.info(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
+            except Exception as e:
+                logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
         
         logger.info(
             f"Device {device.name} brightness changed "

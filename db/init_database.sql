@@ -35,8 +35,8 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche rapide par username (connexion fréquente)
@@ -44,6 +44,7 @@ CREATE INDEX idx_users_username ON users(username);
 
 COMMENT ON TABLE users IS 'Utilisateurs du système SmartHome';
 COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt du mot de passe (12 rounds minimum)';
+COMMENT ON COLUMN users.username IS 'Nom d''utilisateur unique pour connexion';
 
 -- ----------------------------------------------------------------------------
 -- Table: raspberry_pis
@@ -56,8 +57,8 @@ CREATE TABLE raspberry_pis (
     ip_address VARCHAR(15),
     api_key VARCHAR(64) UNIQUE NOT NULL,
     is_online BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche par localisation et état
@@ -80,8 +81,8 @@ CREATE TABLE devices (
     state BOOLEAN DEFAULT FALSE,
     brightness INTEGER DEFAULT 0 CHECK (brightness BETWEEN 0 AND 100),
     gpio_pin INTEGER NOT NULL CHECK (gpio_pin BETWEEN 1 AND 40),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(raspberry_pi_id, gpio_pin)
 );
 
@@ -103,8 +104,8 @@ CREATE TABLE light_readings (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
     lux_value REAL NOT NULL CHECK (lux_value >= 0),
-    sensor_type VARCHAR(20) DEFAULT 'BH1750' CHECK (sensor_type IN ('BH1750', 'LDR')),
-    measured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750' CHECK (sensor_type IN ('BH1750', 'LDR')),
+    measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour requêtes temporelles (graphiques, tendances)
@@ -121,7 +122,7 @@ COMMENT ON COLUMN light_readings.lux_value IS 'Intensité lumineuse en lux (0-65
 CREATE TABLE presence (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
-    detected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche par date et par Raspberry Pi
@@ -142,8 +143,8 @@ CREATE TABLE rules (
     condition JSONB NOT NULL,
     action JSONB NOT NULL,
     priority INTEGER DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche des règles actives et tri par priorité
@@ -164,14 +165,15 @@ CREATE TABLE events (
     device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     event_type VARCHAR(50) NOT NULL,
     value VARCHAR(100),
-    source VARCHAR(20) CHECK (source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming')),
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    source VARCHAR(20) CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming')),
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche par device, type et date
 CREATE INDEX idx_events_device_id ON events(device_id);
 CREATE INDEX idx_events_timestamp ON events(timestamp DESC);
 CREATE INDEX idx_events_source ON events(source);
+CREATE INDEX idx_events_event_type ON events(event_type);
 
 COMMENT ON TABLE events IS 'Audit trail de toutes les actions système';
 COMMENT ON COLUMN events.source IS 'Origine de l''événement (ajout "smart_dimming")';
@@ -187,7 +189,7 @@ CREATE TABLE training_data (
     presence_detected BOOLEAN NOT NULL,
     light_on BOOLEAN NOT NULL,
     scenario INTEGER NOT NULL CHECK (scenario BETWEEN 0 AND 3),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour analyse de données
@@ -211,7 +213,7 @@ CREATE TABLE smart_dimming_adjustments (
     target_brightness INTEGER NOT NULL CHECK (target_brightness BETWEEN 0 AND 100),
     applied_brightness INTEGER NOT NULL CHECK (applied_brightness BETWEEN 0 AND 100),
     reason VARCHAR(200),
-    adjusted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    adjusted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour analyse des ajustements
@@ -238,7 +240,7 @@ CREATE TABLE user_preferences (
     auto_brightness INTEGER NOT NULL CHECK (auto_brightness BETWEEN 0 AND 100),
     manual_brightness INTEGER NOT NULL CHECK (manual_brightness BETWEEN 0 AND 100),
     time_of_day INTEGER NOT NULL CHECK (time_of_day BETWEEN 0 AND 23),
-    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour analyse des préférences
@@ -287,7 +289,7 @@ CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
 INSERT INTO users (username, email, password_hash) VALUES
 ('admin', 'admin@smarthome.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYL3ZOE7jiq');
 
-COMMENT ON TABLE users IS 'Utilisateur de test: admin / admin123 (CHANGER EN PRODUCTION)';
+-- Note: Utilisateur de test: admin / admin123 (CHANGER EN PRODUCTION)
 
 -- Configuration des Raspberry Pi
 INSERT INTO raspberry_pis (name, location, ip_address, api_key, is_online) VALUES
@@ -561,7 +563,7 @@ RETURNS TABLE (
     current_brightness INTEGER,
     location VARCHAR,
     raspberry_pi_online BOOLEAN,
-    last_event TIMESTAMP
+    last_event TIMESTAMP WITH TIME ZONE
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -587,8 +589,8 @@ COMMENT ON FUNCTION get_device_state(INTEGER) IS 'État complet d''un appareil p
 -- Compte le nombre de détections par heure pour une période donnée
 CREATE OR REPLACE FUNCTION get_presence_count_by_hour(
     location_param VARCHAR,
-    start_date TIMESTAMP,
-    end_date TIMESTAMP
+    start_date TIMESTAMP WITH TIME ZONE,
+    end_date TIMESTAMP WITH TIME ZONE
 )
 RETURNS TABLE (
     hour_of_day INTEGER,
@@ -608,7 +610,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-COMMENT ON FUNCTION get_presence_count_by_hour(VARCHAR, TIMESTAMP, TIMESTAMP) IS 'Heatmap de présence pour analyse comportementale';
+COMMENT ON FUNCTION get_presence_count_by_hour(VARCHAR, TIMESTAMP WITH TIME ZONE, TIMESTAMP WITH TIME ZONE) IS 'Heatmap de présence pour analyse comportementale';
 
 -- Fonction: calculate_smart_dimming_target
 -- Calcule l'intensité cible selon luminosité ambiante et scénario
@@ -684,7 +686,7 @@ COMMENT ON FUNCTION get_learning_dataset(INTEGER) IS 'Dataset pour entraînement
 -- 8. AFFICHAGE DES STATISTIQUES FINALES
 -- ============================================================================
 
-SELECT '✓ Base de données "smarthome" initialisée avec succès!' AS status;
+SELECT '[OK] Base de données "smarthome" initialisée avec succès!' AS status;
 
 SELECT 
     'Tables créées' AS category,

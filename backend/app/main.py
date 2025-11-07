@@ -56,16 +56,14 @@ async def lifespan(app: FastAPI):
     
     # Chargement du modèle IA (si disponible)
     try:
-        # Le service ml_service peut être créé plus tard si nécessaire
-        # Pour l'instant, on ignore silencieusement si le module n'existe pas
-        from app.services import ml_service
-        if hasattr(ml_service, 'load_model'):
-            if ml_service.load_model():
-                logger.info("Modèle IA chargé")
-            else:
-                logger.warning("Aucun modèle IA trouvé")
+        from app.services.ai_service import get_ai_service
+        ai_service = get_ai_service()
+        if ai_service.model is not None:
+            logger.info("Modèle IA chargé avec succès")
+        else:
+            logger.warning("Aucun modèle IA trouvé, utilisation du mode fallback")
     except ImportError:
-        logger.debug("Module ml_service non disponible (optionnel)")
+        logger.debug("Module ai_service non disponible (optionnel)")
     except Exception as e:
         logger.warning(f"Impossible de charger modèle IA: {e}")
     
@@ -77,14 +75,8 @@ async def lifespan(app: FastAPI):
     engine.dispose()
     
     # Sauvegarde du modèle IA (si disponible)
-    try:
-        from app.services import ml_service
-        if hasattr(ml_service, 'save_model_if_trained'):
-            ml_service.save_model_if_trained()
-    except ImportError:
-        pass  # Module optionnel
-    except Exception as e:
-        logger.warning(f"Impossible de sauvegarder modèle IA: {e}")
+    # Note: Le modèle est sauvegardé lors de l'entraînement, pas au shutdown
+    logger.debug("Arrêt du service IA")
 
 
 app = FastAPI(
@@ -205,11 +197,14 @@ def health_check():
 
 
 # Enregistrement des routes
-# from app.routes import auth, devices, events, rules, ai, smart_dimming, raspberry_pis
-# app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-# app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
-# app.include_router(events.router, prefix="/api/events", tags=["Events"])
-# app.include_router(rules.router, prefix="/api/rules", tags=["Rules"])
-# app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
-# app.include_router(smart_dimming.router, prefix="/api/smart-dimming", tags=["Smart Dimming"])
-# app.include_router(raspberry_pis.router, prefix="/api/raspberry-pis", tags=["Raspberry Pi"])
+from app.routes import auth, devices, events, rules, ai, smart_dimming, raspberry_pis, light_readings, presence
+
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
+app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(rules.router, prefix="/api/rules", tags=["Rules"])
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(smart_dimming.router, prefix="/api/smart-dimming", tags=["Smart Dimming"])
+app.include_router(raspberry_pis.router, prefix="/api/raspberry-pis", tags=["Raspberry Pi"])
+app.include_router(light_readings.router, prefix="/api/light-readings", tags=["Light Readings"])
+app.include_router(presence.router, prefix="/api/presence", tags=["Presence"])

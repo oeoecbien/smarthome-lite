@@ -236,7 +236,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Tester la connexion à la base
-python -c "from app.database import engine; print('✓ Connexion DB réussie')"
+python -c "from app.database import engine; print('[OK] Connexion DB réussie')"
 
 # Lancer le serveur
 uvicorn app.main:app --reload

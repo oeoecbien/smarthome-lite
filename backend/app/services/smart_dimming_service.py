@@ -191,7 +191,7 @@ class SmartDimmingService:
                 })
                 
                 logger.info(
-                    f"✅ Smart dimming: {device.name} adjusted "
+                    f"[OK] Smart dimming: {device.name} adjusted "
                     f"{previous_brightness}% → {target_brightness}% ({reason})"
                 )
                 

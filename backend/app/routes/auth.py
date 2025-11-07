@@ -10,6 +10,7 @@ from app.database import get_db
 from app.models import User
 from app.schemas.auth import UserCreate, UserLogin, User as UserSchema, Token
 from app.utils.auth import get_password_hash, verify_password, create_access_token
+from app.dependencies import get_current_user
 from app.config import settings
 
 router = APIRouter()
@@ -80,5 +81,3 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
     Récupérer les informations de l'utilisateur authentifié
     """
     return current_user
-
-from app.utils.auth import get_current_user
