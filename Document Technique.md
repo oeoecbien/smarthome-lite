@@ -59,30 +59,56 @@ Le système SmartHome Lite est organisé en **trois couches principales** :
 ### 2.2 Schéma d'Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  APPLICATION MOBILE                     │
-│              (Kotlin + Jetpack Compose)                 │
-│         Contrôle • Visualisation • Automatisation       │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP/REST (JWT)
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                   SERVEUR BACKEND                       │
-│                    (FastAPI + Python)                   │
-│  • API REST                  • Moteur de règles         │
-│  • Intelligence Artificielle • Gestion événements       │
-│  • Service Smart Dimming     • Base PostgreSQL          │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP/REST (API Key)
-                     ▼
-┌─────────────────────────────────────────────────────────┐
-│                   RASPBERRY PI                          │
-│                   (Flask + RPi.GPIO)                    │
-│  • Capteur PIR (détection présence)                     │
-│  • Capteur luminosité (BH1750 / LDR)                    │
-│  • LED dimmable (PWM)                                   │
-│  • Relais (prises connectées)                           │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│              COUCHE PRÉSENTATION                            │
+│                                                             │
+│           APPLICATION MOBILE ANDROID                        │
+│         (Kotlin + Jetpack Compose)                          │
+│                                                             │
+│  • Interface utilisateur unique                             │
+│  • Contrôle des appareils                                   │
+│  • Visualisation des données                                │
+│  • Configuration des règles et scénarios                    │
+│  • Monitoring en temps réel                                 │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       │ HTTP/REST (JWT)
+                       │ Port 8000
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│              COUCHE MÉTIER (PC FIXE)                        │
+│                                                             │
+│           SERVEUR BACKEND + IA                              │
+│         (FastAPI + Python + PostgreSQL)                     │
+│                                                             │
+│  • API REST centralisée                                     │
+│  • Logique métier et orchestration                          │
+│  • Moteur de règles d'automatisation                        │
+│  • Service d'Intelligence Artificielle                      │
+│    - Classification de scénarios (Decision Tree)            │
+│    - Service Smart Dimming adaptatif                        │
+│  • Base de données PostgreSQL                               │
+│  • Gestion des événements et historique                     │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+                       │ HTTP/REST (API Key)
+                       │ Port 5000
+                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│         COUCHE PHYSIQUE (RASPBERRY PI)                      │
+│                                                             │
+│              PASSERELLE IoT                                 │
+│           (Flask + RPi.GPIO)                                │
+│                                                             │
+│  • Interface physique avec capteurs/actionneurs             │
+│  • Lecture capteur PIR (détection présence)                 │
+│  • Lecture capteur luminosité (BH1750/LDR)                  │
+│  • Contrôle LED dimmable (PWM)                              │
+│  • Contrôle relais (prises connectées)                      │
+│  • Transmission des données au backend                      │
+│  • Exécution des commandes reçues du backend                │
+│  • AUCUNE logique métier autonome                           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.3 Configuration Matérielle Raspberry Pi
