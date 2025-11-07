@@ -44,7 +44,7 @@ class DeviceService:
         headers = {"X-API-Key": rpi.api_key}
         
         try:
-            async with httpx.AsyncClient(timeout=settings.rpi_timeout) as client:
+            async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:
                 response = await client.post(url, json=data, headers=headers)
                 response.raise_for_status()
                 return response.json()

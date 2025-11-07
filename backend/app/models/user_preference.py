@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'user_preferences'.
 Enregistre les ajustements manuels pour apprentissage personnalisé.
 """
-from sqlalchemy import Column, Integer, Float, ForeignKey, TIMESTAMP
+from sqlalchemy import Column, Integer, Float, ForeignKey, TIMESTAMP, CheckConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -42,7 +42,7 @@ class UserPreference(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
     light_level = Column(Float, nullable=False)
     scenario = Column(Integer, nullable=False, index=True)
@@ -50,6 +50,34 @@ class UserPreference(Base):
     manual_brightness = Column(Integer, nullable=False)
     time_of_day = Column(Integer, nullable=False)
     recorded_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    
+    # ========== Contraintes ==========
+    __table_args__ = (
+        # Vérification de la plage de luminosité
+        CheckConstraint(
+            "light_level >= 0",
+            name="check_light_level_range"
+        ),
+        # Vérification du scénario
+        CheckConstraint(
+            "scenario >= 0 AND scenario <= 3",
+            name="check_scenario_range"
+        ),
+        # Vérification de la plage de brightness
+        CheckConstraint(
+            "auto_brightness >= 0 AND auto_brightness <= 100",
+            name="check_auto_brightness_range"
+        ),
+        CheckConstraint(
+            "manual_brightness >= 0 AND manual_brightness <= 100",
+            name="check_manual_brightness_range"
+        ),
+        # Vérification de l'heure
+        CheckConstraint(
+            "time_of_day >= 0 AND time_of_day <= 23",
+            name="check_time_of_day_range"
+        ),
+    )
     
     # ========== Relations ==========
     user = relationship("User", back_populates="preferences")

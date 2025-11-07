@@ -9,10 +9,17 @@ from datetime import datetime
 
 from app.config import settings
 from app.models import Device, LightReading, SmartDimmingAdjustment, Event
-from app.services.ai_service import AIService
 from app.services.device_service import DeviceService
 
 logger = logging.getLogger(__name__)
+
+# Import optionnel de AIService
+try:
+    from app.services.ai_service import AIService
+    AI_SERVICE_AVAILABLE = True
+except ImportError:
+    AI_SERVICE_AVAILABLE = False
+    logger.warning("AIService non disponible, utilisation d'un scénario par défaut")
 
 class SmartDimmingService:
     """
@@ -22,7 +29,7 @@ class SmartDimmingService:
     
     def __init__(self, db: Session):
         self.db = db
-        self.ai_service = AIService()
+        self.ai_service = AIService() if AI_SERVICE_AVAILABLE else None
         self.device_service = DeviceService(db)
     
     def calculate_target_brightness(
@@ -76,7 +83,7 @@ class SmartDimmingService:
             "enabled": True
         }
     
-    def process_light_reading(
+    async def process_light_reading(
         self,
         light_reading: LightReading
     ) -> List[Dict]:
@@ -94,11 +101,24 @@ class SmartDimmingService:
             return []
         
         # Récupérer le scénario actuel
-        scenario_data = self.ai_service.get_current_scenario(
-            self.db,
-            raspberry_pi_id=light_reading.raspberry_pi_id
-        )
-        scenario = scenario_data["scenario"]
+        if self.ai_service:
+            scenario_data = self.ai_service.get_current_scenario(
+                self.db,
+                raspberry_pi_id=light_reading.raspberry_pi_id
+            )
+            scenario = scenario_data["scenario"]
+        else:
+            # Scénario par défaut si AIService non disponible
+            # 0=Day, 1=Night, 2=Away, 3=Evening
+            from datetime import datetime
+            hour = datetime.now().hour
+            if 6 <= hour < 18:
+                scenario = 0  # Day
+            elif 18 <= hour < 22:
+                scenario = 3  # Evening
+            else:
+                scenario = 1  # Night
+            logger.debug(f"Scénario par défaut: {scenario} (heure: {hour})")
         
         # Récupérer les appareils dimmables allumés du même RPi
         devices = self.db.query(Device).filter(
@@ -140,7 +160,7 @@ class SmartDimmingService:
             
             # Appliquer l'ajustement via le service device
             try:
-                self.device_service.set_device_brightness(
+                await self.device_service.set_device_brightness(
                     device.id,
                     target_brightness,
                     source="smart_dimming",

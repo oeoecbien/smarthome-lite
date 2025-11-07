@@ -37,21 +37,35 @@ async def lifespan(app: FastAPI):
     
     logger.info(f"Connexion à PostgreSQL {settings.database_host}:{settings.database_port}")
     try:
+        from sqlalchemy import text
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         logger.info("Connexion base de données OK")
-        init_db()
-        logger.info("Schéma base de données initialisé")
+        try:
+            init_db()
+            logger.info("Schéma base de données initialisé")
+        except Exception as e:
+            logger.warning(f"Impossible d'initialiser le schéma BDD (peut-être déjà créé): {e}")
     except Exception as e:
-        logger.error(f"Erreur connexion BDD: {e}")
-        raise
+        logger.warning(
+            f"Base de données non accessible: {e}\n"
+            f"L'API démarrera mais les fonctionnalités nécessitant la BDD ne fonctionneront pas."
+        )
+        # Ne pas faire planter l'application si la BDD n'est pas disponible
+        # L'utilisateur pourra toujours accéder à la documentation API
     
+    # Chargement du modèle IA (si disponible)
     try:
-        from app.services.ml_service import load_model
-        if load_model():
-            logger.info("Modèle IA chargé")
-        else:
-            logger.warning("Aucun modèle IA trouvé")
+        # Le service ml_service peut être créé plus tard si nécessaire
+        # Pour l'instant, on ignore silencieusement si le module n'existe pas
+        from app.services import ml_service
+        if hasattr(ml_service, 'load_model'):
+            if ml_service.load_model():
+                logger.info("Modèle IA chargé")
+            else:
+                logger.warning("Aucun modèle IA trouvé")
+    except ImportError:
+        logger.debug("Module ml_service non disponible (optionnel)")
     except Exception as e:
         logger.warning(f"Impossible de charger modèle IA: {e}")
     
@@ -62,9 +76,13 @@ async def lifespan(app: FastAPI):
     logger.info("Arrêt SmartHome Lite API")
     engine.dispose()
     
+    # Sauvegarde du modèle IA (si disponible)
     try:
-        from app.services.ml_service import save_model_if_trained
-        save_model_if_trained()
+        from app.services import ml_service
+        if hasattr(ml_service, 'save_model_if_trained'):
+            ml_service.save_model_if_trained()
+    except ImportError:
+        pass  # Module optionnel
     except Exception as e:
         logger.warning(f"Impossible de sauvegarder modèle IA: {e}")
 
@@ -172,8 +190,9 @@ def root():
 def health_check():
     """Vérification de santé de l'API."""
     try:
+        from sqlalchemy import text
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         database_status = "connected"
     except Exception as e:
         database_status = f"error: {str(e)}"

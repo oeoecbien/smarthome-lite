@@ -56,7 +56,7 @@ class RuleBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="Nom de la règle")
     description: Optional[str] = Field(None, description="Description détaillée")
     enabled: bool = Field(default=True, description="Statut actif/inactif")
-    priority: int = Field(default=50, ge=1, le=100, description="Priorité (1-100)")
+    priority: int = Field(default=5, ge=1, le=10, description="Priorité (1-10)")
 
 
 class RuleCreate(RuleBase):
@@ -98,7 +98,7 @@ class RuleUpdate(BaseModel):
     condition: Optional[Dict[str, Any]] = None
     action: Optional[Dict[str, Any]] = None
     enabled: Optional[bool] = None
-    priority: Optional[int] = Field(None, ge=1, le=100)
+    priority: Optional[int] = Field(None, ge=1, le=10)
     
     class Config:
         json_schema_extra = {
@@ -138,7 +138,7 @@ class RuleResponse(RuleBase):
                     "brightness": 50
                 },
                 "enabled": True,
-                "priority": 60,
+                "priority": 8,
                 "created_at": "2025-01-15T10:00:00Z",
                 "updated_at": "2025-01-15T10:00:00Z"
             }

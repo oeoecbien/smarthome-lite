@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'devices'.
 Représente les appareils connectés (lampes, prises, capteurs).
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, CheckConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, CheckConstraint, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -17,16 +17,15 @@ class Device(Base):
         - 'light': Lampe simple ON/OFF
         - 'dimmer': Lampe dimmable avec contrôle d'intensité (0-100%)
         - 'socket': Prise connectée ON/OFF
-        - 'sensor': Capteur (PIR, luminosité)
     
     Attributes:
         id: Identifiant unique
         raspberry_pi_id: Clé étrangère vers le Raspberry Pi contrôleur
         name: Nom descriptif (ex: "Lampe Bureau")
-        type: Type d'appareil ('light', 'dimmer', 'socket', 'sensor')
-        gpio_pin: Numéro du GPIO Raspberry Pi (0-27)
+        type: Type d'appareil ('light', 'dimmer', 'socket')
+        gpio_pin: Numéro du GPIO Raspberry Pi (1-40)
         state: État actuel (TRUE=ON, FALSE=OFF)
-        brightness: Intensité lumineuse (0-100, NULL pour non-dimmables)
+        brightness: Intensité lumineuse (0-100, toujours défini)
         created_at: Date d'ajout
         updated_at: Date de dernière modification
         
@@ -45,7 +44,7 @@ class Device(Base):
     type = Column(String(20), nullable=False)
     gpio_pin = Column(Integer, nullable=False)
     state = Column(Boolean, default=False, nullable=False)
-    brightness = Column(Integer, nullable=True)  # NULL pour appareils non-dimmables
+    brightness = Column(Integer, default=0, nullable=False)
     
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
@@ -55,19 +54,21 @@ class Device(Base):
     __table_args__ = (
         # Vérification du type d'appareil
         CheckConstraint(
-            "type IN ('light', 'dimmer', 'socket', 'sensor')",
+            "type IN ('light', 'dimmer', 'socket')",
             name="check_device_type"
         ),
         # Vérification de la plage de GPIO (Raspberry Pi)
         CheckConstraint(
-            "gpio_pin >= 0 AND gpio_pin <= 27",
+            "gpio_pin >= 1 AND gpio_pin <= 40",
             name="check_gpio_pin_range"
         ),
         # Vérification de la plage de brightness
         CheckConstraint(
-            "brightness IS NULL OR (brightness >= 0 AND brightness <= 100)",
+            "brightness >= 0 AND brightness <= 100",
             name="check_brightness_range"
         ),
+        # Contrainte unique: un GPIO par Raspberry Pi
+        UniqueConstraint('raspberry_pi_id', 'gpio_pin', name='uq_device_raspberry_pi_gpio'),
     )
     
     # ========== Relations ==========
@@ -93,5 +94,5 @@ class Device(Base):
     
     def __repr__(self) -> str:
         state_str = "ON" if self.state else "OFF"
-        brightness_str = f", {self.brightness}%" if self.brightness is not None else ""
+        brightness_str = f", {self.brightness}%"
         return f"<Device(id={self.id}, name='{self.name}', type='{self.type}', {state_str}{brightness_str})>"

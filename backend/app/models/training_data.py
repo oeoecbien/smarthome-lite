@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'training_data'.
 Dataset pour entraînement du modèle de classification de scénarios (Decision Tree).
 """
-from sqlalchemy import Column, Integer, Boolean, TIMESTAMP
+from sqlalchemy import Column, Integer, Boolean, TIMESTAMP, CheckConstraint
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -48,6 +48,25 @@ class TrainingData(Base):
     
     # Timestamp
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    
+    # ========== Contraintes ==========
+    __table_args__ = (
+        # Vérification de l'heure
+        CheckConstraint(
+            "hour >= 0 AND hour <= 23",
+            name="check_hour_range"
+        ),
+        # Vérification du jour de la semaine
+        CheckConstraint(
+            "day_of_week >= 0 AND day_of_week <= 6",
+            name="check_day_of_week_range"
+        ),
+        # Vérification du scénario
+        CheckConstraint(
+            "scenario >= 0 AND scenario <= 3",
+            name="check_scenario_range"
+        ),
+    )
     
     def __repr__(self) -> str:
         return f"<TrainingData(id={self.id}, hour={self.hour}, scenario={self.scenario})>"

@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'rules'.
 Définit les règles d'automatisation du système.
 """
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text
+from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text, CheckConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
@@ -39,7 +39,7 @@ class Rule(Base):
         condition: Condition d'activation (format JSONB)
         action: Action à effectuer (format JSONB)
         enabled: Statut actif/inactif
-        priority: Priorité d'exécution (1-100, plus élevé = prioritaire)
+        priority: Priorité d'exécution (1-10, plus élevé = prioritaire)
         created_at: Date de création
         updated_at: Date de dernière modification
         
@@ -56,7 +56,16 @@ class Rule(Base):
     condition = Column(JSONB, nullable=False)
     action = Column(JSONB, nullable=False)
     enabled = Column(Boolean, default=True, nullable=False, index=True)
-    priority = Column(Integer, default=50, nullable=False)
+    priority = Column(Integer, default=5, nullable=False)
+    
+    # ========== Contraintes ==========
+    __table_args__ = (
+        # Vérification de la plage de priorité
+        CheckConstraint(
+            "priority >= 1 AND priority <= 10",
+            name="check_priority_range"
+        ),
+    )
     
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

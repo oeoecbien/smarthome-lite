@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     
     # Base de données
     database_url: str = Field(
-        default="postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome_lite"
+        default="postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome"
     )
     database_host: str = Field(default="10.109.150.75")
     database_port: int = Field(default=5432)
-    database_name: str = Field(default="smarthome_lite")
+    database_name: str = Field(default="smarthome")
     database_user: str = Field(default="postgres")
     database_password: str = Field(default="smarthome2025")
     database_echo: bool = Field(default=False)
@@ -60,9 +60,50 @@ class Settings(BaseSettings):
     ml_model_path: str = Field(default="ml/models/scenario_classifier.pkl")
     ml_retrain_threshold: int = Field(default=100)
     
+    # Smart Dimming
+    smart_dimming_enabled: bool = Field(default=True, description="Activer/désactiver le Smart Dimming globalement")
+    smart_dimming_threshold: int = Field(default=10, description="Seuil minimum de différence d'intensité pour déclencher un ajustement (%)")
+    
     # Logs
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    
+    @property
+    def dimming_params(self) -> dict:
+        """
+        Paramètres de Smart Dimming par scénario.
+        Scénarios: 0=Day, 1=Night, 2=Away, 3=Evening
+        """
+        return {
+            0: {  # Day
+                "enabled": True,
+                "high_lux_threshold": 500,
+                "low_lux_threshold": 200,
+                "high_brightness": 20,
+                "low_brightness": 70,
+                "transition": "immediate"
+            },
+            1: {  # Night
+                "enabled": True,
+                "high_lux_threshold": 50,
+                "low_lux_threshold": 0,
+                "high_brightness": 20,
+                "low_brightness": 30,
+                "transition": "fade"
+            },
+            2: {  # Away
+                "enabled": False,
+                "fixed_brightness": 0
+            },
+            3: {  # Evening
+                "enabled": True,
+                "high_lux_threshold": 200,
+                "low_lux_threshold": 50,
+                "high_brightness": 30,
+                "low_brightness": 75,
+                "transition": "fade"
+            }
+        }
     
     @property
     def is_production(self) -> bool:
@@ -72,7 +113,7 @@ class Settings(BaseSettings):
     @classmethod
     def construct_database_url(cls, v, info):
         """Reconstruit l'URL si les composants individuels sont fournis."""
-        if v and v != "postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome_lite":
+        if v and v != "postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome":
             return v
         
         data = info.data

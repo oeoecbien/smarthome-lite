@@ -29,12 +29,12 @@ class User(Base):
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(120), unique=True, nullable=True)
+    email = Column(String(100), unique=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     
     # Timestamps automatiques
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, onupdate=func.now())
     
     # ========== Relations ==========
     preferences = relationship(

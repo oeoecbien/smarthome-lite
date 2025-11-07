@@ -34,9 +34,9 @@ class RaspberryPi(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False)
     location = Column(String(100), nullable=False, index=True)
-    ip_address = Column(String(15), unique=True, nullable=False)
+    ip_address = Column(String(15), unique=True, nullable=True)
     api_key = Column(String(64), unique=True, nullable=False, index=True)
-    is_online = Column(Boolean, default=True, nullable=False)
+    is_online = Column(Boolean, default=False, nullable=False)
     
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

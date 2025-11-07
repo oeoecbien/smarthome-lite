@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'smart_dimming_adjustments'.
 Enregistre les ajustements automatiques d'intensité lumineuse.
 """
-from sqlalchemy import Column, Integer, Float, ForeignKey, TIMESTAMP, String
+from sqlalchemy import Column, Integer, Float, ForeignKey, TIMESTAMP, String, CheckConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -43,8 +43,30 @@ class SmartDimmingAdjustment(Base):
     previous_brightness = Column(Integer, nullable=False)
     target_brightness = Column(Integer, nullable=False)
     applied_brightness = Column(Integer, nullable=False)
-    reason = Column(String(255), nullable=True)
+    reason = Column(String(200), nullable=True)
     adjusted_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    
+    # ========== Contraintes ==========
+    __table_args__ = (
+        # Vérification du scénario
+        CheckConstraint(
+            "scenario >= 0 AND scenario <= 3",
+            name="check_scenario_range"
+        ),
+        # Vérification de la plage de brightness
+        CheckConstraint(
+            "previous_brightness >= 0 AND previous_brightness <= 100",
+            name="check_previous_brightness_range"
+        ),
+        CheckConstraint(
+            "target_brightness >= 0 AND target_brightness <= 100",
+            name="check_target_brightness_range"
+        ),
+        CheckConstraint(
+            "applied_brightness >= 0 AND applied_brightness <= 100",
+            name="check_applied_brightness_range"
+        ),
+    )
     
     # ========== Relations ==========
     device = relationship("Device", back_populates="smart_dimming_adjustments")
