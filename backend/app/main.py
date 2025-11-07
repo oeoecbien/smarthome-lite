@@ -171,7 +171,6 @@ def root():
     """Point d'entrée racine de l'API."""
     return {
         "message": "SmartHome Lite API",
-        "version": "1.0.0",
         "status": "running",
         "docs": "/docs",
         "redoc": "/redoc"

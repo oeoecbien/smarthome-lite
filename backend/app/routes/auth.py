@@ -8,7 +8,7 @@ from datetime import timedelta
 
 from app.database import get_db
 from app.models import User
-from app.schemas.auth import UserCreate, UserLogin, User as UserSchema, Token
+from app.schemas.auth import UserCreate, UserLogin, UserResponse as UserSchema, Token
 from app.utils.auth import get_password_hash, verify_password, create_access_token
 from app.dependencies import get_current_user
 from app.config import settings
@@ -73,7 +73,11 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
         expires_delta=access_token_expires
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": int(access_token_expires.total_seconds())
+    }
 
 @router.get("/me", response_model=UserSchema)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
