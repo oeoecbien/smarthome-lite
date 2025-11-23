@@ -43,6 +43,8 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """
     Initialise la base de données (crée les tables si nécessaire).
-    En production, utiliser Alembic pour les migrations.
+    
+    Note: Pour l'initialisation complète avec données de test,
+    utiliser le script SQL: db/init_database.sql
     """
     Base.metadata.create_all(bind=engine)

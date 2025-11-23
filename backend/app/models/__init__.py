@@ -1,6 +1,6 @@
 """
 Package contenant tous les modèles SQLAlchemy.
-Import centralisé pour faciliter les migrations Alembic.
+Import centralisé pour faciliter l'utilisation dans les routes et services.
 """
 from app.models.user import User
 from app.models.raspberry_pi import RaspberryPi

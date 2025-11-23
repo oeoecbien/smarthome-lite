@@ -4,12 +4,13 @@ Routes pour l'Intelligence Artificielle - Classification de scénarios.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.dependencies import get_current_user, User
 from app.services.ai_service import get_ai_service
+from app.config import settings
 
 router = APIRouter()
 
@@ -84,3 +85,61 @@ async def classify_scenario(
     
     return result
 
+
+class ModelMetricsResponse(BaseModel):
+    """Réponse avec les métriques du modèle."""
+    model_loaded: bool
+    model_path: str
+    accuracy: Optional[float] = None
+    method: str
+    features_count: int
+    scenarios: dict
+
+
+@router.get("/model-metrics", response_model=ModelMetricsResponse)
+async def get_model_metrics(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Obtient les métriques du modèle IA (accuracy, etc.).
+    
+    Retourne des informations sur le modèle chargé et ses performances.
+    """
+    ai_service = get_ai_service()
+    
+    model_loaded = ai_service.model is not None
+    model_path = settings.ml_model_path
+    
+    # Si le modèle est chargé, essayer d'obtenir des métriques
+    accuracy = None
+    method = "ml" if model_loaded else "fallback"
+    
+    if model_loaded:
+        # Pour obtenir l'accuracy, il faudrait réentraîner ou charger depuis un fichier de métriques
+        # Pour l'instant, on retourne None et on indique que le modèle est chargé
+        try:
+            # Essayer de charger les métriques depuis un fichier (si disponible)
+            import os
+            import json
+            metrics_file = os.path.join(os.path.dirname(model_path), "metrics.json")
+            if os.path.exists(metrics_file):
+                with open(metrics_file, "r") as f:
+                    metrics = json.load(f)
+                    accuracy = metrics.get("accuracy")
+        except Exception:
+            pass
+    
+    return {
+        "model_loaded": model_loaded,
+        "model_path": model_path,
+        "accuracy": accuracy,
+        "method": method,
+        "features_count": 4,  # hour, day_of_week, presence_detected, light_on
+        "scenarios": {
+            0: "Day",
+            1: "Night",
+            2: "Away",
+            3: "Evening"
+        }
+    }
