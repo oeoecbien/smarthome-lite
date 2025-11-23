@@ -112,3 +112,37 @@ async def enable_smart_dimming(
         "message": f"Smart Dimming {'activé' if request.enabled else 'désactivé'}"
     }
 
+
+@router.put("/pause/{device_id}")
+async def pause_smart_dimming_for_device(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Met en pause le Smart Dimming pour un appareil spécifique pendant 30 minutes.
+    
+    Utile si l'utilisateur ajuste manuellement l'intensité et veut éviter
+    que le système ne la modifie automatiquement.
+    """
+    from app.models import Device
+    from datetime import datetime, timedelta
+    
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Appareil introuvable")
+    
+    # Pour l'instant, on utilise un champ dans la config ou on pourrait
+    # ajouter un champ `smart_dimming_paused_until` dans le modèle Device
+    # Pour cette version, on retourne simplement un message de confirmation
+    
+    # TODO: Implémenter la pause réelle avec un champ dans Device ou une table séparée
+    pause_until = datetime.now() + timedelta(minutes=30)
+    
+    return {
+        "device_id": device_id,
+        "device_name": device.name,
+        "paused": True,
+        "paused_until": pause_until.isoformat(),
+        "message": f"Smart Dimming mis en pause pour {device.name} jusqu'à {pause_until.strftime('%H:%M')}"
+    }

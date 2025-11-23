@@ -1,0 +1,3 @@
+# Ce dossier contient les modèles ML sauvegardés (.pkl)
+# Le fichier scenario_classifier.pkl sera généré après l'entraînement
+

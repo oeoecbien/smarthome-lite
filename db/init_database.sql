@@ -77,13 +77,16 @@ CREATE TABLE devices (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
-    type VARCHAR(20) NOT NULL CHECK (type IN ('light', 'socket', 'dimmer')),
-    state BOOLEAN DEFAULT FALSE,
-    brightness INTEGER DEFAULT 0 CHECK (brightness BETWEEN 0 AND 100),
-    gpio_pin INTEGER NOT NULL CHECK (gpio_pin BETWEEN 1 AND 40),
+    type VARCHAR(20) NOT NULL,
+    state BOOLEAN DEFAULT FALSE NOT NULL,
+    brightness INTEGER DEFAULT 0 NOT NULL,
+    gpio_pin INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(raspberry_pi_id, gpio_pin)
+    CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket')),
+    CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 40),
+    CONSTRAINT check_brightness_range CHECK (brightness >= 0 AND brightness <= 100),
+    CONSTRAINT uq_device_raspberry_pi_gpio UNIQUE(raspberry_pi_id, gpio_pin)
 );
 
 -- Index pour requêtes fréquentes (liste par emplacement, par type)
@@ -103,9 +106,11 @@ COMMENT ON COLUMN devices.brightness IS 'Intensité lumineuse pour les dimmers (
 CREATE TABLE light_readings (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
-    lux_value REAL NOT NULL CHECK (lux_value >= 0),
-    sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750' CHECK (sensor_type IN ('BH1750', 'LDR')),
-    measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    lux_value REAL NOT NULL,
+    sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750',
+    measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_lux_value_range CHECK (lux_value >= 0),
+    CONSTRAINT check_sensor_type CHECK (sensor_type IN ('BH1750', 'LDR'))
 );
 
 -- Index pour requêtes temporelles (graphiques, tendances)
@@ -139,12 +144,13 @@ CREATE TABLE rules (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT,
-    enabled BOOLEAN DEFAULT TRUE,
+    enabled BOOLEAN DEFAULT TRUE NOT NULL,
     condition JSONB NOT NULL,
     action JSONB NOT NULL,
-    priority INTEGER DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
+    priority INTEGER DEFAULT 5 NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_priority_range CHECK (priority >= 1 AND priority <= 10)
 );
 
 -- Index pour recherche des règles actives et tri par priorité
@@ -165,8 +171,9 @@ CREATE TABLE events (
     device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     event_type VARCHAR(50) NOT NULL,
     value VARCHAR(100),
-    source VARCHAR(20) CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming')),
-    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    source VARCHAR(20),
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_event_source CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming'))
 );
 
 -- Index pour recherche par device, type et date
@@ -184,12 +191,15 @@ COMMENT ON COLUMN events.source IS 'Origine de l''événement (ajout "smart_dimm
 -- ----------------------------------------------------------------------------
 CREATE TABLE training_data (
     id SERIAL PRIMARY KEY,
-    hour INTEGER NOT NULL CHECK (hour BETWEEN 0 AND 23),
-    day_of_week INTEGER NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
+    hour INTEGER NOT NULL,
+    day_of_week INTEGER NOT NULL,
     presence_detected BOOLEAN NOT NULL,
     light_on BOOLEAN NOT NULL,
-    scenario INTEGER NOT NULL CHECK (scenario BETWEEN 0 AND 3),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    scenario INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_training_hour_range CHECK (hour >= 0 AND hour <= 23),
+    CONSTRAINT check_training_day_of_week_range CHECK (day_of_week >= 0 AND day_of_week <= 6),
+    CONSTRAINT check_training_scenario_range CHECK (scenario >= 0 AND scenario <= 3)
 );
 
 -- Index pour analyse de données
@@ -208,12 +218,16 @@ CREATE TABLE smart_dimming_adjustments (
     id SERIAL PRIMARY KEY,
     device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
     light_reading_id INTEGER REFERENCES light_readings(id) ON DELETE SET NULL,
-    scenario INTEGER NOT NULL CHECK (scenario BETWEEN 0 AND 3),
-    previous_brightness INTEGER NOT NULL CHECK (previous_brightness BETWEEN 0 AND 100),
-    target_brightness INTEGER NOT NULL CHECK (target_brightness BETWEEN 0 AND 100),
-    applied_brightness INTEGER NOT NULL CHECK (applied_brightness BETWEEN 0 AND 100),
+    scenario INTEGER NOT NULL,
+    previous_brightness INTEGER NOT NULL,
+    target_brightness INTEGER NOT NULL,
+    applied_brightness INTEGER NOT NULL,
     reason VARCHAR(200),
-    adjusted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    adjusted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_dimming_scenario_range CHECK (scenario >= 0 AND scenario <= 3),
+    CONSTRAINT check_previous_brightness_range CHECK (previous_brightness >= 0 AND previous_brightness <= 100),
+    CONSTRAINT check_target_brightness_range CHECK (target_brightness >= 0 AND target_brightness <= 100),
+    CONSTRAINT check_applied_brightness_range CHECK (applied_brightness >= 0 AND applied_brightness <= 100)
 );
 
 -- Index pour analyse des ajustements
@@ -235,12 +249,17 @@ CREATE TABLE user_preferences (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
-    light_level REAL NOT NULL CHECK (light_level >= 0),
-    scenario INTEGER NOT NULL CHECK (scenario BETWEEN 0 AND 3),
-    auto_brightness INTEGER NOT NULL CHECK (auto_brightness BETWEEN 0 AND 100),
-    manual_brightness INTEGER NOT NULL CHECK (manual_brightness BETWEEN 0 AND 100),
-    time_of_day INTEGER NOT NULL CHECK (time_of_day BETWEEN 0 AND 23),
-    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    light_level REAL NOT NULL,
+    scenario INTEGER NOT NULL,
+    auto_brightness INTEGER NOT NULL,
+    manual_brightness INTEGER NOT NULL,
+    time_of_day INTEGER NOT NULL,
+    recorded_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_pref_light_level_range CHECK (light_level >= 0),
+    CONSTRAINT check_pref_scenario_range CHECK (scenario >= 0 AND scenario <= 3),
+    CONSTRAINT check_pref_auto_brightness_range CHECK (auto_brightness >= 0 AND auto_brightness <= 100),
+    CONSTRAINT check_pref_manual_brightness_range CHECK (manual_brightness >= 0 AND manual_brightness <= 100),
+    CONSTRAINT check_pref_time_of_day_range CHECK (time_of_day >= 0 AND time_of_day <= 23)
 );
 
 -- Index pour analyse des préférences

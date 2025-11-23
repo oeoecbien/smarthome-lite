@@ -157,3 +157,59 @@ async def delete_rule(
     
     return None
 
+
+@router.post("/{rule_id}/test", response_model=dict)
+async def test_rule(
+    rule_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Teste une règle manuellement en évaluant ses conditions et en exécutant son action.
+    
+    Utile pour déboguer ou vérifier le comportement d'une règle avant de l'activer.
+    """
+    from app.services.rule_engine import RuleEngine
+    
+    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="Règle introuvable")
+    
+    # Créer le moteur de règles
+    rule_engine = RuleEngine(db)
+    
+    # Évaluer la règle
+    try:
+        executed_rules = await rule_engine.evaluate_rules()
+        
+        # Chercher si cette règle a été exécutée
+        rule_executed = None
+        for executed in executed_rules:
+            if executed["rule_id"] == rule_id:
+                rule_executed = executed
+                break
+        
+        if rule_executed:
+            return {
+                "rule_id": rule_id,
+                "rule_name": rule.name,
+                "tested": True,
+                "condition_met": rule_executed.get("action_executed", False),
+                "action_executed": rule_executed.get("action_executed", False),
+                "result": rule_executed.get("result"),
+                "error": rule_executed.get("error")
+            }
+        else:
+            return {
+                "rule_id": rule_id,
+                "rule_name": rule.name,
+                "tested": True,
+                "condition_met": False,
+                "action_executed": False,
+                "message": "La condition de la règle n'est pas satisfaite actuellement"
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du test de la règle: {str(e)}"
+        )
