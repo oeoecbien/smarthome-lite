@@ -9,6 +9,7 @@
 5. [Configuration Backend](#configuration-backend)
 6. [Commandes Utiles](#commandes-utiles)
 7. [Dépannage](#dépannage)
+8. [Schéma de Données](#schéma-de-données)
 
 ---
 
@@ -16,8 +17,9 @@
 
 ### Versions Requises
 - **PostgreSQL** : 14.0 ou supérieur
-- **Système** : Linux (Ubuntu/Debian recommandé) ou macOS
-- **Droits** : Accès administrateur (sudo)
+- **TimescaleDB** : Extension optionnelle pour optimiser les time-series (recommandé)
+- **Système** : Linux (Ubuntu/Debian recommandé), macOS, ou Windows
+- **Droits** : Accès administrateur (sudo) pour créer la base
 
 ### Ports par Défaut
 - PostgreSQL : `5432`
@@ -36,6 +38,12 @@ sudo apt update
 # Installation PostgreSQL
 sudo apt install postgresql postgresql-contrib -y
 
+# Installation TimescaleDB (optionnel mais recommandé)
+sudo apt install timescaledb-2-postgresql-14 -y
+
+# Configuration TimescaleDB
+sudo timescaledb-tune
+
 # Démarrage du service
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
@@ -49,6 +57,10 @@ sudo systemctl status postgresql
 ```bash
 # Installation PostgreSQL
 brew install postgresql@14
+
+# Installation TimescaleDB (optionnel)
+brew tap timescale/tap
+brew install timescaledb
 
 # Démarrage du service
 brew services start postgresql@14
@@ -91,7 +103,7 @@ Vous devriez voir le prompt `postgres=#`
 
 ```bash
 # Se placer dans le répertoire contenant init_database.sql
-cd /chemin/vers/smarthome-backend/database
+cd /chemin/vers/sae_s5/db
 
 # Exécuter le script
 sudo -u postgres psql -f init_database.sql
@@ -101,10 +113,31 @@ sudo -u postgres psql -f init_database.sql
 
 ```sql
 -- Dans le prompt psql
-\i /chemin/vers/init_database.sql
+\c smarthome
+\i /chemin/vers/db/init_database.sql
 ```
 
-### Étape 3 : Vérifier la Création
+**Note :** Le script crée automatiquement la base de données `smarthome` si elle n'existe pas.
+
+### Étape 3 : Activer TimescaleDB (Optionnel)
+
+Si TimescaleDB est installé, convertir la table `light_readings` en hypertable pour optimiser les requêtes time-series :
+
+```sql
+-- Se connecter à la base
+sudo -u postgres psql -d smarthome
+
+-- Activer l'extension TimescaleDB
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+
+-- Convertir la table en hypertable
+SELECT create_hypertable('light_readings', 'measured_at');
+
+-- Vérifier la création
+SELECT * FROM timescaledb_information.hypertables;
+```
+
+### Étape 4 : Vérifier la Création
 
 ```bash
 # Lister les bases de données
@@ -124,9 +157,12 @@ sudo -u postgres psql -d smarthome
 - `raspberry_pis`
 - `devices`
 - `presence`
+- `light_readings`
 - `events`
 - `rules`
 - `training_data`
+- `smart_dimming_adjustments`
+- `user_preferences`
 
 ---
 
@@ -156,16 +192,30 @@ SELECT id, name, enabled FROM rules;
 SELECT scenario, COUNT(*) 
 FROM training_data 
 GROUP BY scenario;
+
+-- Vérifier les ajustements Smart Dimming
+SELECT COUNT(*) FROM smart_dimming_adjustments;
+
+-- Vérifier les préférences utilisateur
+SELECT COUNT(*) FROM user_preferences;
+
+-- Vérifier les mesures de luminosité
+SELECT COUNT(*) FROM light_readings;
 ```
 
 ### Résultats Attendus
 
 ```
 Users: 1 utilisateur (admin)
-Raspberry Pi: 2 appareils (Salon, Chambre)
-Devices: 7 appareils (4 salon + 3 chambre)
+Raspberry Pi: 3 appareils (Salon, Chambre, Cuisine)
+Devices: 8 appareils (3 salon + 3 chambre + 2 cuisine)
 Rules: 3 règles d'automatisation
-Training Data: ~20 échantillons
+Training Data: ~27 échantillons
+Light Readings: ~48 mesures (simulation 24h)
+Presence: ~50 détections
+Events: 4 événements
+Smart Dimming Adjustments: 3 ajustements
+User Preferences: 0 (vide au départ)
 ```
 
 ---
@@ -175,7 +225,7 @@ Training Data: ~20 échantillons
 ### Créer le Fichier .env
 
 ```bash
-cd /chemin/vers/smarthome-backend
+cd /chemin/vers/sae_s5/backend
 cp .env.example .env
 nano .env
 ```
@@ -195,12 +245,13 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
 # Configuration Serveur
-HOST=0.0.0.0
-PORT=8000
+API_HOST=0.0.0.0
+API_PORT=8000
 DEBUG=true
+ENVIRONMENT=development
 
 # Configuration CORS (pour application mobile)
-CORS_ORIGINS=["http://localhost:3000","http://192.168.1.0/24"]
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://192.168.1.0/24
 ```
 
 ### Créer un Utilisateur Applicatif (Recommandé pour Production)
@@ -221,6 +272,10 @@ GRANT USAGE ON SCHEMA public TO smarthome_user;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO smarthome_user;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO smarthome_user;
 
+-- Accorder les permissions sur les futures tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO smarthome_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO smarthome_user;
+
 -- Quitter
 \q
 ```
@@ -229,14 +284,14 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO smarthome_user;
 
 ```bash
 # Activer l'environnement virtuel
-cd /chemin/vers/smarthome-backend
+cd /chemin/vers/sae_s5/backend
 source venv/bin/activate
 
 # Installer les dépendances (si pas déjà fait)
 pip install -r requirements.txt
 
 # Tester la connexion à la base
-python -c "from app.database import engine; print('✓ Connexion DB réussie')"
+python -c "from app.database import engine; print('[OK] Connexion DB réussie')"
 
 # Lancer le serveur
 uvicorn app.main:app --reload
@@ -321,7 +376,7 @@ DROP DATABASE IF EXISTS smarthome;
 \q
 
 # Réexécuter le script d'initialisation
-sudo -u postgres psql -f init_database.sql
+sudo -u postgres psql -f db/init_database.sql
 ```
 
 ---
@@ -499,6 +554,73 @@ GROUP BY r.location
 ORDER BY detections DESC;
 ```
 
+### Analyse Smart Dimming
+
+```sql
+-- Efficacité du Smart Dimming par appareil
+SELECT 
+    d.name,
+    COUNT(sda.id) as total_adjustments,
+    AVG(ABS(sda.target_brightness - sda.previous_brightness)) as avg_change,
+    MAX(sda.adjusted_at) as last_adjustment
+FROM smart_dimming_adjustments sda
+JOIN devices d ON sda.device_id = d.id
+GROUP BY d.name
+ORDER BY total_adjustments DESC;
+
+-- Ajustements par scénario
+SELECT 
+    CASE scenario
+        WHEN 0 THEN 'Day'
+        WHEN 1 THEN 'Night'
+        WHEN 2 THEN 'Away'
+        WHEN 3 THEN 'Evening'
+    END as scenario_name,
+    COUNT(*) as count
+FROM smart_dimming_adjustments
+GROUP BY scenario;
+```
+
+---
+
+## Schéma de Données
+
+### Relations entre Tables
+
+```
+users (1) ----< (N) user_preferences
+
+raspberry_pis (1) ----< (N) devices
+    |
+    +-------< (N) presence
+    |
+    +-------< (N) light_readings
+
+devices (1) ----< (N) events
+    |
+    +-------< (N) smart_dimming_adjustments
+
+light_readings (1) ----< (N) smart_dimming_adjustments
+
+rules (standalone, références JSONB vers devices)
+training_data (standalone, apprentissage automatique)
+```
+
+### Tables Principales
+
+- **users** : Utilisateurs du système (authentification)
+- **raspberry_pis** : Configuration des Raspberry Pi connectés
+- **devices** : Appareils électriques (lampes, prises)
+- **presence** : Historique des détections de mouvement (PIR)
+- **light_readings** : Mesures de luminosité ambiante (time-series)
+- **rules** : Règles d'automatisation (format JSONB)
+- **events** : Journal des événements système
+- **smart_dimming_adjustments** : Historique des ajustements automatiques
+- **training_data** : Données d'entraînement pour l'IA
+- **user_preferences** : Préférences utilisateur pour apprentissage personnalisé
+
+Pour plus de détails, voir le fichier `init_database.sql`.
+
 ---
 
 ## Sécurité
@@ -537,6 +659,7 @@ sudo systemctl restart postgresql
 ## Ressources
 
 - [Documentation PostgreSQL](https://www.postgresql.org/docs/14/)
+- [Documentation TimescaleDB](https://docs.timescale.com/)
 - [SQLAlchemy ORM](https://docs.sqlalchemy.org/)
 - [FastAPI Database](https://fastapi.tiangolo.com/tutorial/sql-databases/)
 - [psycopg2 Documentation](https://www.psycopg.org/docs/)
@@ -550,6 +673,7 @@ sudo systemctl restart postgresql
 3. **Performance** : Les index sont créés automatiquement pour optimiser les requêtes fréquentes
 4. **Vues** : Des vues SQL sont disponibles pour simplifier les requêtes courantes
 5. **Triggers** : Les champs `updated_at` sont mis à jour automatiquement
+6. **TimescaleDB** : L'extension est optionnelle mais recommandée pour optimiser les requêtes sur `light_readings` (time-series)
 
 ---
 
@@ -557,12 +681,14 @@ sudo systemctl restart postgresql
 
 - [ ] PostgreSQL installé et démarré
 - [ ] Base `smarthome` créée
-- [ ] 7 tables créées (users, raspberry_pis, devices, etc.)
+- [ ] 10 tables créées (users, raspberry_pis, devices, etc.)
 - [ ] Données de test insérées
 - [ ] Vues créées (devices_with_location, etc.)
+- [ ] Fonctions créées (get_device_state, etc.)
 - [ ] Fichier .env configuré dans le backend
 - [ ] Connexion backend testée
 - [ ] Documentation Swagger accessible
+- [ ] TimescaleDB activé (optionnel)
 
 ---
 
