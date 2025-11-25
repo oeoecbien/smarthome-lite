@@ -119,68 +119,68 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 ### 2.2 Architecture Modulaire
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                    APPLICATION MOBILE                            │
 │              (Kotlin + Jetpack Compose)                          │
 │  • HTTP/REST Client                                              │
 │  • Optimistic UI Updates                                         │
-└──────────────────────┬──────────────────────────────────────────┘
+└──────────────────────┬───────────────────────────────────────────┘
                        │
                        │ HTTP/REST
                        │ JWT
                        ▼
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                         │
-│              Architecture Modulaire Monolithique                  │
-│                                                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Routes     │  │   Services   │  │   Models     │           │
-│  │              │  │              │  │              │           │
-│  │ • auth       │  │ • ai_service │  │ • User       │           │
-│  │ • devices    │  │ • device_    │  │ • Device     │           │
-│  │ • rules      │  │   service    │  │ • Rule       │           │
-│  │ • ai         │  │ • rule_      │  │ • Presence   │           │
-│  │ • presence   │  │   engine     │  │ • LightRead  │           │
-│  │ • smart_     │  │ • smart_     │  │              │           │
-│  │   dimming    │  │   dimming    │  │              │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
-│                                                                   │
+│              Architecture Modulaire Monolithique                 │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
+│  │   Routes     │  │   Services   │  │   Models     │            │
+│  │              │  │              │  │              │            │
+│  │ • auth       │  │ • ai_service │  │ • User       │            │
+│  │ • devices    │  │ • device_    │  │ • Device     │            │
+│  │ • rules      │  │   service    │  │ • Rule       │            │
+│  │ • ai         │  │ • rule_      │  │ • Presence   │            │
+│  │ • presence   │  │   engine     │  │ • LightRead  │            │
+│  │ • smart_     │  │ • smart_     │  │              │            │
+│  │   dimming    │  │   dimming    │  │              │            │
+│  └──────────────┘  └──────────────┘  └──────────────┘            │
+│                                                                  │
 │  ┌──────────────┐  ┌──────────────┐                              │
-│  │   Schemas   │  │    Utils     │                              │
-│  │  (Pydantic) │  │              │                              │
-│  │             │  │ • auth (JWT) │                              │
-│  │ • Validation│  │ • validators │                              │
+│  │   Schemas    │  │    Utils     │                              │
+│  │  (Pydantic)  │  │              │                              │
+│  │              │  │ • auth (JWT) │                              │
+│  │ • Validation │  │ • validators │                              │
 │  └──────────────┘  └──────────────┘                              │
-│                                                                   │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │              Machine Learning (ML)                         │ │
-│  │  • generate_data.py                                        │ │
-│  │  • train_model.py                                          │ │
-│  │  • models/scenario_classifier.pkl                          │ │
-│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │              Machine Learning (ML)                         │  │
+│  │  • generate_data.py                                        │  │
+│  │  • train_model.py                                          │  │
+│  │  • models/scenario_classifier.pkl                          │  │
+│  └────────────────────────────────────────────────────────────┘  │
 └───────────────────────────┬──────────────────────────────────────┘
                             │
                             │ SQLAlchemy ORM
                             ▼
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │                    DATABASE                                      │
-│              (PostgreSQL + TimescaleDB)                         │
-│  • Tables relationnelles (users, devices, rules)                │
-│  • Hypertables pour time-series (light_readings)                │
-│  • Partitioning automatique                                     │
-└─────────────────────────────────────────────────────────────────┘
+│              (PostgreSQL + TimescaleDB)                          │
+│  • Tables relationnelles (users, devices, rules)                 │
+│  • Hypertables pour time-series (light_readings)                 │
+│  • Partitioning automatique                                      │
+└──────────────────────────────────────────────────────────────────┘
                        ▲
                        │
                        │ HTTP/REST + API Key
                        │
-┌─────────────────────────────────────────────────────────────────┐
+┌──────────────────────────────────────────────────────────────────┐
 │              RASPBERRY PI (Multiples)                            │
 │  • Flask API locale                                              │
 │  • Capteurs (PIR, luminosité)                                    │
 │  • Actionneurs (LED, relais)                                     │
 │  • Envoie événements au backend                                  │
 │  • Reçoit commandes du backend                                   │
-└─────────────────────────────────────────────────────────────────┘
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.3 Composants Principaux
