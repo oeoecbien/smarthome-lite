@@ -1,3 +1,4 @@
+
 # Backend - SmartHome Lite API
 
 Backend FastAPI avec **architecture modulaire monolithique** et fonctionnalités avancées d'intelligence artificielle et d'automatisation.
@@ -165,78 +166,176 @@ backend/
 └── README.md                      # Ce fichier
 ```
 
+## Démarrage Rapide
+
+Pour lancer rapidement le backend (Windows PowerShell) :
+
+```powershell
+# 1. Aller dans le dossier backend
+cd backend
+
+# 2. Créer et activer l'environnement virtuel
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# 3. Installer les dépendances
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 4. Lancer le serveur (la configuration par défaut est dans app/config.py)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Note** : Le backend peut démarrer sans base de données (avec des warnings), mais certaines fonctionnalités nécessiteront PostgreSQL. Le modèle IA est optionnel et l'application utilisera un mode fallback s'il n'est pas disponible.
+
 ## Installation
 
 ### Prérequis
 
 - **Python** : 3.10 ou supérieur
 - **PostgreSQL** : 14+ (avec extension TimescaleDB optionnelle pour time-series)
+  - **Note** : Le backend peut démarrer sans PostgreSQL, mais les fonctionnalités nécessitant la base de données ne fonctionneront pas.
 
 ### Étapes d'Installation
 
-1. **Cloner le repository**
-   ```bash
-   git clone <repository-url>
-   cd backend
-   ```
+#### 1. Naviguer vers le dossier backend
 
-2. **Créer environnement virtuel**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # Windows: venv\Scripts\activate
-   ```
+**Windows (PowerShell) :**
+```powershell
+cd backend
+```
 
-3. **Installer dépendances**
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+**Linux/Mac :**
+```bash
+cd backend
+```
 
-4. **Configurer variables d'environnement**
-   ```bash
-   # Copier le fichier d'exemple
-   cp .env.example .env
-   # Éditer .env avec vos configurations
-   ```
+#### 2. Créer l'environnement virtuel
 
-   Variables minimales requises dans `.env` :
-   ```env
-   DATABASE_URL=postgresql://user:password@localhost:5432/smarthome
-   SECRET_KEY=your-secret-key-minimum-32-characters-long
-   ```
+**Windows (PowerShell) :**
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
 
-5. **Initialiser base de données**
-   ```bash
-   # Créer la base PostgreSQL
-   createdb smarthome
-   
-   # Activer TimescaleDB (optionnel, pour time-series)
-   psql -d smarthome -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
-   
-   # Exécuter le script d'initialisation
-   psql -d smarthome -f ../db/init_database.sql
-   ```
+**Linux/Mac :**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
 
-6. **Générer et entraîner modèle IA**
-   ```bash
-   # Générer 1000 échantillons de données synthétiques
-   python ml/generate_data.py --samples 1000
-   
-   # Entraîner le modèle Decision Tree
-   python ml/train_model.py --max-depth 7
-   
-   # Vérifier que le modèle a été créé
-   ls -lh ml/models/scenario_classifier.pkl
-   ```
+**Note Windows** : Si vous obtenez une erreur d'exécution de script, exécutez d'abord :
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
 
-7. **Lancer le serveur**
-   ```bash
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
+#### 3. Installer les dépendances
 
-8. **Vérification**
-   - Accéder à http://localhost:8000/docs pour la documentation Swagger
-   - Accéder à http://localhost:8000/health pour vérifier l'état du serveur
+```powershell
+# Windows / Linux / Mac
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+#### 4. Configurer les variables d'environnement (Optionnel)
+
+Le backend utilise des valeurs par défaut définies dans `app/config.py`. Si vous souhaitez personnaliser la configuration :
+
+**Windows (PowerShell) :**
+```powershell
+# Créer le fichier .env (si .env.example existe)
+Copy-Item .env.example .env
+# Éditer .env avec votre éditeur de texte
+```
+
+**Linux/Mac :**
+```bash
+cp .env.example .env
+# Éditer .env avec votre éditeur de texte
+```
+
+Variables minimales requises dans `.env` (si vous créez le fichier) :
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/smarthome
+SECRET_KEY=your-secret-key-minimum-32-characters-long
+```
+
+**Configuration par défaut** (dans `app/config.py`) :
+- Base de données : `postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome`
+- Port API : `8000`
+- Host API : `0.0.0.0`
+
+#### 5. Initialiser la base de données (Optionnel mais recommandé)
+
+Si vous avez PostgreSQL installé :
+
+**Windows (PowerShell) :**
+```powershell
+# Créer la base PostgreSQL (si psql est dans votre PATH)
+createdb smarthome
+
+# Activer TimescaleDB (optionnel)
+psql -d smarthome -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+
+# Exécuter le script d'initialisation (si disponible)
+# psql -d smarthome -f ..\db\init_database.sql
+```
+
+**Linux/Mac :**
+```bash
+createdb smarthome
+psql -d smarthome -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+psql -d smarthome -f ../db/init_database.sql
+```
+
+**Note** : Si la base de données n'est pas accessible, le backend démarrera quand même avec des warnings. Les tables seront créées automatiquement au premier démarrage si la connexion fonctionne.
+
+#### 6. Générer et entraîner le modèle IA (Optionnel)
+
+Le modèle IA est optionnel. L'application utilisera un mode fallback s'il n'est pas disponible.
+
+**Windows (PowerShell) :**
+```powershell
+# Générer 1000 échantillons de données synthétiques
+python ml\generate_data.py --samples 1000
+
+# Entraîner le modèle Decision Tree
+python ml\train_model.py --max-depth 7
+
+# Vérifier que le modèle a été créé
+Get-ChildItem ml\models\scenario_classifier.pkl
+```
+
+**Linux/Mac :**
+```bash
+python ml/generate_data.py --samples 1000
+python ml/train_model.py --max-depth 7
+ls -lh ml/models/scenario_classifier.pkl
+```
+
+#### 7. Lancer le serveur
+
+**Windows (PowerShell) :**
+```powershell
+# Assurez-vous que l'environnement virtuel est activé
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Linux/Mac :**
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### 8. Vérification
+
+Une fois le serveur lancé :
+
+- **Documentation Swagger** : http://localhost:8000/docs
+- **Documentation ReDoc** : http://localhost:8000/redoc
+- **Health Check** : http://localhost:8000/health
+- **API Root** : http://localhost:8000/
+
+Le endpoint `/health` vous indiquera l'état de la connexion à la base de données.
 
 ## Configuration
 
