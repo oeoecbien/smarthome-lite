@@ -14,30 +14,50 @@ Sécurité:
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 import secrets
 
 from app.config import settings
 
 # ========== Configuration du hachage de mot de passe ==========
-# CryptContext gère automatiquement les sels et la robustesse
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12  # Facteur de coût (plus élevé = plus sécurisé mais plus lent)
-)
+# Facteur de coût pour bcrypt (12 rounds = compromis sécurité/performance)
+BCRYPT_ROUNDS = 12
 
 
 # ========== Fonctions de gestion des mots de passe ==========
+
+def _truncate_password_to_72_bytes(password: str) -> bytes:
+    """
+    Tronque un mot de passe à 72 bytes maximum (limitation bcrypt).
+    
+    Cette fonction garantit que le mot de passe tronqué en bytes
+    ne dépassera jamais 72 bytes, ce qui est la limite de bcrypt.
+    
+    Args:
+        password (str): Mot de passe à tronquer
+        
+    Returns:
+        bytes: Mot de passe tronqué en bytes (maximum 72 bytes)
+    """
+    # Encoder le mot de passe en bytes
+    password_bytes = password.encode('utf-8')
+    
+    # Tronquer à exactement 72 bytes si nécessaire
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+    
+    return password_bytes
+
 
 def get_password_hash(password: str) -> str:
     """
     Hache un mot de passe en clair avec bcrypt.
     
     Processus:
-        1. Génération automatique d'un sel aléatoire
-        2. Application de l'algorithme bcrypt avec 12 rounds
-        3. Retour du hash complet (sel + hash)
+        1. Troncature du mot de passe à 72 bytes (limitation bcrypt)
+        2. Génération automatique d'un sel aléatoire
+        3. Application de l'algorithme bcrypt avec 12 rounds
+        4. Retour du hash complet (sel + hash)
     
     Args:
         password (str): Mot de passe en clair
@@ -53,8 +73,15 @@ def get_password_hash(password: str) -> str:
     Note:
         Le hash généré est différent à chaque appel même pour le même mot de passe
         (grâce au sel aléatoire), ce qui est un comportement souhaité.
+        Les mots de passe de plus de 72 bytes sont automatiquement tronqués.
     """
-    return pwd_context.hash(password)
+    # Tronquer le mot de passe à 72 bytes (limitation bcrypt)
+    password_bytes = _truncate_password_to_72_bytes(password)
+    # Générer le sel et hasher le mot de passe
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Retourner le hash en string (bcrypt retourne des bytes)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -62,9 +89,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Vérifie qu'un mot de passe en clair correspond au hash stocké.
     
     Processus:
-        1. Extraction du sel depuis le hash stocké
-        2. Hachage du mot de passe fourni avec le même sel
-        3. Comparaison constante en temps (protection timing attacks)
+        1. Troncature du mot de passe à 72 bytes (limitation bcrypt)
+        2. Extraction du sel depuis le hash stocké
+        3. Hachage du mot de passe fourni avec le même sel
+        4. Comparaison constante en temps (protection timing attacks)
     
     Args:
         plain_password (str): Mot de passe fourni par l'utilisateur
@@ -83,8 +111,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Sécurité:
         La comparaison est effectuée en temps constant pour éviter les
         attaques par analyse temporelle (timing attacks).
+        Les mots de passe de plus de 72 bytes sont automatiquement tronqués.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Tronquer le mot de passe à 72 bytes (limitation bcrypt)
+    password_bytes = _truncate_password_to_72_bytes(plain_password)
+    # Convertir le hash en bytes si nécessaire
+    hashed_bytes = hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
+    # Vérifier le mot de passe (bcrypt.compare_digest est utilisé en interne)
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 
 # ========== Fonctions de gestion des JWT ==========
