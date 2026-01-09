@@ -100,10 +100,19 @@ app.add_middleware(
     max_age=3600,
 )
 
+# Rate limiting (seulement en production ou si configuré)
+if settings.is_production or not settings.debug:
+    try:
+        from app.middleware.rate_limit import RateLimitMiddleware
+        app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+        logger.info("Rate limiting activé (60 requêtes/minute)")
+    except Exception as e:
+        logger.warning(f"Impossible d'activer le rate limiting: {e}")
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """Log des requêtes HTTP avec temps de traitement."""
+    """Log des requêtes HTTP avec temps de traitement et collecte de métriques."""
     start_time = time.time()
     client_ip = request.client.host if request.client else "unknown"
     
@@ -111,12 +120,26 @@ async def log_requests(request: Request, call_next):
         response = await call_next(request)
         process_time = time.time() - start_time
         
+        # Log structuré
         logger.info(
             f"{request.method} {request.url.path} "
             f"[{response.status_code}] "
             f"({process_time:.3f}s) "
             f"- {client_ip}"
         )
+        
+        # Collecte de métriques
+        try:
+            from app.utils.metrics import get_metrics_collector
+            metrics = get_metrics_collector()
+            metrics.record_request(
+                endpoint=request.url.path,
+                method=request.method,
+                status_code=response.status_code,
+                process_time=process_time
+            )
+        except Exception:
+            pass  # Ne pas faire planter la requête si les métriques échouent
         
         response.headers["X-Process-Time"] = str(process_time)
         return response
@@ -125,8 +148,23 @@ async def log_requests(request: Request, call_next):
         process_time = time.time() - start_time
         logger.error(
             f"{request.method} {request.url.path} "
-            f"[ERROR] ({process_time:.3f}s) - {client_ip}: {str(e)}"
+            f"[ERROR] ({process_time:.3f}s) - {client_ip}: {str(e)}",
+            exc_info=True
         )
+        
+        # Enregistrer l'erreur dans les métriques
+        try:
+            from app.utils.metrics import get_metrics_collector
+            metrics = get_metrics_collector()
+            metrics.record_request(
+                endpoint=request.url.path,
+                method=request.method,
+                status_code=500,
+                process_time=process_time
+            )
+        except Exception:
+            pass
+        
         raise
 
 
@@ -188,11 +226,53 @@ def health_check():
     except Exception as e:
         database_status = f"error: {str(e)}"
     
+    # Vérifier le service IA
+    ai_status = "unknown"
+    try:
+        from app.services.ai_service import get_ai_service
+        ai_service = get_ai_service()
+        ai_status = "loaded" if ai_service.model is not None else "fallback"
+    except Exception:
+        ai_status = "error"
+    
+    # Vérifier le service de régression
+    regression_status = "unknown"
+    try:
+        from app.services.regression_service import get_regression_service
+        regression_service = get_regression_service()
+        regression_status = "loaded" if regression_service.model is not None else "fallback"
+    except Exception:
+        regression_status = "error"
+    
+    # Vérifier Ollama
+    ollama_status = "disabled"
+    try:
+        from app.services.ollama_service import OllamaService
+        ollama_service = OllamaService()
+        ollama_status = "enabled" if ollama_service.enabled else "disabled"
+    except Exception:
+        ollama_status = "error"
+    
     return {
         "status": "healthy",
         "database": database_status,
+        "ai_service": ai_status,
+        "regression_service": regression_status,
+        "ollama": ollama_status,
         "environment": settings.environment
     }
+
+
+@app.get("/metrics", tags=["Monitoring"])
+def get_metrics():
+    """Retourne les métriques de performance."""
+    try:
+        from app.utils.metrics import get_metrics_collector
+        metrics = get_metrics_collector()
+        return metrics.get_stats()
+    except Exception as e:
+        logger.error(f"Erreur lors de la récupération des métriques: {e}")
+        return {"error": "Impossible de récupérer les métriques"}
 
 
 # Enregistrement des routes

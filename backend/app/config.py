@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     ml_model_path: str = Field(default="ml/models/scenario_classifier.pkl")
     ml_retrain_threshold: int = Field(default=100)
     
+    # Ollama (IA générative)
+    ollama_base_url: Optional[str] = Field(default=None, description="URL du serveur Ollama IUT")
+    ollama_model: str = Field(default="llama2", description="Modèle LLM à utiliser")
+    ollama_timeout: int = Field(default=30, description="Timeout en secondes pour les requêtes Ollama")
+    
     # Smart Dimming
     smart_dimming_enabled: bool = Field(default=True, description="Activer/désactiver le Smart Dimming globalement")
     smart_dimming_threshold: int = Field(default=10, description="Seuil minimum de différence d'intensité pour déclencher un ajustement (%)")
