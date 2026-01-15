@@ -65,7 +65,7 @@ fun SmartHomeApp() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 when (currentDestination) {
-                    AppDestinations.HOME -> Greeting(name = "Android")
+                    AppDestinations.HOME -> HomeScreen()
                     AppDestinations.FAVORITES -> FavoritesScreen()
                     AppDestinations.PROFILE -> Greeting(name = "Profile")
                 }
@@ -85,7 +85,12 @@ enum class AppDestinations(
 }
 
 
-
+@Composable
+fun HomeScreen(modifier: Modifier = Modifier) {
+    Text(
+        text = "Bonjour Melih"
+    )
+}
 
 
 @Composable
