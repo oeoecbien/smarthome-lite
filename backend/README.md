@@ -87,7 +87,8 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Gestion d'appareils** : CRUD complet et contrôle en temps réel - routes `/api/devices` avec contrôle d'état (`PUT /api/devices/{id}/state`) et intensité (`PUT /api/devices/{id}/brightness`)
 - **Moteur de règles** : Automatisation IF-THEN avec évaluation conditionnelle - routes `/api/rules` (CRUD complet) avec évaluation automatique lors des événements
 - **Smart Dimming** : Ajustement intelligent de l'éclairage basé sur la luminosité ambiante - routes `/api/smart-dimming/status`, `/api/smart-dimming/adjustments`, `/api/smart-dimming/enable`, `/api/smart-dimming/pause/{device_id}`
-- **Intelligence Artificielle** : Classification de scénarios (Decision Tree Classifier) - routes `/api/ai/current-scenario`, `/api/ai/classify`, `/api/ai/model-metrics` avec modèle entraîné
+- **Intelligence Artificielle** : Classification de scénarios (Decision Tree Classifier) et régression pour prédiction d'intensité (Random Forest Regressor) - routes `/api/ai/current-scenario`, `/api/ai/classify`, `/api/ai/predict-intensity`, `/api/ai/model-metrics` avec modèles entraînés
+- **Ollama (IA générative)** : Intégration du serveur Ollama IUT pour descriptions intelligentes, parsing de règles et recommandations - routes `/api/ai/ollama/*` (optionnel, nécessite configuration OLLAMA_BASE_URL)
 - **Gestion Raspberry Pi** : Enregistrement et suivi des Raspberry Pi connectés - routes `/api/raspberry-pis` (CRUD) avec authentification par API Key pour les endpoints appelés par RPi
 - **Détection de présence** : Enregistrement et historique des détections - routes `POST /api/presence` (appelé par RPi) et `GET /api/presence` (historique) avec déclenchement automatique des règles
 - **Mesures de luminosité** : Stockage des lectures de capteurs (BH1750/LDR) - routes `POST /api/light-readings` (appelé par RPi) et `GET /api/light-readings` (historique) avec déclenchement automatique du smart dimming
@@ -97,10 +98,14 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Évaluation de règles** : Évaluation manuelle des règles d'automatisation - route `POST /api/rules/{id}/test` pour tester une règle dans le contexte actuel
 - **Métriques IA** : Informations sur le modèle chargé - route `GET /api/ai/model-metrics` retourne l'état du modèle, l'accuracy (si disponible), et les scénarios détectables
 - **Modèle préférences utilisateur** : Table `user_preferences` créée en base de données pour apprentissage futur (pas encore de route dédiée)
+- **Régression IA** : Prédiction d'intensité lumineuse optimale (Random Forest Regressor) - route `/api/ai/predict-intensity` avec intégration dans smart dimming
+- **Ollama (IA générative)** : Service d'IA générative pour descriptions intelligentes, parsing de règles en langage naturel et recommandations personnalisées - routes `/api/ai/ollama/*`
+- **Monitoring et Observabilité** : Métriques de performance, logs structurés, health checks avancés - routes `/health` et `/metrics`
+- **Sécurité renforcée** : Rate limiting, collecte de métriques, logs détaillés
+- **Tests** : Structure de tests unitaires et d'intégration avec pytest
 
 ### À implémenter
 
-- **Régression IA** : Prédiction d'intensité lumineuse optimale (Random Forest Regressor)
 - **Clustering** : Détection automatique de profils utilisateur (K-Means)
 - **WebSockets** : Synchronisation temps réel pour l'application mobile (optionnel)
 
@@ -131,7 +136,8 @@ backend/
 │   │   ├── device.py              # Appareils
 │   │   ├── raspberry_pi.py        # Raspberry Pi
 │   │   ├── rule.py                # Règles
-│   │   └── smart_dimming.py       # Smart Dimming
+│   │   ├── smart_dimming.py       # Smart Dimming
+│   │   └── ai.py                  # IA (classification, régression, Ollama)
 │   │
 │   ├── routes/                    # Endpoints API
 │   │   ├── auth.py                # POST /api/auth/login, /register
@@ -146,20 +152,38 @@ backend/
 │   │
 │   ├── services/                  # Logique métier
 │   │   ├── ai_service.py          # Service IA (classification)
+│   │   ├── regression_service.py  # Service régression (prédiction intensité)
+│   │   ├── ollama_service.py      # Service Ollama (IA générative)
 │   │   ├── device_service.py      # Contrôle appareils
 │   │   ├── rule_engine.py         # Moteur de règles
 │   │   └── smart_dimming_service.py  # Service smart dimming
 │   │
+│   ├── middleware/                # Middlewares
+│   │   └── rate_limit.py          # Rate limiting
+│   │
 │   └── utils/                     # Utilitaires
 │       ├── auth.py                # Fonctions JWT
-│       └── validators.py          # Validateurs personnalisés
+│       ├── validators.py          # Validateurs personnalisés
+│       └── metrics.py             # Collecte de métriques
 │
 ├── ml/                            # Machine Learning
-│   ├── generate_data.py           # Génération données synthétiques
-│   ├── train_model.py             # Entraînement Decision Tree
-│   └── models/                    # Modèles sauvegardés (.pkl)
+│   ├── generate_data.py           # Génération données synthétiques (classification)
+│   ├── generate_regression_data.py # Génération données synthétiques (régression)
+│   ├── train_model.py             # Entraînement Decision Tree (classification)
+│   ├── train_regression_model.py  # Entraînement Random Forest (régression)
+│   ├── data/                      # Données d'entraînement
+│   │   └── regression_training_data.json
+│   └── models/                    # Modèles sauvegardés (.pkl, .joblib)
 │       ├── .gitkeep               # Dossier pour modèles ML
-│       └── scenario_classifier.pkl # Modèle entraîné (généré après training)
+│       ├── scenario_classifier.pkl # Modèle classification (généré après training)
+│       └── regression_model.joblib # Modèle régression (généré après training)
+│
+├── tests/                         # Tests
+│   ├── test_services/             # Tests unitaires services
+│   │   ├── test_ai_service.py
+│   │   ├── test_regression_service.py
+│   │   └── test_ollama_service.py
+│   └── test_routes/               # Tests d'intégration routes
 │
 ├── requirements.txt               # Dépendances Python
 ├── .env.example                   # Exemple de configuration
@@ -194,7 +218,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - **Python** : 3.10 ou supérieur
 - **PostgreSQL** : 14+ (avec extension TimescaleDB optionnelle pour time-series)
-  - **Note** : Le backend peut démarrer sans PostgreSQL, mais les fonctionnalités nécessitant la base de données ne fonctionneront pas.
+- **Note** : Le backend peut démarrer sans PostgreSQL, mais les fonctionnalités nécessitant la base de données ne fonctionneront pas.
 
 ### Étapes d'Installation
 
@@ -290,27 +314,42 @@ psql -d smarthome -f ../db/init_database.sql
 
 **Note** : Si la base de données n'est pas accessible, le backend démarrera quand même avec des warnings. Les tables seront créées automatiquement au premier démarrage si la connexion fonctionne.
 
-#### 6. Générer et entraîner le modèle IA (Optionnel)
+#### 6. Générer et entraîner les modèles IA (Optionnel)
 
-Le modèle IA est optionnel. L'application utilisera un mode fallback s'il n'est pas disponible.
+Les modèles IA sont optionnels. L'application utilisera un mode fallback s'ils ne sont pas disponibles.
 
 **Windows (PowerShell) :**
 ```powershell
-# Générer 1000 échantillons de données synthétiques
+# Classification - Générer 1000 échantillons de données synthétiques
 python ml\generate_data.py --samples 1000
 
-# Entraîner le modèle Decision Tree
+# Classification - Entraîner le modèle Decision Tree
 python ml\train_model.py --max-depth 7
 
-# Vérifier que le modèle a été créé
+# Régression - Générer 800 échantillons de données synthétiques
+python ml\generate_regression_data.py --samples 800
+
+# Régression - Entraîner le modèle Random Forest Regressor
+python ml\train_regression_model.py --n-estimators 100 --max-depth 10
+
+# Vérifier que les modèles ont été créés
 Get-ChildItem ml\models\scenario_classifier.pkl
+Get-ChildItem ml\models\regression_model.joblib
 ```
 
 **Linux/Mac :**
 ```bash
+# Classification
 python ml/generate_data.py --samples 1000
 python ml/train_model.py --max-depth 7
+
+# Régression
+python ml/generate_regression_data.py --samples 800
+python ml/train_regression_model.py --n-estimators 100 --max-depth 10
+
+# Vérification
 ls -lh ml/models/scenario_classifier.pkl
+ls -lh ml/models/regression_model.joblib
 ```
 
 #### 7. Lancer le serveur
@@ -373,6 +412,11 @@ RASPBERRY_PI_TIMEOUT=5
 
 # Machine Learning
 ML_MODEL_PATH=ml/models/scenario_classifier.pkl
+
+# Ollama (IA générative - optionnel)
+OLLAMA_BASE_URL=http://ollama.iut.local:11434
+OLLAMA_MODEL=llama2
+OLLAMA_TIMEOUT=30
 
 # Smart Dimming
 SMART_DIMMING_ENABLED=True
@@ -445,7 +489,15 @@ Une fois le serveur lancé :
 
 - `GET /api/ai/current-scenario` - Scénario actuel détecté (avec option `raspberry_pi_id`)
 - `POST /api/ai/classify` - Classification manuelle avec paramètres spécifiques
+- `POST /api/ai/predict-intensity` - Prédiction d'intensité lumineuse optimale (régression)
 - `GET /api/ai/model-metrics` - Métriques du modèle (accuracy, état du modèle, features, scénarios)
+
+### Ollama (IA générative - optionnel)
+
+- `POST /api/ai/ollama/generate` - Génération de texte via Ollama (endpoint générique)
+- `POST /api/ai/ollama/scenario-description` - Description intelligente d'un scénario
+- `POST /api/ai/ollama/parse-rule` - Conversion règle langage naturel → JSON structuré
+- `GET /api/ai/ollama/recommendations` - Recommandations personnalisées basées sur l'historique
 
 ### Smart Dimming
 
@@ -458,6 +510,11 @@ Une fois le serveur lancé :
 
 - `GET /api/events` - Historique des événements système
 - `GET /api/events/device/{id}` - Événements d'un appareil spécifique
+
+### Monitoring
+
+- `GET /health` - Vérification de santé (base de données, services IA, Ollama)
+- `GET /metrics` - Métriques de performance (requêtes, erreurs, temps de réponse)
 
 ## Intelligence Artificielle
 
@@ -506,20 +563,65 @@ L'endpoint `GET /api/ai/model-metrics` retourne :
 - Nombre de features (4)
 - Liste des scénarios détectables
 
-### Régression pour Prédiction d'Intensité (À implémenter)
+### Régression pour Prédiction d'Intensité (Implémenté)
 
-**Algorithme prévu** : Random Forest Regressor
+**Algorithme** : Random Forest Regressor (scikit-learn)
 
 **Objectif** : Prédire l'intensité lumineuse optimale (0-100%) selon :
 - Luminosité ambiante (lux)
 - Heure et jour de la semaine
-- Préférences historiques utilisateur
-- Type de pièce
-- Scénario actif
+- Présence détectée
+- Scénario actif (Day, Night, Away, Evening)
+
+**Features utilisées :**
+- `hour` : Heure actuelle (0-23)
+- `day_of_week` : Jour de la semaine (0=Lundi, 6=Dimanche)
+- `lux_value` : Valeur de luminosité ambiante en lux
+- `presence_detected` : Présence détectée (booléen)
+- `scenario` : Scénario actuel (0-3)
 
 **Performance cible :**
-- R² score : > 0.80
-- MAE : < 10%
+- R² score : > 0.70
+- MAE : < 15%
+
+**Entraînement :**
+```bash
+# Générer données synthétiques
+python ml/generate_regression_data.py --samples 800
+
+# Entraîner le modèle
+python ml/train_regression_model.py --n-estimators 100 --max-depth 10
+
+# Le modèle sera sauvegardé dans ml/models/regression_model.joblib
+```
+
+**Intégration :**
+Le modèle de régression est automatiquement utilisé par le service smart dimming pour prédire l'intensité optimale. Si le modèle n'est pas disponible, le système utilise un fallback basé sur des règles fixes.
+
+**Endpoint API :**
+- `POST /api/ai/predict-intensity` : Prédiction manuelle avec paramètres spécifiques
+
+### Ollama (IA générative - Implémenté, optionnel)
+
+**Service** : Serveur Ollama IUT (modèles LLM)
+
+**Fonctionnalités :**
+- Génération de descriptions intelligentes de scénarios détectés
+- Parsing de règles en langage naturel vers structure JSON
+- Recommandations personnalisées basées sur l'historique utilisateur
+
+**Configuration :**
+- `OLLAMA_BASE_URL` : URL du serveur Ollama IUT (ex: `http://ollama.iut.local:11434`)
+- `OLLAMA_MODEL` : Modèle LLM à utiliser (ex: `llama2`, `mistral`)
+- `OLLAMA_TIMEOUT` : Timeout en secondes (défaut: 30s)
+
+**Endpoints :**
+- `POST /api/ai/ollama/generate` : Génération de texte générique
+- `POST /api/ai/ollama/scenario-description` : Description intelligente de scénario
+- `POST /api/ai/ollama/parse-rule` : Conversion texte → règle structurée
+- `GET /api/ai/ollama/recommendations` : Recommandations personnalisées
+
+**Note** : Ollama est optionnel. Si non configuré, les endpoints retournent des messages d'erreur explicites ou utilisent des fallbacks.
 
 ### Clustering des Habitudes (À implémenter)
 
@@ -539,12 +641,13 @@ Le **Smart Dimming** est la fonctionnalité d'adaptation dynamique de l'intensit
 
 1. **Mesure** : Le capteur de luminosité (BH1750 ou LDR) envoie des mesures toutes les 10 secondes
 2. **Classification** : Le service IA détermine le scénario actif (Day, Evening, Night, Away)
-3. **Calcul** : L'algorithme calcule l'intensité cible selon :
-   - Luminosité ambiante mesurée (lux)
-   - Paramètres du scénario (seuils haut/bas)
+3. **Prédiction** : Le service de régression prédit l'intensité optimale (si modèle disponible) ou utilisation de règles fixes
+4. **Calcul** : L'algorithme calcule l'intensité cible selon :
+   - Prédiction ML (si modèle de régression disponible)
+   - Sinon : Luminosité ambiante mesurée (lux) et paramètres du scénario (seuils haut/bas)
    - Interpolation linéaire entre les seuils
-4. **Application** : Si l'écart avec l'intensité actuelle > 10%, envoi d'une commande au Raspberry Pi
-5. **Enregistrement** : L'ajustement est enregistré dans `dimming_adjustments` avec justification
+5. **Application** : Si l'écart avec l'intensité actuelle > 10%, envoi d'une commande au Raspberry Pi
+6. **Enregistrement** : L'ajustement est enregistré dans `dimming_adjustments` avec justification
 
 ### Algorithme d'Ajustement
 
@@ -718,6 +821,19 @@ Le Raspberry Pi envoie des événements au backend :
 - **SQLAlchemy ORM** : Protection contre injections SQL
 - **Plages de valeurs** : Validation des paramètres (ex: brightness 0-100)
 
+### Rate Limiting
+
+- **Middleware** : Limitation du nombre de requêtes par IP (60 requêtes/minute en production)
+- **Protection** : Protection contre les attaques par déni de service (DoS)
+- **Configuration** : Activé automatiquement en production
+
+### Monitoring et Observabilité
+
+- **Logs structurés** : Format standardisé avec timestamp, niveau, module, message
+- **Métriques de performance** : Collecte automatique (temps de réponse, taux d'erreur, requêtes par endpoint)
+- **Health checks** : Vérification de l'état des services (base de données, IA, Ollama)
+- **Endpoint `/metrics`** : Retourne les statistiques de performance en temps réel
+
 ## Déploiement
 
 ### Développement
@@ -768,9 +884,9 @@ WantedBy=multi-user.target
 - Vérifier que la base `smarthome` existe
 
 **Modèle IA non trouvé :**
-- Exécuter `python ml/generate_data.py --samples 1000`
-- Exécuter `python ml/train_model.py`
-- Vérifier que `ml/models/scenario_classifier.pkl` existe
+- Classification : Exécuter `python ml/generate_data.py --samples 1000` puis `python ml/train_model.py`
+- Régression : Exécuter `python ml/generate_regression_data.py --samples 800` puis `python ml/train_regression_model.py`
+- Vérifier que les fichiers `ml/models/scenario_classifier.pkl` et `ml/models/regression_model.joblib` existent
 
 **Erreur CORS :**
 - Ajouter l'origine dans `CORS_ORIGINS` dans `.env`
@@ -780,6 +896,15 @@ WantedBy=multi-user.target
 - Vérifier que le RPi est en ligne (`is_online = True`)
 - Vérifier la connectivité réseau
 - Vérifier l'API Key dans les headers
+
+**Ollama non disponible :**
+- Vérifier que `OLLAMA_BASE_URL` est configuré dans `.env`
+- Vérifier la connectivité au serveur Ollama IUT
+- Les endpoints Ollama retourneront des erreurs 503 si non configuré (comportement normal)
+
+**Tests :**
+- Exécuter les tests : `pytest backend/tests/`
+- Voir la couverture : `pytest --cov=app backend/tests/`
 
 ## Contribution
 

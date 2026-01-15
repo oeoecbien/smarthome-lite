@@ -10,9 +10,30 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.dependencies import get_current_user, User
 from app.services.ai_service import get_ai_service
+from app.services.regression_service import get_regression_service
+from app.services.ollama_service import OllamaService
+from app.schemas.ai import (
+    OllamaGenerateRequest,
+    OllamaGenerateResponse,
+    ScenarioDescriptionRequest,
+    RuleParseRequest,
+    RuleParseResponse,
+    RecommendationsResponse
+)
 from app.config import settings
 
 router = APIRouter()
+
+# Instance globale du service Ollama
+_ollama_service = None
+
+
+def get_ollama_service() -> OllamaService:
+    """Obtient l'instance globale du service Ollama (singleton)."""
+    global _ollama_service
+    if _ollama_service is None:
+        _ollama_service = OllamaService()
+    return _ollama_service
 
 
 class ClassifyRequest(BaseModel):
@@ -93,7 +114,7 @@ class ModelMetricsResponse(BaseModel):
     accuracy: Optional[float] = None
     method: str
     features_count: int
-    scenarios: dict
+    scenarios: list[str]
 
 
 @router.get("/model-metrics", response_model=ModelMetricsResponse)
@@ -136,10 +157,185 @@ async def get_model_metrics(
         "accuracy": accuracy,
         "method": method,
         "features_count": 4,  # hour, day_of_week, presence_detected, light_on
-        "scenarios": {
-            0: "Day",
-            1: "Night",
-            2: "Away",
-            3: "Evening"
-        }
+        "scenarios": ["Day", "Night", "Away", "Evening"]
     }
+
+
+class PredictIntensityRequest(BaseModel):
+    """Requête pour prédiction d'intensité."""
+    hour: int
+    day_of_week: int
+    lux_value: float
+    presence_detected: bool
+    scenario: int
+
+
+class PredictIntensityResponse(BaseModel):
+    """Réponse avec l'intensité prédite."""
+    intensity: int
+    confidence: float
+    method: str
+
+
+@router.post("/predict-intensity", response_model=PredictIntensityResponse)
+async def predict_intensity(
+    request: PredictIntensityRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Prédit l'intensité lumineuse optimale selon le contexte.
+    
+    Utilise un modèle de régression (Random Forest) pour prédire l'intensité
+    optimale basée sur l'heure, la luminosité ambiante, la présence et le scénario.
+    """
+    # Validation des paramètres
+    if not (0 <= request.hour <= 23):
+        raise HTTPException(status_code=400, detail="hour doit être entre 0 et 23")
+    
+    if not (0 <= request.day_of_week <= 6):
+        raise HTTPException(status_code=400, detail="day_of_week doit être entre 0 et 6")
+    
+    if request.lux_value < 0:
+        raise HTTPException(status_code=400, detail="lux_value doit être >= 0")
+    
+    if not (0 <= request.scenario <= 3):
+        raise HTTPException(status_code=400, detail="scenario doit être entre 0 et 3")
+    
+    regression_service = get_regression_service()
+    result = regression_service.predict_intensity(
+        request.hour,
+        request.day_of_week,
+        request.lux_value,
+        request.presence_detected,
+        request.scenario
+    )
+    
+    return result
+
+
+# ============================================================================
+# ENDPOINTS OLLAMA (IA générative)
+# ============================================================================
+
+@router.post("/ollama/generate", response_model=OllamaGenerateResponse)
+async def ollama_generate(
+    request: OllamaGenerateRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Génère du texte via Ollama (endpoint générique).
+    
+    Authentification requise (JWT).
+    """
+    ollama_service = get_ollama_service()
+    
+    if not ollama_service.enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Service Ollama non configuré (OLLAMA_BASE_URL non défini)"
+        )
+    
+    model = request.model or ollama_service.model
+    result = ollama_service.generate_text(request.prompt, model)
+    
+    if result is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Erreur lors de la génération de texte via Ollama"
+        )
+    
+    return {
+        "response": result,
+        "model": model,
+        "done": True
+    }
+
+
+@router.post("/ollama/scenario-description")
+async def ollama_scenario_description(
+    request: ScenarioDescriptionRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Génère une description intelligente d'un scénario détecté.
+    """
+    ollama_service = get_ollama_service()
+    description = ollama_service.generate_scenario_description(request.scenario_data)
+    
+    return {"description": description}
+
+
+@router.post("/ollama/parse-rule", response_model=RuleParseResponse)
+async def ollama_parse_rule(
+    request: RuleParseRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Convertit une règle en langage naturel → structure JSON.
+    """
+    ollama_service = get_ollama_service()
+    
+    if not ollama_service.enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Service Ollama non configuré"
+        )
+    
+    structured_rule = ollama_service.parse_rule_from_text(request.user_text)
+    
+    if structured_rule is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Impossible de parser la règle. Vérifiez le format du texte."
+        )
+    
+    return {
+        "structured_rule": structured_rule,
+        "confidence": 0.8  # Confiance par défaut
+    }
+
+
+@router.get("/ollama/recommendations", response_model=RecommendationsResponse)
+async def ollama_recommendations(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Génère des recommandations personnalisées pour l'utilisateur connecté.
+    """
+    ollama_service = get_ollama_service()
+    
+    if not ollama_service.enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Service Ollama non configuré"
+        )
+    
+    # Récupérer l'historique utilisateur depuis la base de données
+    from app.models import Device, SmartDimmingAdjustment
+    from sqlalchemy import func
+    
+    # Calculer quelques statistiques
+    user_history = {}
+    
+    # Intensité moyenne
+    avg_brightness = db.query(func.avg(Device.brightness)).filter(
+        Device.state == True
+    ).scalar() or 50
+    user_history["average_brightness"] = float(avg_brightness)
+    
+    # Nombre d'ajustements
+    adjustment_count = db.query(func.count(SmartDimmingAdjustment.id)).scalar() or 0
+    user_history["adjustment_count"] = int(adjustment_count)
+    
+    recommendations = ollama_service.generate_recommendations(user_history)
+    
+    if not recommendations:
+        # Recommandations par défaut si Ollama échoue
+        recommendations = [
+            "Vérifiez que les capteurs de luminosité sont bien calibrés",
+            "Ajustez les seuils de smart dimming selon vos préférences"
+        ]
+    
+    return {"recommendations": recommendations}
