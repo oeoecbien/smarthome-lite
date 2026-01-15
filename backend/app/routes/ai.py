@@ -114,7 +114,7 @@ class ModelMetricsResponse(BaseModel):
     accuracy: Optional[float] = None
     method: str
     features_count: int
-    scenarios: dict
+    scenarios: list[str]
 
 
 @router.get("/model-metrics", response_model=ModelMetricsResponse)
@@ -157,12 +157,7 @@ async def get_model_metrics(
         "accuracy": accuracy,
         "method": method,
         "features_count": 4,  # hour, day_of_week, presence_detected, light_on
-        "scenarios": {
-            0: "Day",
-            1: "Night",
-            2: "Away",
-            3: "Evening"
-            }
+        "scenarios": ["Day", "Night", "Away", "Evening"]
     }
 
 
