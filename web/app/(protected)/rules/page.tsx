@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { RuleCard } from "@/components/rule-card"
+import { RuleCardUser } from "@/components/rule-card-user"
+import { AdminOnly } from "@/components/admin-only"
 import { ruleService } from "@/lib/services/rule-service"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import type { Rule } from "@/lib/types"
 import { Plus, RefreshCw, Settings2, AlertCircle, Filter } from "lucide-react"
 
@@ -59,6 +62,7 @@ const EMPTY_FORM: RuleFormData = {
 }
 
 export default function RulesPage() {
+  const isAdmin = useIsAdmin()
   const [rules, setRules] = useState<Rule[]>([])
   const [filteredRules, setFilteredRules] = useState<Rule[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -223,10 +227,12 @@ export default function RulesPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Button size="sm" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvelle règle
-          </Button>
+          <AdminOnly>
+            <Button size="sm" onClick={openCreateDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle règle
+            </Button>
+          </AdminOnly>
         </div>
       </div>
 
@@ -257,23 +263,30 @@ export default function RulesPage() {
               ? "Créez votre première règle d'automatisation"
               : "Aucune règle ne correspond au filtre"}
           </p>
-          {rules.length === 0 && (
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Créer une règle
-            </Button>
-          )}
+          <AdminOnly>
+            {rules.length === 0 && (
+              <Button onClick={openCreateDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Créer une règle
+              </Button>
+            )}
+          </AdminOnly>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {filteredRules.map((rule) => (
-            <RuleCard key={rule.id} rule={rule} onUpdate={fetchRules} onEdit={openEditDialog} onDelete={handleDelete} />
-          ))}
+          {filteredRules.map((rule) =>
+            isAdmin ? (
+              <RuleCard key={rule.id} rule={rule} onUpdate={fetchRules} onEdit={openEditDialog} onDelete={handleDelete} />
+            ) : (
+              <RuleCardUser key={rule.id} rule={rule} onUpdate={fetchRules} />
+            ),
+          )}
         </div>
       )}
 
-      {/* Create/Edit Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Create/Edit Dialog - Admin Only */}
+      <AdminOnly>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingRule ? "Modifier la règle" : "Créer une règle"}</DialogTitle>
@@ -381,6 +394,7 @@ export default function RulesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      </AdminOnly>
     </div>
   )
 }

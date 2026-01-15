@@ -9,6 +9,7 @@ import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
 import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
 
 interface DeviceCardProps {
   device: Device
@@ -31,13 +32,41 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
   const isOn = device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
 
-  const handleToggle = async () => {
+  const handleToggle = async (checked: boolean) => {
+    // Ne pas permettre le changement si déjà en cours de mise à jour
+    if (isUpdating) return
+    
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, isOn ? "OFF" : "ON")
+      await deviceService.updateState(device.id, checked ? "ON" : "OFF")
       onUpdate()
+      toast({
+        title: "Appareil mis à jour",
+        description: `${device.name} a été ${checked ? "allumé" : "éteint"}.`,
+      })
     } catch (error) {
-      console.error("Failed to toggle device:", error)
+      // Ne pas logger l'erreur dans la console pour réduire le bruit
+      // L'erreur est déjà affichée via le toast
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue"
+      
+      // Message d'erreur plus convivial
+      let friendlyMessage = errorMessage
+      if (errorMessage.includes("not responding")) {
+        friendlyMessage = "Le Raspberry Pi ne répond pas. Vérifiez qu'il est en ligne."
+      } else if (errorMessage.includes("offline")) {
+        friendlyMessage = "Le Raspberry Pi est hors ligne."
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("expiré")) {
+        friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
+      }
+      
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: `Impossible de modifier l'état de ${device.name}. ${friendlyMessage}`,
+      })
+      
+      // Forcer la mise à jour pour réinitialiser le Switch à l'état actuel
+      onUpdate()
     } finally {
       setIsUpdating(false)
     }
@@ -55,9 +84,33 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
     try {
       await deviceService.updateBrightness(device.id, value[0])
       onUpdate()
+      toast({
+        title: "Intensité mise à jour",
+        description: `L'intensité de ${device.name} a été réglée à ${value[0]}%.`,
+      })
     } catch (error) {
-      console.error("Failed to update brightness:", error)
+      // Ne pas logger l'erreur dans la console pour réduire le bruit
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue"
+      
+      // Message d'erreur plus convivial
+      let friendlyMessage = errorMessage
+      if (errorMessage.includes("not responding")) {
+        friendlyMessage = "Le Raspberry Pi ne répond pas. Vérifiez qu'il est en ligne."
+      } else if (errorMessage.includes("offline")) {
+        friendlyMessage = "Le Raspberry Pi est hors ligne."
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("expiré")) {
+        friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
+      }
+      
       setLocalBrightness(device.brightness ?? 100)
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: `Impossible de modifier l'intensité de ${device.name}. ${friendlyMessage}`,
+      })
+      
+      // Forcer la mise à jour pour réinitialiser le slider à l'état actuel
+      onUpdate()
     } finally {
       setIsUpdating(false)
     }
@@ -115,7 +168,12 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
             {isUpdating ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <Switch checked={isOn} onCheckedChange={handleToggle} aria-label={`Toggle ${device.name}`} />
+              <Switch 
+                checked={isOn} 
+                onCheckedChange={handleToggle} 
+                disabled={isUpdating}
+                aria-label={`Toggle ${device.name}`} 
+              />
             )}
             <Button
               variant="ghost"

@@ -38,11 +38,13 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             )
     
     # Créer le nouvel utilisateur
+    # Le rôle sera défini automatiquement à "user" par défaut (défini dans le modèle et la base de données)
     hashed_password = get_password_hash(user_data.password)
     db_user = User(
         username=user_data.username,
         email=user_data.email,
-        password_hash=hashed_password
+        password_hash=hashed_password,
+        role="user"  # Rôle par défaut pour les nouveaux utilisateurs
     )
     
     db.add(db_user)

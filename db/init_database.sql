@@ -35,16 +35,20 @@ CREATE TABLE users (
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Index pour recherche rapide par username (connexion fréquente)
 CREATE INDEX idx_users_username ON users(username);
+-- Index pour recherche par rôle
+CREATE INDEX idx_users_role ON users(role);
 
 COMMENT ON TABLE users IS 'Utilisateurs du système SmartHome';
 COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt du mot de passe (12 rounds minimum)';
 COMMENT ON COLUMN users.username IS 'Nom d''utilisateur unique pour connexion';
+COMMENT ON COLUMN users.role IS 'Rôle de l''utilisateur: "user" (par défaut) ou "admin"';
 
 -- ----------------------------------------------------------------------------
 -- Table: raspberry_pis
@@ -307,10 +311,11 @@ CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
 -- Hash bcrypt généré avec 12 rounds
 -- NOTE: Si vous avez des problèmes de connexion, exécutez le script de migration:
 --       python backend/migrate_admin_password.py
-INSERT INTO users (username, email, password_hash) VALUES
-('admin', 'admin@smarthome.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYL3ZOE7jiq');
+INSERT INTO users (username, email, password_hash, role) VALUES
+('admin', 'admin@smarthome.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYL3ZOE7jiq', 'admin');
 
 -- Note: Utilisateur de test: admin / admin123 (CHANGER EN PRODUCTION)
+-- Cet utilisateur a le rôle 'admin' pour accéder à l'interface d'administration
 
 -- Configuration des Raspberry Pi
 INSERT INTO raspberry_pis (name, location, ip_address, api_key, is_online) VALUES
