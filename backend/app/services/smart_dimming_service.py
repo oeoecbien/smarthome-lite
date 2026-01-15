@@ -21,6 +21,14 @@ except ImportError:
     AI_SERVICE_AVAILABLE = False
     logger.warning("AIService non disponible, utilisation d'un scénario par défaut")
 
+# Import optionnel de RegressionService
+try:
+    from app.services.regression_service import get_regression_service
+    REGRESSION_SERVICE_AVAILABLE = True
+except ImportError:
+    REGRESSION_SERVICE_AVAILABLE = False
+    logger.warning("RegressionService non disponible, utilisation de règles fixes")
+
 class SmartDimmingService:
     """
     Service pour ajustement automatique de l'intensité lumineuse
@@ -30,6 +38,7 @@ class SmartDimmingService:
     def __init__(self, db: Session):
         self.db = db
         self.ai_service = AIService() if AI_SERVICE_AVAILABLE else None
+        self.regression_service = get_regression_service() if REGRESSION_SERVICE_AVAILABLE else None
         self.device_service = DeviceService(db)
     
     def calculate_target_brightness(
@@ -135,10 +144,84 @@ class SmartDimmingService:
         
         for device in devices:
             # Calculer intensité cible
-            calc_result = self.calculate_target_brightness(
-                light_reading.lux_value,
-                scenario
-            )
+            # Essayer d'abord avec le modèle de régression si disponible
+            regression_result = None
+            use_ml_prediction = False
+            
+            if self.regression_service:
+                try:
+                    from datetime import datetime
+                    now = datetime.now()
+                    hour = now.hour
+                    day_of_week = now.weekday()
+                    
+                    # Vérifier la présence dans les 5 dernières minutes
+                    from datetime import timedelta
+                    five_minutes_ago = now - timedelta(minutes=5)
+                    from app.models import Presence
+                    presence_detected = self.db.query(Presence).filter(
+                        Presence.raspberry_pi_id == light_reading.raspberry_pi_id,
+                        Presence.detected_at >= five_minutes_ago
+                    ).first() is not None
+                    
+                    # Prédiction avec le modèle de régression
+                    regression_result = self.regression_service.predict_intensity(
+                        hour,
+                        day_of_week,
+                        light_reading.lux_value,
+                        presence_detected,
+                        scenario
+                    )
+                    
+                    if regression_result["method"] == "ml":
+                        # Utiliser la prédiction ML
+                        target_brightness = regression_result["intensity"]
+                        reason = f"ML prediction (confidence: {regression_result['confidence']:.2f})"
+                        transition = "fade"  # Transition douce pour prédiction ML
+                        use_ml_prediction = True
+                        
+                        logger.debug(
+                            f"Utilisation prédiction ML: {target_brightness}% "
+                            f"(confiance: {regression_result['confidence']:.2f})"
+                        )
+                    else:
+                        # Fallback sur règles fixes
+                        calc_result = self.calculate_target_brightness(
+                            light_reading.lux_value,
+                            scenario
+                        )
+                        target_brightness = calc_result["target_brightness"]
+                        reason = calc_result["reason"]
+                        transition = calc_result.get("transition", "immediate")
+                except Exception as e:
+                    logger.warning(f"Erreur lors de la prédiction ML, utilisation du fallback: {e}")
+                    calc_result = self.calculate_target_brightness(
+                        light_reading.lux_value,
+                        scenario
+                    )
+                    target_brightness = calc_result["target_brightness"]
+                    reason = calc_result["reason"]
+                    transition = calc_result.get("transition", "immediate")
+            else:
+                # Utiliser les règles fixes
+                calc_result = self.calculate_target_brightness(
+                    light_reading.lux_value,
+                    scenario
+                )
+                target_brightness = calc_result["target_brightness"]
+                reason = calc_result["reason"]
+                transition = calc_result.get("transition", "immediate")
+            
+            # Vérifier si ajustement nécessaire (seuil de 10%)
+            brightness_diff = abs(device.brightness - target_brightness)
+            
+            if brightness_diff < settings.smart_dimming_threshold:
+                logger.debug(
+                    f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
+                )
+                continue
+            
+            previous_brightness = device.brightness
             
             if not calc_result.get("enabled", True):
                 continue
@@ -163,7 +246,7 @@ class SmartDimmingService:
                 await self.device_service.set_device_brightness(
                     device.id,
                     target_brightness,
-                    source="smart_dimming",
+                    source="smart_dimming_ml" if use_ml_prediction else "smart_dimming",
                     transition=transition
                 )
                 

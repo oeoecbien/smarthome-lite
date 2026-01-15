@@ -305,6 +305,8 @@ CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
 
 -- Utilisateur administrateur (mot de passe: admin123)
 -- Hash bcrypt généré avec 12 rounds
+-- NOTE: Si vous avez des problèmes de connexion, exécutez le script de migration:
+--       python backend/migrate_admin_password.py
 INSERT INTO users (username, email, password_hash) VALUES
 ('admin', 'admin@smarthome.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYL3ZOE7jiq');
 
