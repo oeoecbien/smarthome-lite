@@ -220,7 +220,7 @@ export default function AIPage() {
                   </div>
                 )}
 
-                {metrics.scenarios && (
+                {metrics.scenarios && Array.isArray(metrics.scenarios) && (
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Scénarios détectables:</p>
                     <div className="flex flex-wrap gap-2">
@@ -233,7 +233,7 @@ export default function AIPage() {
                   </div>
                 )}
 
-                {metrics.features && (
+                {metrics.features && Array.isArray(metrics.features) && (
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Features utilisées:</p>
                     <div className="flex flex-wrap gap-1">

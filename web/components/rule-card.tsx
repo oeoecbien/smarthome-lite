@@ -124,7 +124,7 @@ export function RuleCard({ rule, onUpdate, onEdit, onDelete }: RuleCardProps) {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full mt-3 pt-3 border-t border-border flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="w-full mt-3 pt-3 border-t border-border flex items-center justify-between text-sm text-muted-foreground hover:bg-muted hover:text-white transition-colors rounded-md px-2 py-1"
         >
           <span>Voir la configuration JSON</span>
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -168,7 +168,7 @@ export function RuleCard({ rule, onUpdate, onEdit, onDelete }: RuleCardProps) {
             size="icon"
             onClick={handleDelete}
             disabled={isUpdating}
-            className="text-muted-foreground hover:text-destructive"
+            className="text-muted-foreground hover:bg-destructive hover:text-white"
           >
             <Trash2 className="h-4 w-4" />
             <span className="sr-only">Supprimer</span>

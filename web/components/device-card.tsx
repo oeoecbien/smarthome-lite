@@ -121,7 +121,7 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
               variant="ghost"
               size="icon"
               onClick={handleDelete}
-              className="text-muted-foreground hover:text-destructive"
+              className="text-muted-foreground hover:bg-destructive hover:text-white"
               disabled={isUpdating}
             >
               <Trash2 className="h-4 w-4" />

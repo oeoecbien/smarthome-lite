@@ -184,7 +184,7 @@ export default function SmartDimmingPage() {
                       size="sm"
                       onClick={() => handlePause(deviceId)}
                       disabled={pausingDevice === deviceId}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:bg-muted hover:text-white"
                     >
                       <Pause className="h-4 w-4 mr-1" />
                       {pausingDevice === deviceId ? "..." : "30 min"}
