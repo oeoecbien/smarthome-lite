@@ -2,7 +2,7 @@
 Schémas Pydantic pour authentification et gestion des utilisateurs.
 """
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 import re
 
@@ -106,7 +106,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: Optional[str]
-    role: Optional[str] = "user"  # 'user' ou 'admin'
+    role: Literal["user", "admin"] = Field(default="user", description="Rôle de l'utilisateur")
     created_at: datetime
     
     class Config:

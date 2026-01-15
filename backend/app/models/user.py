@@ -18,6 +18,7 @@ class User(Base):
         username: Nom d'utilisateur unique (50 caractères max)
         email: Adresse email unique optionnelle
         password_hash: Hash bcrypt du mot de passe (jamais stocké en clair)
+        role: Rôle de l'utilisateur ('user' par défaut ou 'admin')
         created_at: Timestamp de création du compte (automatique)
         updated_at: Timestamp de dernière modification (automatique)
         
