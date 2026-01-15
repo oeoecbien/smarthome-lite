@@ -106,6 +106,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: Optional[str]
+    role: Optional[str] = "user"  # 'user' ou 'admin'
     created_at: datetime
     
     class Config:
@@ -115,6 +116,7 @@ class UserResponse(BaseModel):
                 "id": 1,
                 "username": "john_doe",
                 "email": "john@example.com",
+                "role": "user",
                 "created_at": "2025-01-15T10:30:00Z"
             }
         }

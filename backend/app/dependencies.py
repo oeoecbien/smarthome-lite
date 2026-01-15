@@ -602,12 +602,12 @@ async def require_admin(
     Raises:
         HTTPException 403: Si l'utilisateur n'est pas administrateur
     """
-    # Extension future: ajouter un champ "role" au modèle User
-    # if current_user.role != "admin":
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Permissions administrateur requises"
-    #     )
+    # Vérifier que l'utilisateur a le rôle admin
+    if not hasattr(current_user, 'role') or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permissions administrateur requises"
+        )
     
     return current_user
 

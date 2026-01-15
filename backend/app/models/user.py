@@ -31,6 +31,7 @@ class User(Base):
     username = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
+    role = Column(String(20), nullable=False, default="user", server_default="user")  # 'user' ou 'admin'
     
     # Timestamps automatiques
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
