@@ -11,15 +11,15 @@ class SmartDimmingStatus(BaseModel):
     Schéma pour l'état global du Smart Dimming.
     """
     enabled: bool = Field(..., description="Smart Dimming activé globalement")
-    active_adjustments_count: int = Field(..., description="Nombre d'ajustements en cours")
-    total_adjustments_today: int = Field(..., description="Nombre d'ajustements effectués aujourd'hui")
+    adjustments_today: Optional[int] = Field(None, description="Nombre d'ajustements effectués aujourd'hui")
+    active_devices: Optional[list[int]] = Field(None, description="Liste des IDs d'appareils actifs")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "enabled": True,
-                "active_adjustments_count": 3,
-                "total_adjustments_today": 47
+                "adjustments_today": 47,
+                "active_devices": [1, 2, 3]
             }
         }
 
@@ -53,6 +53,34 @@ class SmartDimmingAdjustmentResponse(BaseModel):
                 "reason": "High natural light (750 lux)",
                 "light_level": 750.5,
                 "adjusted_at": "2025-01-15T14:30:00Z"
+            }
+        }
+
+
+class SmartDimmingAdjustmentFrontendResponse(BaseModel):
+    """
+    Schéma de réponse pour un ajustement de Smart Dimming (format frontend).
+    """
+    id: int
+    device_id: int
+    device_name: Optional[str] = None
+    scenario: int
+    brightness_before: int
+    brightness_after: int
+    reason: Optional[str] = None
+    timestamp: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": 123,
+                "device_id": 1,
+                "device_name": "Lampe Salon",
+                "scenario": 0,
+                "brightness_before": 100,
+                "brightness_after": 50,
+                "reason": "High natural light (750 lux)",
+                "timestamp": "2025-01-15T14:30:00Z"
             }
         }
 
