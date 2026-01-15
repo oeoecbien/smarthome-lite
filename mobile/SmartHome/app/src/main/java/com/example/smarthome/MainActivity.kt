@@ -70,15 +70,11 @@ class MainActivity : ComponentActivity() {
 }
 
 
-// --- Modèle de données simple pour une lampe ---
-data class SmartLamp(
-    val id: Int,
-    val name: String,
-    val isOn: Boolean,
-    val brightness: Float // 0.0 à 1.0
-)
 
-@Preview
+@Preview(
+    showBackground = true,
+    showSystemUi = true
+)
 @Composable
 fun SmartHomeApp() {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
@@ -105,7 +101,7 @@ fun SmartHomeApp() {
                 when (currentDestination) {
                     AppDestinations.HOME -> HomeScreen()
                     AppDestinations.FAVORITES -> FavoritesScreen()
-                    AppDestinations.PROFILE -> Greeting(name = "Profile")
+                    AppDestinations.PROFILE -> GreetingName(name = "Profile")
                 }
             }
         }
@@ -320,7 +316,7 @@ fun LampControlScreen(
 
 // Reste des fonctions (Greeting, FavoritesScreen) inchangées...
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
+fun GreetingName(name: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = "Profil de $name!")
     }
