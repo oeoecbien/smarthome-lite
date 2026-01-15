@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { ScenarioChip } from "@/components/scenario-chip"
+import { AdminOnly } from "@/components/admin-only"
 import { aiService } from "@/lib/services/ai-service"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import type {
   CurrentScenario,
   ClassifyRequest,
@@ -37,6 +39,7 @@ const DAYS_OF_WEEK = [
 ]
 
 export default function AIPage() {
+  const isAdmin = useIsAdmin()
   // Current scenario
   const [scenario, setScenario] = useState<CurrentScenario | null>(null)
   const [isLoadingScenario, setIsLoadingScenario] = useState(true)
@@ -158,23 +161,28 @@ export default function AIPage() {
         </div>
       )}
 
-      {/* Current Scenario & Model Status */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Current Scenario */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Brain className="h-5 w-5 text-primary" />
-              Scénario actuel
-            </CardTitle>
-            <CardDescription>Scénario détecté par le système IA</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingScenario ? (
-              <LoadingSpinner size="sm" />
-            ) : scenario ? (
-              <div className="space-y-4">
-                <ScenarioChip scenario={scenario.scenario} confidence={scenario.confidence} className="text-base" />
+      {/* Current Scenario - Visible to all */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Brain className="h-5 w-5 text-primary" />
+            Scénario actuel
+          </CardTitle>
+          <CardDescription>Scénario détecté par le système IA</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingScenario ? (
+            <LoadingSpinner size="sm" />
+          ) : scenario ? (
+            <div className="space-y-4">
+              <ScenarioChip scenario={scenario.scenario} confidence={scenario.confidence} className="text-base" />
+              <p className="text-sm text-muted-foreground">
+                {scenario.scenario === 0 && "Mode Jour - Lumière naturelle suffisante"}
+                {scenario.scenario === 1 && "Mode Nuit - Éclairage minimal nécessaire"}
+                {scenario.scenario === 2 && "Mode Absence - Économie d'énergie prioritaire"}
+                {scenario.scenario === 3 && "Mode Soirée - Ambiance lumineuse"}
+              </p>
+              <AdminOnly>
                 {scenario.features && (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Features utilisées:</p>
@@ -183,14 +191,16 @@ export default function AIPage() {
                     </pre>
                   </div>
                 )}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">Scénario non disponible</p>
-            )}
-          </CardContent>
-        </Card>
+              </AdminOnly>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">Scénario non disponible</p>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Model Status */}
+      {/* Model Status - Admin Only */}
+      <AdminOnly>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -251,12 +261,13 @@ export default function AIPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </AdminOnly>
 
-      {/* Classification & Prediction Forms */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Classification Form */}
-        <Card>
+      {/* Classification & Prediction Forms - Admin Only */}
+      <AdminOnly>
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Classification Form */}
+          <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Brain className="h-5 w-5 text-primary" />
@@ -510,7 +521,8 @@ export default function AIPage() {
             </form>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </AdminOnly>
     </div>
   )
 }

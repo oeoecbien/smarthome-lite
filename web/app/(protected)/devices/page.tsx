@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/dialog"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { DeviceCard } from "@/components/device-card"
+import { DeviceCardUser } from "@/components/device-card-user"
+import { AdminOnly } from "@/components/admin-only"
 import { deviceService } from "@/lib/services/device-service"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import type { Device } from "@/lib/types"
 import { Plus, RefreshCw, Search, AlertCircle, Lightbulb, Filter } from "lucide-react"
 
@@ -37,6 +40,7 @@ interface NewDeviceForm {
 }
 
 function DevicesContent() {
+  const isAdmin = useIsAdmin()
   const [devices, setDevices] = useState<Device[]>([])
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -169,11 +173,12 @@ function DevicesContent() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <Button size="sm" onClick={() => setIsDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvel appareil
-            </Button>
+          <AdminOnly>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nouvel appareil
+              </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Ajouter un appareil</DialogTitle>
@@ -262,7 +267,8 @@ function DevicesContent() {
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </AdminOnly>
         </div>
       </div>
 
@@ -320,18 +326,24 @@ function DevicesContent() {
               ? "Ajoutez votre premier appareil pour commencer"
               : "Aucun appareil ne correspond aux filtres"}
           </p>
-          {devices.length === 0 && (
-            <Button onClick={() => setIsDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un appareil
-            </Button>
-          )}
+          <AdminOnly>
+            {devices.length === 0 && (
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un appareil
+              </Button>
+            )}
+          </AdminOnly>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDevices.map((device) => (
-            <DeviceCard key={device.id} device={device} onUpdate={fetchDevices} onDelete={handleDelete} />
-          ))}
+          {filteredDevices.map((device) =>
+            isAdmin ? (
+              <DeviceCard key={device.id} device={device} onUpdate={fetchDevices} onDelete={handleDelete} />
+            ) : (
+              <DeviceCardUser key={device.id} device={device} onUpdate={fetchDevices} />
+            ),
+          )}
         </div>
       )}
     </div>

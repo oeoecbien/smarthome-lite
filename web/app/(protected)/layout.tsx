@@ -7,8 +7,9 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X } from "lucide-react"
+import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: Home },
@@ -21,8 +22,13 @@ const navItems = [
   { href: "/events", label: "Événements", icon: Calendar },
 ]
 
+const adminNavItems = [
+  { href: "/admin", label: "Administration", icon: Shield },
+]
+
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, logout, checkAuth } = useAuth()
+  const isAdmin = useIsAdmin()
   const router = useRouter()
   const pathname = usePathname()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -108,7 +114,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-white",
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   <Icon className="h-5 w-5" />
@@ -116,6 +122,34 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 </Link>
               )
             })}
+            
+            {isAdmin && (
+              <>
+                <div className="my-2 h-px bg-border" />
+                <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Administration
+                </div>
+                {adminNavItems.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname.startsWith(item.href)
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </>
+            )}
           </nav>
 
           {/* User Section */}
