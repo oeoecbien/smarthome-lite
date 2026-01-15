@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -56,6 +58,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import com.example.smarthome.ui.theme.SmartHomeTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,6 +78,8 @@ class MainActivity : ComponentActivity() {
     showBackground = true,
     showSystemUi = true
 )
+
+// Fonction qui permet d'avoir la View Home et de gérer l'affichage des autres avec les boutons navigation
 @Composable
 fun SmartHomeApp() {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
@@ -119,41 +124,47 @@ enum class AppDestinations(
 }
 
 
+// Page Home
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
-    // Liste fictive de lampes
-    var lamps by remember {
-        mutableStateOf(
-            listOf(
-                SmartLamp(1, "Salon Principal", true, 0.8f),
-                SmartLamp(2, "Lampe Bureau", false, 0.0f),
-                SmartLamp(3, "Cuisine", true, 0.5f)
-            )
-        )
-    }
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    // On injecte le ViewModel ici
+    viewModel: SmartHomeViewModel = viewModel()
+) {
+    // On observe les données du ViewModel
+    val lamps by viewModel.lamps
+    val error by viewModel.errorMessage
 
-    // État pour savoir quelle lampe est sélectionnée (null = aucune, on est sur l'accueil)
     var selectedLampId by remember { mutableStateOf<Int?>(null) }
 
-    // Navigation interne à l'écran Home :
-    // Si une lampe est sélectionnée, on affiche les détails, sinon la liste.
     Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
         if (lampId == null) {
-            // --- VUE LISTE (ACCUEIL) ---
             Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
                 Text(
                     text = "Bonjour Melih,",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
+
+                // Affichage d'erreur si besoin
+                if (error != null) {
+                    Text(
+                        text = error ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    Button(onClick = { /* Relancer loadData() si tu l'exposes */ }) {
+                        Text("Réessayer")
+                    }
+                }
+
                 Text(
-                    text = "Voici tes appareils connectés",
+                    text = "Appareils détectés (${lamps.size})",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.Gray,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Grille pour afficher les lampes
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -168,18 +179,14 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 }
             }
         } else {
-            // --- VUE DÉTAILS (PARAMÈTRES) ---
-            // On récupère la lampe sélectionnée
-            val activeLampIndex = lamps.indexOfFirst { it.id == lampId }
-            if (activeLampIndex != -1) {
+            // Vue Détails
+            val activeLamp = lamps.find { it.id == lampId }
+            if (activeLamp != null) {
                 LampControlScreen(
-                    lamp = lamps[activeLampIndex],
-                    onBack = { selectedLampId = null }, // Retour à la liste
+                    lamp = activeLamp,
+                    onBack = { selectedLampId = null },
                     onUpdate = { updatedLamp ->
-                        // Mise à jour de la liste avec les nouvelles valeurs
-                        val newLamps = lamps.toMutableList()
-                        newLamps[activeLampIndex] = updatedLamp
-                        lamps = newLamps
+                        viewModel.updateLamp(updatedLamp)
                     }
                 )
             }
@@ -212,7 +219,7 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
             ) {
                 // Utilisation d'une icône standard pour éviter les erreurs de dépendances
                 Icon(
-                    imageVector = Icons.Default.Settings, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
+                    imageVector = Icons.Default.Info, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
                     contentDescription = "Lampe",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -233,7 +240,6 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
         }
     }
 }
-
 
 @Composable
 fun LampControlScreen(
