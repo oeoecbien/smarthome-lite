@@ -1,36 +1,124 @@
-# Environnement Python
-venv/
+# Python - Bytecode
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
 
-# Dépendances et configuration
+# Environnements virtuels
+venv/
+env/
+ENV/
+.venv/
+venv*/
+env*/
+.venv
+
+# Variables d'environnement
 .env
+.env.local
+.env.*.local
 *.env
-.env.*
-!.env.example  # Garder le fichier d'exemple
+!.env.example
 
-# Cache et logs
-*.log
-logs/
-.cache/
-*.sqlite3
-
-# Build & artefacts
-dist/
+# Build & Distribution
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Données d'entraînement / modèles IA
-ml/__pycache__/
-ml/*.pkl
-ml/*.joblib
+# Tests & Coverage
+.pytest_cache/
+.hypothesis/
+.tox/
+htmlcov/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+.nyc_output
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Machine Learning - Modèles et données
+ml/models/*.pkl
+ml/models/*.joblib
+ml/models/*.h5
+ml/models/*.hdf5
 ml/*.csv
 ml/*.json
+!ml/models/.gitkeep
 
-# IDE / OS
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# Migrations (versions générées)
+**/migrations/versions/*.py
+!**/migrations/versions/.gitkeep
+
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+*.sql.backup
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Cache
+.cache/
+*.cache
+
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.bak
+.tmp/
+.temp/
+
+# Secrets
+*.pem
+*.key
+*.cert
+secrets/
+*.secret
