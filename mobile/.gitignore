@@ -1,4 +1,4 @@
-# Fichiers de configuration
+# Fichiers compilés
 *.class
 *.kt~
 *.kts~
@@ -10,6 +10,8 @@ logcat.txt
 
 # Fichiers temporaires/backup
 *.ctxt
+*.orig
+*.rej
 
 # Artefacts de build
 *.jar
@@ -19,12 +21,16 @@ logcat.txt
 *.zip
 *.tar.gz
 *.rar
+*.apk
+*.ap_
+*.aab
+*.dex
 
 # Fichiers de crash
 hs_err_pid*
 replay_pid*
 
-# Dossiers de build IDE
+# Kotlin
 .kotlin/
 
 # Gradle
@@ -41,6 +47,7 @@ build/
 *.iml
 *.ipr
 *.iws
+.idea_modules/
 local.properties
 captures/
 .navigation/
@@ -48,18 +55,16 @@ captures/
 *.cxx/
 
 # Android Studio
-*.apk
-*.ap_
-*.aab
 outputs/
 
 # Fichiers de signature
 *.keystore
 *.jks
+!debug.keystore
 key.properties
 release-signing.properties
 
-# Environnements virtuels
+# Cache
 .cache/
 tmp/
 *.tmp
@@ -67,13 +72,13 @@ tmp/
 
 # Système
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
 # Fichiers d'édition
-*.orig
-*.rej
 *.swp
 *.swo
-*.idea_modules/
+*~
