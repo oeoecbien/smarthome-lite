@@ -14,6 +14,7 @@ class DeviceBase(BaseModel):
     type: Literal["light", "dimmer", "socket"] = Field(..., description="Type d'appareil")
     gpio_pin: int = Field(..., ge=1, le=40, description="Numéro GPIO (1-40)")
     raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi contrôleur")
+    # Note: user_id est automatiquement défini depuis le token JWT, pas besoin de le passer
 
 
 class DeviceCreate(DeviceBase):
@@ -52,6 +53,7 @@ class Device(BaseModel):
     Schéma de réponse pour un appareil.
     """
     id: int
+    user_id: int
     name: str
     type: str
     gpio_pin: int

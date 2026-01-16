@@ -589,9 +589,8 @@ async def require_admin(
     """
     Vérifie que l'utilisateur actuel a les permissions administrateur.
     
-    Note:
-        Cette fonction est préparée pour une extension future.
-        Le modèle User actuel ne contient pas de champ "role".
+    Cette dépendance vérifie que l'utilisateur authentifié a le rôle "admin".
+    Utilisez cette dépendance pour protéger les endpoints réservés aux administrateurs.
     
     Args:
         current_user: Utilisateur authentifié
@@ -601,13 +600,19 @@ async def require_admin(
         
     Raises:
         HTTPException 403: Si l'utilisateur n'est pas administrateur
+        
+    Utilisation:
+        @app.get("/admin/users")
+        def list_users(admin_user: User = Depends(require_admin)):
+            # Seuls les administrateurs peuvent accéder à cet endpoint
+            return {"users": [...]}
     """
-    # Extension future: ajouter un champ "role" au modèle User
-    # if current_user.role != "admin":
-    #     raise HTTPException(
-    #         status_code=status.HTTP_403_FORBIDDEN,
-    #         detail="Permissions administrateur requises"
-    #     )
+    # Vérifier que l'utilisateur a le rôle admin
+    if not hasattr(current_user, 'role') or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permissions administrateur requises"
+        )
     
     return current_user
 

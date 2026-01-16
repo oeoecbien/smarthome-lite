@@ -1,155 +1,28 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-venv/
-env/
-ENV/
-.venv
+# Fichiers globaux du projet
+# Les .gitignore spécifiques sont dans chaque sous-dossier
 
-# IDEs
+# IDE / Éditeurs (globaux)
 .vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
 .idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
 *.swp
 *.swo
 *~
-.DS_Store
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
 
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Logs
-*.log
-logs/
-*.log.*
-
-# Machine Learning
-*.pkl
-*.joblib
-*.h5
-*.hdf5
-ml/models/*.pkl
-ml/models/*.joblib
-!ml/models/.gitkeep
-
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
-
-# Coverage
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# Android / Kotlin
-*.iml
-.gradle/
-local.properties
-.idea/
-*.apk
-*.ap_
-*.aab
-*.dex
-*.class
-bin/
-gen/
-out/
-build/
-.gradle
-captures/
-.externalNativeBuild
-.cxx/
-*.keystore
-!debug.keystore
-
-# Android Studio
-*.iml
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/jarRepositories.xml
-.idea/caches
-.idea/modules.xml
-.idea/.name
-.idea/compiler.xml
-.idea/misc.xml
-.idea/vcs.xml
-.idea/navEditor.xml
-
-# Mobile
-mobile/app/build/
-mobile/.gradle/
-mobile/local.properties
-mobile/.idea/
-mobile/*.iml
-
-# Raspberry Pi
-raspberrypi/__pycache__/
-raspberrypi/*.pyc
-raspberrypi/venv/
-raspberrypi/.env
-
-# Backend
-backend/**/__pycache__/
-backend/**/*.pyc
-backend/**/venv/
-backend/**/.env
-backend/**/migrations/versions/*.py
-!backend/**/migrations/versions/.gitkeep
-
-# Docker
-docker-compose.override.yml
-*.pid
-*.seed
-*.pid.lock
-
-# Node (si utilisé pour build tools)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# OS
+# Système d'exploitation
 .DS_Store
 .DS_Store?
 ._*
@@ -157,37 +30,25 @@ yarn-error.log
 .Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
-# Temporary files
+# Fichiers temporaires globaux
 *.tmp
 *.temp
 *.bak
-*.swp
-*~
+*.orig
+*.rej
+.tmp/
+.temp/
+tmp/
 
-# Secrets and keys
-*.pem
-*.key
-secrets/
-*.secret
+# Docker (si utilisé à la racine)
+docker-compose.override.yml
+*.pid
+*.seed
+*.pid.lock
 
 # Documentation builds
 docs/_build/
 site/
-
-# Test files
-.pytest_cache/
-.hypothesis/
-.tox/
-
-# Redis dumps
-dump.rdb
-
-# PostgreSQL
-*.sql.backup
-
-# IDE specific
-.vscode/
-.idea/
-*.sublime-project
-*.sublime-workspace

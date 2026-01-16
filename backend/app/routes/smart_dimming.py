@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.dependencies import get_current_user, User
 from app.services.smart_dimming_service import SmartDimmingService
-from app.schemas.smart_dimming import SmartDimmingStatus, SmartDimmingAdjustmentResponse
+from app.schemas.smart_dimming import SmartDimmingStatus, SmartDimmingAdjustmentResponse, SmartDimmingAdjustmentFrontendResponse
 from app.config import settings
 
 router = APIRouter()
@@ -34,21 +34,31 @@ async def get_smart_dimming_status(
     
     # Compter les ajustements aujourd'hui
     from datetime import datetime, timedelta
-    from app.models import SmartDimmingAdjustment
+    from app.models import SmartDimmingAdjustment, Device
     
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     today_count = db.query(SmartDimmingAdjustment).filter(
         SmartDimmingAdjustment.adjusted_at >= today_start
     ).count()
     
+    # Obtenir les appareils actifs (dimmables allumés qui ont eu des ajustements récents)
+    # On considère comme "actifs" les appareils dimmables allumés de l'utilisateur
+    recent_time = datetime.now() - timedelta(hours=2)
+    active_device_ids = db.query(Device.id).filter(
+        Device.type == "dimmer",
+        Device.state == True,
+        Device.user_id == current_user.id
+    ).distinct().all()
+    active_devices = [device_id[0] for device_id in active_device_ids]
+    
     return {
         "enabled": stats["enabled"],
-        "active_adjustments_count": stats["total_adjustments"],
-        "total_adjustments_today": today_count
+        "adjustments_today": today_count,
+        "active_devices": active_devices
     }
 
 
-@router.get("/adjustments", response_model=List[SmartDimmingAdjustmentResponse])
+@router.get("/adjustments", response_model=List[SmartDimmingAdjustmentFrontendResponse])
 async def get_adjustments(
     device_id: Optional[int] = None,
     limit: int = 50,
@@ -56,10 +66,23 @@ async def get_adjustments(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère l'historique des ajustements Smart Dimming.
+    Récupère l'historique des ajustements Smart Dimming (uniquement pour les devices de l'utilisateur).
     """
+    # Si device_id fourni, vérifier qu'il appartient à l'utilisateur
+    if device_id:
+        device = db.query(Device).filter(
+            Device.id == device_id,
+            Device.user_id == current_user.id
+        ).first()
+        if not device:
+            raise HTTPException(status_code=404, detail="Device not found or access denied")
+    
     service = SmartDimmingService(db)
     adjustments = service.get_adjustment_history(device_id=device_id, limit=limit)
+    
+    # Filtrer pour ne garder que les ajustements des devices de l'utilisateur
+    user_device_ids = {d[0] for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()}
+    adjustments = [adj for adj in adjustments if adj.device_id in user_device_ids]
     
     result = []
     for adj in adjustments:
@@ -83,12 +106,10 @@ async def get_adjustments(
             "device_id": adj.device_id,
             "device_name": device_name,
             "scenario": adj.scenario,
-            "previous_brightness": adj.previous_brightness,
-            "target_brightness": adj.target_brightness,
-            "applied_brightness": adj.applied_brightness,
+            "brightness_before": adj.previous_brightness,
+            "brightness_after": adj.applied_brightness,
             "reason": adj.reason,
-            "light_level": light_level,
-            "adjusted_at": adj.adjusted_at
+            "timestamp": adj.adjusted_at.isoformat() if adj.adjusted_at else None
         })
     
     return result
@@ -128,9 +149,12 @@ async def pause_smart_dimming_for_device(
     from app.models import Device
     from datetime import datetime, timedelta
     
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
     if not device:
-        raise HTTPException(status_code=404, detail="Appareil introuvable")
+        raise HTTPException(status_code=404, detail="Appareil introuvable ou accès refusé")
     
     # Pour l'instant, on utilise un champ dans la config ou on pourrait
     # ajouter un champ `smart_dimming_paused_until` dans le modèle Device

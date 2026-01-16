@@ -90,7 +90,7 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Intelligence Artificielle** : Classification de scénarios (Decision Tree Classifier) et régression pour prédiction d'intensité (Random Forest Regressor) - routes `/api/ai/current-scenario`, `/api/ai/classify`, `/api/ai/predict-intensity`, `/api/ai/model-metrics` avec modèles entraînés
 - **Ollama (IA générative)** : Intégration du serveur Ollama IUT pour descriptions intelligentes, parsing de règles et recommandations - routes `/api/ai/ollama/*` (optionnel, nécessite configuration OLLAMA_BASE_URL)
 - **Gestion Raspberry Pi** : Enregistrement et suivi des Raspberry Pi connectés - routes `/api/raspberry-pis` (CRUD) avec authentification par API Key pour les endpoints appelés par RPi
-- **Détection de présence** : Enregistrement et historique des détections - routes `POST /api/presence` (appelé par RPi) et `GET /api/presence` (historique) avec déclenchement automatique des règles
+- **Détection de présence Bluetooth** : Enregistrement et historique des détections Bluetooth avec adresse MAC et RSSI - routes `POST /api/presence` (appelé par RPi avec `device_mac_address` et `signal_strength`) et `GET /api/presence` (historique) avec mapping automatique MAC → utilisateur via table `bluetooth_devices` et déclenchement automatique des règles
 - **Mesures de luminosité** : Stockage des lectures de capteurs (BH1750/LDR) - routes `POST /api/light-readings` (appelé par RPi) et `GET /api/light-readings` (historique) avec déclenchement automatique du smart dimming
 - **Événements système** : Journalisation des événements (changements d'état, ajustements, etc.) - routes `GET /api/events` et `GET /api/events/device/{id}` avec filtres
 - **Historique Smart Dimming** : Suivi des ajustements automatiques - route `GET /api/smart-dimming/adjustments` avec filtres par `device_id` et `limit`
@@ -123,7 +123,8 @@ backend/
 │   │   ├── user.py                # Utilisateurs
 │   │   ├── device.py              # Appareils (lampes, prises)
 │   │   ├── raspberry_pi.py        # Raspberry Pi
-│   │   ├── presence.py            # Détections de présence
+│   │   ├── presence.py            # Détections de présence Bluetooth
+│   │   ├── bluetooth_device.py    # Association MAC Bluetooth → utilisateur
 │   │   ├── light_reading.py       # Mesures de luminosité
 │   │   ├── rule.py                # Règles d'automatisation
 │   │   ├── event.py               # Événements système
@@ -468,8 +469,11 @@ Une fois le serveur lancé :
 
 ### Présence
 
-- `POST /api/presence` - Enregistrer une détection (appelé par RPi)
-- `GET /api/presence` - Historique des détections
+- `POST /api/presence` - Enregistrer une détection Bluetooth (appelé par RPi)
+  - Body: `{ "device_mac_address": "AA:BB:CC:DD:EE:FF" (optionnel), "signal_strength": -75 (optionnel) }`
+  - Le backend tente automatiquement de mapper la MAC à un utilisateur via la table `bluetooth_devices`
+  - Déclenche automatiquement l'évaluation des règles
+- `GET /api/presence` - Historique des détections (filtres: `raspberry_pi_id`, `user_id`, `device_mac_address`, `limit`)
 
 ### Mesures de Luminosité
 
@@ -743,16 +747,22 @@ L'endpoint `POST /api/rules/{id}/test` permet de :
 ### Schéma Principal
 
 **Tables relationnelles :**
-- `users` : Utilisateurs du système
+- `users` : Utilisateurs du système (chaque utilisateur a son propre dashboard)
 - `raspberry_pis` : Inventaire des Raspberry Pi
-- `devices` : Appareils connectés (lampes, prises)
-- `presence` : Historique des détections de mouvement
+- `devices` : Appareils connectés (lampes, prises) - chaque device appartient à un utilisateur (`user_id`)
+- `presence` : Historique des détections de présence via Bluetooth (avec `device_mac_address`, `signal_strength`, `user_id`)
+- `bluetooth_devices` : Association entre adresses MAC Bluetooth et utilisateurs (identification personnalisée)
 - `light_readings` : Mesures de luminosité (time-series)
 - `rules` : Règles d'automatisation (format JSONB)
-- `events` : Journal des événements système
-- `smart_dimming_adjustments` : Historique des ajustements
+- `events` : Journal des événements système (filtrés par utilisateur)
+- `smart_dimming_adjustments` : Historique des ajustements (filtrés par utilisateur)
 - `training_data` : Données d'entraînement IA
 - `user_preferences` : Préférences utilisateur (apprentissage)
+
+**Isolation des données :**
+- Chaque utilisateur voit uniquement ses propres devices
+- Les routes API filtrent automatiquement par `user_id` depuis le token JWT
+- Les événements, ajustements smart dimming sont filtrés par les devices de l'utilisateur
 
 Voir le fichier `../db/init_database.sql` pour le schéma complet et les données de test.
 

@@ -157,6 +157,7 @@ sudo -u postgres psql -d smarthome
 - `raspberry_pis`
 - `devices`
 - `presence`
+- `bluetooth_devices`
 - `light_readings`
 - `events`
 - `rules`
@@ -201,6 +202,17 @@ SELECT COUNT(*) FROM user_preferences;
 
 -- Vérifier les mesures de luminosité
 SELECT COUNT(*) FROM light_readings;
+
+-- Vérifier les devices Bluetooth associés
+SELECT COUNT(*) FROM bluetooth_devices;
+
+-- Vérifier les détections Bluetooth avec MAC addresses
+SELECT 
+    COUNT(*) as total_detections,
+    COUNT(DISTINCT device_mac_address) as unique_devices,
+    COUNT(DISTINCT user_id) as identified_users
+FROM presence
+WHERE detected_at >= NOW() - INTERVAL '24 hours';
 ```
 
 ### Résultats Attendus
@@ -212,7 +224,8 @@ Devices: 8 appareils (3 salon + 3 chambre + 2 cuisine)
 Rules: 3 règles d'automatisation
 Training Data: ~27 échantillons
 Light Readings: ~48 mesures (simulation 24h)
-Presence: ~50 détections
+Presence: ~50 détections Bluetooth
+Bluetooth Devices: 2 devices associés (exemple)
 Events: 4 événements
 Smart Dimming Adjustments: 3 ajustements
 User Preferences: 0 (vide au départ)
@@ -496,8 +509,16 @@ SELECT
 FROM raspberry_pis
 GROUP BY is_online;
 
--- Nombre de détections de présence aujourd'hui
+-- Nombre de détections de présence Bluetooth aujourd'hui
 SELECT COUNT(*) 
+FROM presence 
+WHERE detected_at::date = CURRENT_DATE;
+
+-- Détections avec identification utilisateur
+SELECT 
+    COUNT(*) as total_detections,
+    COUNT(DISTINCT device_mac_address) as unique_devices,
+    COUNT(DISTINCT user_id) as identified_users
 FROM presence 
 WHERE detected_at::date = CURRENT_DATE;
 
@@ -531,7 +552,7 @@ FROM events
 GROUP BY source;
 ```
 
-### Analyse de Présence
+### Analyse de Présence Bluetooth
 
 ```sql
 -- Détections par heure (dernières 24h)
@@ -552,6 +573,40 @@ JOIN raspberry_pis r ON p.raspberry_pi_id = r.id
 WHERE p.detected_at >= NOW() - INTERVAL '7 days'
 GROUP BY r.location
 ORDER BY detections DESC;
+
+-- Devices Bluetooth détectés avec force du signal
+SELECT 
+    device_mac_address,
+    COUNT(*) as detection_count,
+    AVG(signal_strength) as avg_rssi,
+    MAX(detected_at) as last_seen
+FROM presence
+WHERE device_mac_address IS NOT NULL
+    AND detected_at >= NOW() - INTERVAL '24 hours'
+GROUP BY device_mac_address
+ORDER BY detection_count DESC;
+
+-- Détections par utilisateur (si MAC mappée)
+SELECT 
+    u.username,
+    COUNT(p.id) as detections,
+    AVG(p.signal_strength) as avg_rssi
+FROM presence p
+JOIN users u ON p.user_id = u.id
+WHERE p.detected_at >= NOW() - INTERVAL '24 hours'
+GROUP BY u.username
+ORDER BY detections DESC;
+
+-- Liste des devices Bluetooth associés aux utilisateurs
+SELECT 
+    u.username,
+    bd.device_name,
+    bd.mac_address,
+    bd.device_type,
+    bd.is_active
+FROM bluetooth_devices bd
+JOIN users u ON bd.user_id = u.id
+ORDER BY u.username, bd.device_name;
 ```
 
 ### Analyse Smart Dimming
@@ -589,10 +644,14 @@ GROUP BY scenario;
 
 ```
 users (1) ----< (N) user_preferences
+    |
+    +-------< (N) bluetooth_devices
 
 raspberry_pis (1) ----< (N) devices
     |
     +-------< (N) presence
+    |           |
+    |           +-----> (N) users (via user_id, optionnel)
     |
     +-------< (N) light_readings
 
@@ -601,6 +660,8 @@ devices (1) ----< (N) events
     +-------< (N) smart_dimming_adjustments
 
 light_readings (1) ----< (N) smart_dimming_adjustments
+
+presence (N) ----< (1) bluetooth_devices (via device_mac_address, optionnel)
 
 rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
@@ -611,7 +672,12 @@ training_data (standalone, apprentissage automatique)
 - **users** : Utilisateurs du système (authentification)
 - **raspberry_pis** : Configuration des Raspberry Pi connectés
 - **devices** : Appareils électriques (lampes, prises)
-- **presence** : Historique des détections de mouvement (PIR)
+- **presence** : Historique des détections de présence via Bluetooth (remplace PIR)
+  - `device_mac_address` : Adresse MAC du device détecté
+  - `signal_strength` : Force du signal RSSI en dBm
+  - `user_id` : ID utilisateur si MAC mappée dans `bluetooth_devices`
+- **bluetooth_devices** : Association entre adresses MAC Bluetooth et utilisateurs
+  - Permet d'identifier les personnes via leurs devices (téléphone, montre, etc.)
 - **light_readings** : Mesures de luminosité ambiante (time-series)
 - **rules** : Règles d'automatisation (format JSONB)
 - **events** : Journal des événements système
@@ -681,7 +747,7 @@ sudo systemctl restart postgresql
 
 - [ ] PostgreSQL installé et démarré
 - [ ] Base `smarthome` créée
-- [ ] 10 tables créées (users, raspberry_pis, devices, etc.)
+- [ ] 11 tables créées (users, raspberry_pis, devices, presence, bluetooth_devices, etc.)
 - [ ] Données de test insérées
 - [ ] Vues créées (devices_with_location, etc.)
 - [ ] Fonctions créées (get_device_state, etc.)
