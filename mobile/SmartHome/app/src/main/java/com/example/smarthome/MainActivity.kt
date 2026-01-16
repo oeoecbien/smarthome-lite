@@ -434,7 +434,6 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
             Spacer(modifier = Modifier.height(24.dp))
 
 
-
             // Message d'erreur (si existe)
             if (error != null) {
                 Text(
