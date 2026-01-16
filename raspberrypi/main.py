@@ -5,7 +5,6 @@ Point d'entrée principal du service Flask pour Raspberry Pi.
 import logging
 import signal
 import sys
-import RPi.GPIO as GPIO
 
 from flask import Flask
 from flask_cors import CORS
@@ -13,11 +12,19 @@ from flask_cors import CORS
 import config
 from services.backend_client import BackendClient
 from services.heartbeat import HeartbeatService
-from sensors.pir import PIRSensor
+from sensors.bluetooth import BluetoothSensor
 from sensors.light import LightSensor
 from actuators.led import LEDController
 from actuators.relay import RelayController
 from api.routes import api_bp, init_controllers
+
+# Import GPIO seulement si nécessaire (pour LED/Relay)
+try:
+    import RPi.GPIO as GPIO
+    GPIO_AVAILABLE = True
+except ImportError:
+    GPIO_AVAILABLE = False
+    logging.warning("RPi.GPIO non disponible (mode test sans matériel)")
 
 # Configuration du logging
 logging.basicConfig(
@@ -31,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Variables globales pour les services
 backend_client = None
 heartbeat_service = None
-pir_sensor = None
+bluetooth_sensor = None
 light_sensor = None
 led_controller = None
 relay_controller = None
@@ -52,8 +59,8 @@ def cleanup():
     if heartbeat_service:
         heartbeat_service.stop()
     
-    if pir_sensor:
-        pir_sensor.stop()
+    if bluetooth_sensor:
+        bluetooth_sensor.stop()
     
     if light_sensor:
         light_sensor.stop()
@@ -68,8 +75,12 @@ def cleanup():
     if relay_controller:
         relay_controller.cleanup()
     
-    # Nettoyer GPIO
-    GPIO.cleanup()
+    # Nettoyer GPIO (si nécessaire, pour LED/Relay)
+    if GPIO_AVAILABLE:
+        try:
+            GPIO.cleanup()
+        except:
+            pass  # Ignorer si GPIO n'a pas été utilisé
     
     logger.info("Nettoyage terminé")
 
@@ -83,7 +94,7 @@ def signal_handler(sig, frame):
 
 def init_services():
     """Initialise tous les services."""
-    global backend_client, heartbeat_service, pir_sensor, light_sensor
+    global backend_client, heartbeat_service, bluetooth_sensor, light_sensor
     global led_controller, relay_controller
     
     try:
@@ -99,8 +110,8 @@ def init_services():
         
         # Initialiser les capteurs
         logger.info("Initialisation des capteurs...")
-        pir_sensor = PIRSensor(backend_client)
-        pir_sensor.start()
+        bluetooth_sensor = BluetoothSensor(backend_client)
+        bluetooth_sensor.start()
         
         light_sensor = LightSensor(backend_client)
         light_sensor.start()
@@ -140,7 +151,7 @@ def health():
         "status": "healthy",
         "queue_size": queue_size,
         "sensors": {
-            "pir": "active" if pir_sensor else "inactive",
+            "bluetooth": "active" if bluetooth_sensor else "inactive",
             "light": "active" if light_sensor else "inactive"
         },
         "actuators": {

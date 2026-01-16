@@ -39,6 +39,7 @@ class Device(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     raspberry_pi_id = Column(Integer, ForeignKey("raspberry_pis.id", ondelete="CASCADE"), nullable=False)
     name = Column(String(100), nullable=False)
     type = Column(String(20), nullable=False)
@@ -72,6 +73,7 @@ class Device(Base):
     )
     
     # ========== Relations ==========
+    user = relationship("User", back_populates="devices")
     raspberry_pi = relationship("RaspberryPi", back_populates="devices")
     
     events = relationship(

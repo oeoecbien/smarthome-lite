@@ -131,16 +131,36 @@ class BackendClient:
     
     def send_presence_detection(self) -> bool:
         """
-        Envoie une détection de présence au backend.
+        Envoie une détection de présence au backend (déprécié, utiliser send_bluetooth_detection).
+        
+        Returns:
+            True si envoyé avec succès, False sinon
+        """
+        # Rediriger vers send_bluetooth_detection sans MAC (compatibilité)
+        return self.send_bluetooth_detection(None, None)
+    
+    def send_bluetooth_detection(self, mac_address: Optional[str], rssi: Optional[int]) -> bool:
+        """
+        Envoie une détection Bluetooth au backend.
+        
+        Args:
+            mac_address: Adresse MAC du device détecté (None si détection anonyme)
+            rssi: Force du signal en dBm (None si non disponible)
         
         Returns:
             True si envoyé avec succès, False sinon
         """
         event = {
-            "type": "presence",
+            "type": "bluetooth_presence",
             "endpoint": "/api/presence",
             "data": {}
         }
+        
+        # Ajouter les données Bluetooth si disponibles
+        if mac_address:
+            event["data"]["device_mac_address"] = mac_address
+        if rssi is not None:
+            event["data"]["signal_strength"] = rssi
         
         # Tenter d'envoyer directement
         if self._send_event_direct(event):
@@ -148,7 +168,7 @@ class BackendClient:
         
         # Si échec, mettre dans la queue
         self.event_queue.put(event)
-        logger.info("Détection de présence mise en queue")
+        logger.info(f"Détection Bluetooth mise en queue: {mac_address or 'anonyme'}")
         return False
     
     def send_light_reading(self, lux_value: float) -> bool:
