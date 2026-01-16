@@ -10,7 +10,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models import LightReading, RaspberryPi
-from app.dependencies import verify_raspberry_pi, get_current_user, User, PaginationParams
+from app.dependencies import verify_raspberry_pi, get_current_user, require_admin, User, PaginationParams
 from app.services.smart_dimming_service import SmartDimmingService
 
 router = APIRouter()
@@ -84,10 +84,13 @@ async def get_light_readings(
     raspberry_pi_id: Optional[int] = None,
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Récupère l'historique des mesures de luminosité.
+    Récupère l'historique des mesures de luminosité (uniquement pour les admins).
+    
+    Les mesures de luminosité sont utilisées par le Smart Dimming en arrière-plan.
+    Les utilisateurs normaux n'ont pas besoin d'accéder à ces données techniques.
     """
     query = db.query(LightReading)
     

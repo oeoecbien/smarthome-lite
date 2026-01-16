@@ -22,9 +22,15 @@ async def get_rules(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Liste toutes les règles d'automatisation.
+    Liste les règles d'automatisation.
+    - Utilisateurs normaux: uniquement leurs règles
+    - Admins: toutes les règles
     """
-    query = db.query(Rule)
+    query = db.query(Rule).filter(Rule.deleted_at.is_(None))
+    
+    # Filtrer par utilisateur si ce n'est pas un admin
+    if current_user.role != "admin":
+        query = query.filter(Rule.user_id == current_user.id)
     
     if enabled is not None:
         query = query.filter(Rule.enabled == enabled)
@@ -41,10 +47,20 @@ async def get_rule(
 ):
     """
     Récupère une règle spécifique.
+    - Utilisateurs normaux: uniquement leurs règles
+    - Admins: toutes les règles
     """
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    rule = db.query(Rule).filter(
+        Rule.id == rule_id,
+        Rule.deleted_at.is_(None)
+    ).first()
+    
     if not rule:
         raise HTTPException(status_code=404, detail="Règle introuvable")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent voir que leurs règles
+    if current_user.role != "admin" and rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     return rule
 
@@ -74,8 +90,9 @@ async def create_rule(
             detail=f"Action invalide: {error}"
         )
     
-    # Créer la règle
+    # Créer la règle (assignée automatiquement à l'utilisateur connecté)
     rule = Rule(
+        user_id=current_user.id,
         name=rule_data.name,
         description=rule_data.description,
         condition=rule_data.condition,
@@ -100,10 +117,20 @@ async def update_rule(
 ):
     """
     Met à jour une règle existante.
+    - Utilisateurs normaux: uniquement leurs règles
+    - Admins: toutes les règles
     """
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    rule = db.query(Rule).filter(
+        Rule.id == rule_id,
+        Rule.deleted_at.is_(None)
+    ).first()
+    
     if not rule:
         raise HTTPException(status_code=404, detail="Règle introuvable")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent modifier que leurs règles
+    if current_user.role != "admin" and rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     # Mise à jour des champs
     if rule_data.name is not None:
@@ -146,11 +173,25 @@ async def delete_rule(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Supprime une règle.
+    Supprime une règle (soft delete).
+    - Utilisateurs normaux: uniquement leurs règles
+    - Admins: toutes les règles
     """
-    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    rule = db.query(Rule).filter(
+        Rule.id == rule_id,
+        Rule.deleted_at.is_(None)
+    ).first()
+    
     if not rule:
         raise HTTPException(status_code=404, detail="Règle introuvable")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent supprimer que leurs règles
+    if current_user.role != "admin" and rule.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Soft delete
+    from datetime import datetime, timezone
+    rule.deleted_at = datetime.now(timezone.utc)
     
     db.delete(rule)
     db.commit()

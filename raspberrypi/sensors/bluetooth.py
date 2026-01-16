@@ -1,6 +1,6 @@
 """
 Module de gestion de la détection Bluetooth pour identification des personnes.
-Remplace le capteur PIR par un scan Bluetooth périodique.
+Scan Bluetooth périodique pour détection de présence.
 """
 
 import logging

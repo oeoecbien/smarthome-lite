@@ -10,7 +10,7 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models import Presence, RaspberryPi
-from app.dependencies import verify_raspberry_pi, get_current_user, User, PaginationParams
+from app.dependencies import verify_raspberry_pi, get_current_user, require_admin, User, PaginationParams
 from app.services.rule_engine import RuleEngine
 
 router = APIRouter()
@@ -143,10 +143,14 @@ async def get_presence_history(
     raspberry_pi_id: Optional[int] = None,
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Récupère l'historique des détections de présence.
+    Récupère l'historique des détections de présence (uniquement pour les admins).
+    
+    La détection de présence Bluetooth est une fonctionnalité technique utilisée
+    pour l'automatisation en arrière-plan. Les utilisateurs normaux n'ont pas
+    besoin d'accéder à ces données.
     """
     query = db.query(Presence)
     

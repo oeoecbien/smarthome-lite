@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,8 +13,21 @@ import { formatRelativeTime, formatDate } from "@/lib/formatters"
 import type { PresenceRecord } from "@/lib/types"
 import { RefreshCw, AlertCircle, Filter, UserCheck, Clock, Bluetooth } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 export default function PresencePage() {
+  const isAdmin = useIsAdmin()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  if (!isAdmin) {
+    return null
+  }
   const [records, setRecords] = useState<PresenceRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
