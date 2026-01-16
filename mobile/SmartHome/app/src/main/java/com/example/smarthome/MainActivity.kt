@@ -7,35 +7,24 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -50,15 +39,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.datastore.core.Storage
 import com.example.smarthome.ui.theme.SmartHomeTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lint.kotlin.metadata.Visibility
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,34 +63,33 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartHomeTheme {
-                SmartHomeApp()
+                // On instancie le ViewModel au niveau le plus haut
+                val viewModel: SmartHomeViewModel = viewModel()
+
+                // ROUTAGE PRINCIPAL
+                if (viewModel.isLoggedIn) {
+                    // Si connecté -> Affiche l'application complète
+                    SmartHomeApp(viewModel)
+                } else {
+                    // Sinon -> Affiche l'écran de Login
+                    LoginScreen(viewModel)
+                }
             }
         }
     }
 }
 
 
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true
-)
-
-// Fonction qui permet d'avoir la View Home et de gérer l'affichage des autres avec les boutons navigation
+// Modifie SmartHomeApp pour accepter le viewModel déjà créé
 @Composable
-fun SmartHomeApp() {
+fun SmartHomeApp(viewModel: SmartHomeViewModel) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             AppDestinations.entries.forEach {
                 item(
-                    icon = {
-                        Icon(
-                            it.icon,
-                            contentDescription = it.label
-                        )
-                    },
+                    icon = { Icon(it.icon, contentDescription = it.label) },
                     label = { Text(it.label) },
                     selected = it == currentDestination,
                     onClick = { currentDestination = it }
@@ -104,7 +100,8 @@ fun SmartHomeApp() {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 when (currentDestination) {
-                    AppDestinations.HOME -> HomeScreen()
+                    // On passe le viewModel à HomeScreen pour qu'il affiche les données chargées
+                    AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
                     AppDestinations.FAVORITES -> FavoritesScreen()
                     AppDestinations.PROFILE -> GreetingName(name = "Profile")
                 }
@@ -114,10 +111,7 @@ fun SmartHomeApp() {
 }
 
 
-enum class AppDestinations(
-    val label: String,
-    val icon: ImageVector,
-) {
+enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Home", Icons.Default.Home),
     FAVORITES("Favorites", Icons.Default.Favorite),
     PROFILE("Profile", Icons.Default.AccountBox),
@@ -126,11 +120,7 @@ enum class AppDestinations(
 
 // Page Home
 @Composable
-fun HomeScreen(
-    modifier: Modifier = Modifier,
-    // On injecte le ViewModel ici
-    viewModel: SmartHomeViewModel = viewModel()
-) {
+fun HomeScreen(modifier: Modifier = Modifier, viewModel: SmartHomeViewModel = viewModel()) {
     // On observe les données du ViewModel
     val lamps by viewModel.lamps
     val error by viewModel.errorMessage
@@ -141,7 +131,7 @@ fun HomeScreen(
         if (lampId == null) {
             Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
                 Text(
-                    text = "Bonjour Melih,",
+                    text = "Bonjour ${viewModel.currentUsername},",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -153,7 +143,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    Button(onClick = { /* Relancer loadData() si tu l'exposes */ }) {
+                    Button(onClick = { viewModel.loadData() }) {
                         Text("Réessayer")
                     }
                 }
@@ -219,7 +209,7 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
             ) {
                 // Utilisation d'une icône standard pour éviter les erreurs de dépendances
                 Icon(
-                    imageVector = Icons.Default.Info, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
+                    imageVector = Icons.Default.Edit, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
                     contentDescription = "Lampe",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -242,11 +232,7 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
 }
 
 @Composable
-fun LampControlScreen(
-    lamp: SmartLamp,
-    onBack: () -> Unit,
-    onUpdate: (SmartLamp) -> Unit
-) {
+fun LampControlScreen(lamp: SmartLamp, onBack: () -> Unit, onUpdate: (SmartLamp) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Barre supérieure avec bouton retour
         Row(
@@ -269,7 +255,7 @@ fun LampControlScreen(
         ) {
             // Icône géante représentant la lampe
             Icon(
-                imageVector = Icons.Default.Settings, // Remplace par Lightbulb si dispo
+                imageVector = Icons.Default.Info, // Remplace par Lightbulb si dispo
                 contentDescription = null,
                 modifier = Modifier.size(100.dp),
                 tint = if (lamp.isOn) Color(0xFFFFC107) else Color.Gray // Jaune si allumé
@@ -335,3 +321,186 @@ fun FavoritesScreen(modifier: Modifier = Modifier) {
         Text(text = "Tes favoris")
     }
 }
+
+
+@Composable
+fun LoginScreen(viewModel: SmartHomeViewModel) {
+    // Variables locales pour les champs de texte
+    var username by remember { mutableStateOf("mehdi") } // Pré-rempli pour tester vite
+    var password by remember { mutableStateOf("Test2005") }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    val isLoading by viewModel.isLoading
+    val error by viewModel.errorMessage
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF0A1A33),
+                        Color(0xFF060B16)
+                    )
+                )
+            ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Icon container
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF121826)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Lightbulb,
+                    contentDescription = null,
+                    tint = Color(0xFF2979FF),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Welcome Home",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Sign in to control your smart devices",
+                color = Color(0xFF9AA4B2),
+                fontSize = 14.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Username
+            OutlinedTextField(
+                value = username,
+                onValueChange = { username = it },
+                label = { Text("Utilisateur") },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Default.Person, contentDescription = null)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = darkTextFieldColors()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Champ Password
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text("Mot de passe") },
+                leadingIcon = {
+                    Icon(Icons.Default.Lock, contentDescription = null)
+                },
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible)
+                                Icons.Filled.Visibility
+                            else
+                                Icons.Filled.VisibilityOff,
+                            contentDescription = null
+                        )
+                    }
+                },
+                visualTransformation = if (passwordVisible)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                colors = darkTextFieldColors()
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+
+
+            // Message d'erreur (si existe)
+            if (error != null) {
+                Text(
+                    text = error ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+
+            // Bouton de connexion
+            Button(
+                onClick = { viewModel.login(username, password) },
+                enabled = !isLoading, // Désactive le bouton pendant le chargement
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2979FF)
+                )
+
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Se connecter")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Forgot Password?",
+                color = Color(0xFF9AA4B2),
+                fontSize = 14.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Scan Setup Code",
+                color = Color(0xFF9AA4B2),
+                fontSize = 14.sp
+            )
+
+
+        }
+    }
+}
+
+
+
+@Composable
+fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Color(0xFF2979FF),
+    unfocusedBorderColor = Color(0xFF2A3245),
+    focusedTextColor = Color.White,
+    unfocusedTextColor = Color.White,
+    focusedLabelColor = Color(0xFF9AA4B2),
+    unfocusedLabelColor = Color(0xFF9AA4B2),
+    cursorColor = Color(0xFF2979FF),
+    focusedLeadingIconColor = Color(0xFF9AA4B2),
+    unfocusedLeadingIconColor = Color(0xFF9AA4B2),
+    focusedTrailingIconColor = Color(0xFF9AA4B2),
+    unfocusedTrailingIconColor = Color(0xFF9AA4B2)
+)
