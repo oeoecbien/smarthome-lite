@@ -177,11 +177,14 @@ class DeviceService:
         
         return device
     
-    def get_device_with_location(self, device_id: int) -> dict:
+    def get_device_with_location(self, device_id: int, user_id: Optional[int] = None) -> dict:
         """
         Récupère un appareil avec informations de localisation
         """
-        device = self.db.query(Device).filter(Device.id == device_id).first()
+        query = self.db.query(Device).filter(Device.id == device_id)
+        if user_id:
+            query = query.filter(Device.user_id == user_id)
+        device = query.first()
         if not device:
             raise ValueError(f"Device {device_id} not found")
         
@@ -199,11 +202,14 @@ class DeviceService:
             "updated_at": device.updated_at
         }
     
-    def get_all_devices_with_location(self):
+    def get_all_devices_with_location(self, user_id: Optional[int] = None):
         """
-        Récupère tous les appareils avec localisation
+        Récupère tous les appareils avec localisation (filtrés par user_id si fourni)
         """
-        devices = self.db.query(Device).join(RaspberryPi).all()
+        query = self.db.query(Device).join(RaspberryPi)
+        if user_id:
+            query = query.filter(Device.user_id == user_id)
+        devices = query.all()
         
         return [
             {

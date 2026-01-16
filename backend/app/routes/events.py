@@ -23,9 +23,11 @@ async def get_events(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère l'historique des événements avec filtres et pagination.
+    Récupère l'historique des événements avec filtres et pagination (uniquement pour les devices de l'utilisateur).
     """
-    query = db.query(Event)
+    # Filtrer par les devices de l'utilisateur
+    user_device_ids = [d.id for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()]
+    query = db.query(Event).filter(Event.device_id.in_(user_device_ids))
     
     # Filtres
     if filters.event_type:
@@ -35,7 +37,16 @@ async def get_events(
         query = query.filter(Event.source == filters.source)
     
     if filters.device_id:
-        query = query.filter(Event.device_id == filters.device_id)
+        # Vérifier que le device appartient à l'utilisateur
+        device = db.query(Device).filter(
+            Device.id == filters.device_id,
+            Device.user_id == current_user.id
+        ).first()
+        if device:
+            query = query.filter(Event.device_id == filters.device_id)
+        else:
+            # Device n'appartient pas à l'utilisateur, retourner liste vide
+            query = query.filter(Event.device_id == -1)  # Condition impossible
     
     # Pagination
     events = query.order_by(Event.timestamp.desc()).offset(
@@ -70,6 +81,17 @@ async def get_device_events(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    """
+    Récupère les événements d'un appareil spécifique (uniquement si appartient à l'utilisateur).
+    """
+    # Vérifier que le device appartient à l'utilisateur
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or access denied")
     """
     Récupère les événements d'un appareil spécifique.
     """

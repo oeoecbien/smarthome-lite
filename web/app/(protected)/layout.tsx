@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X, Shield } from "lucide-react"
+import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X, Shield, Bluetooth } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
@@ -17,7 +17,7 @@ const navItems = [
   { href: "/rules", label: "Règles", icon: Settings2 },
   { href: "/ai", label: "Intelligence IA", icon: Brain },
   { href: "/smart-dimming", label: "Smart Dimming", icon: SunDim },
-  { href: "/presence", label: "Présence", icon: Users },
+  { href: "/presence", label: "Présence Bluetooth", icon: Bluetooth },
   { href: "/light-readings", label: "Luminosité", icon: Sun },
   { href: "/events", label: "Événements", icon: Calendar },
 ]

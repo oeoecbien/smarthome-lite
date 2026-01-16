@@ -16,7 +16,7 @@ class Event(Base):
     Types d'événements:
         - 'state_changed': Changement ON/OFF d'un appareil
         - 'brightness_changed': Modification de l'intensité lumineuse
-        - 'presence_detected': Détection de mouvement
+        - 'presence_detected': Détection de présence via Bluetooth
         - 'rule_triggered': Activation d'une règle automatique
         
     Sources possibles:
