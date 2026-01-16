@@ -1084,7 +1084,7 @@ raspberry-pi/
 ├── main.py                     # Point d'entrée principal
 ├── config.py                   # Configuration GPIO, URLs, API Key
 ├── sensors/
-│   ├── bluetooth.py          # Module détection Bluetooth (remplace PIR)
+│   ├── bluetooth.py          # Module détection Bluetooth (détection de présence)
 │   ├── light_sensor_i2c.py    # Module BH1750 (I²C)
 │   └── light_sensor_spi.py    # Module LDR + MCP3008 (SPI)
 ├── actuators/

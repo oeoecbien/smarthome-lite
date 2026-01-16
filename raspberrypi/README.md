@@ -102,7 +102,8 @@ raspberrypi/
 ├── actuators/                 # Modules actionneurs
 │   ├── __init__.py
 │   ├── led.py                 # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle relais
+│   ├── relay.py               # Contrôle relais
+│   └── zwave_lamp.py          # Contrôle lampe Z-Wave (via contrôleur Z-Wave)
 │
 ├── api/                       # API Flask locale
 │   ├── __init__.py
@@ -125,6 +126,7 @@ raspberrypi/
 - Support Bluetooth Classic (pybluez) et Bluetooth Low Energy (bleak)
 - Détection des apparitions/disparitions de devices
 - Filtrage par RSSI pour ne détecter que les devices proches
+- **Méthode principale de détection de présence**
 
 **Capteur de luminosité :**
 - Lecture périodique selon `LIGHT_READING_INTERVAL`

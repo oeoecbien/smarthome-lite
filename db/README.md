@@ -672,7 +672,7 @@ training_data (standalone, apprentissage automatique)
 - **users** : Utilisateurs du système (authentification)
 - **raspberry_pis** : Configuration des Raspberry Pi connectés
 - **devices** : Appareils électriques (lampes, prises)
-- **presence** : Historique des détections de présence via Bluetooth (remplace PIR)
+- **presence** : Historique des détections de présence via Bluetooth
   - `device_mac_address` : Adresse MAC du device détecté
   - `signal_strength` : Force du signal RSSI en dBm
   - `user_id` : ID utilisateur si MAC mappée dans `bluetooth_devices`

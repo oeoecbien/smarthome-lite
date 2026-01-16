@@ -1,7 +1,7 @@
 -- ============================================================================
 -- SmartHome Lite - Script d'Initialisation Base de Données
 -- Version sécurisée avec corrections des failles de sécurité
--- Détection de présence via Bluetooth (remplace PIR)
+-- Détection de présence via Bluetooth
 -- ============================================================================
 
 -- ============================================================================
@@ -157,7 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_presence_rpi_detected ON presence(raspberry_pi_id
 CREATE INDEX IF NOT EXISTS idx_presence_mac_time ON presence(device_mac_address, detected_at DESC) 
     WHERE device_mac_address IS NOT NULL;
 
-COMMENT ON TABLE presence IS 'Journal des détections Bluetooth (remplace PIR)';
+COMMENT ON TABLE presence IS 'Journal des détections Bluetooth';
 COMMENT ON COLUMN presence.device_mac_address IS 'Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF)';
 COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche, -100 à 0)';
 COMMENT ON COLUMN presence.user_id IS 'ID de l''utilisateur associé (si MAC mappée dans bluetooth_devices)';
