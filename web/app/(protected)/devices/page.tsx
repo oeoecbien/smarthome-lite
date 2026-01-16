@@ -21,6 +21,7 @@ import { DeviceCard } from "@/components/device-card"
 import { DeviceCardUser } from "@/components/device-card-user"
 import { AdminOnly } from "@/components/admin-only"
 import { deviceService } from "@/lib/services/device-service"
+import { raspberryPiService, type AvailableRaspberryPi } from "@/lib/services/raspberry-pi-service"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import type { Device } from "@/lib/types"
 import { Plus, RefreshCw, Search, AlertCircle, Lightbulb, Filter } from "lucide-react"
@@ -43,6 +44,7 @@ function DevicesContent() {
   const isAdmin = useIsAdmin()
   const [devices, setDevices] = useState<Device[]>([])
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([])
+  const [raspberryPis, setRaspberryPis] = useState<AvailableRaspberryPi[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -75,11 +77,31 @@ function DevicesContent() {
     }
   }, [])
 
+  const fetchRaspberryPis = useCallback(async () => {
+    try {
+      const data = await raspberryPiService.getAvailableRaspberryPis()
+      setRaspberryPis(data)
+      // Si des Raspberry Pi sont disponibles, sélectionner le premier par défaut
+      if (data.length > 0) {
+        setFormData(prev => {
+          // Ne mettre à jour que si la valeur actuelle est invalide (1 par défaut)
+          if (prev.raspberry_pi_id === 1 && !data.find(rpi => rpi.id === 1)) {
+            return { ...prev, raspberry_pi_id: data[0].id }
+          }
+          return prev
+        })
+      }
+    } catch (err) {
+      console.error("Erreur lors du chargement des Raspberry Pi:", err)
+    }
+  }, [])
+
   useEffect(() => {
     fetchDevices()
+    fetchRaspberryPis()
     const interval = setInterval(fetchDevices, 5000)
     return () => clearInterval(interval)
-  }, [fetchDevices])
+  }, [fetchDevices, fetchRaspberryPis])
 
   // Apply filters
   useEffect(() => {
@@ -173,12 +195,11 @@ function DevicesContent() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Actualiser
           </Button>
-          <AdminOnly>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <Button size="sm" onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvel appareil
-              </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel appareil
+            </Button>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Ajouter un appareil</DialogTitle>
@@ -224,15 +245,28 @@ function DevicesContent() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="rpi">Raspberry Pi ID</Label>
-                      <Input
-                        id="rpi"
-                        type="number"
-                        min="1"
-                        value={formData.raspberry_pi_id}
-                        onChange={(e) => setFormData({ ...formData, raspberry_pi_id: Number.parseInt(e.target.value) })}
-                        required
-                      />
+                      <Label htmlFor="rpi">Raspberry Pi</Label>
+                      {raspberryPis.length === 0 ? (
+                        <div className="text-sm text-muted-foreground p-2 border rounded-md">
+                          Aucun Raspberry Pi disponible. Veuillez contacter un administrateur.
+                        </div>
+                      ) : (
+                        <Select
+                          value={String(formData.raspberry_pi_id)}
+                          onValueChange={(value) => setFormData({ ...formData, raspberry_pi_id: Number.parseInt(value) })}
+                        >
+                          <SelectTrigger id="rpi">
+                            <SelectValue placeholder="Sélectionner un Raspberry Pi" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {raspberryPis.map((rpi) => (
+                              <SelectItem key={rpi.id} value={String(rpi.id)}>
+                                {rpi.name} {rpi.location ? `(${rpi.location})` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gpio">GPIO Pin</Label>
@@ -267,8 +301,7 @@ function DevicesContent() {
                 </DialogFooter>
               </form>
             </DialogContent>
-            </Dialog>
-          </AdminOnly>
+          </Dialog>
         </div>
       </div>
 
@@ -326,14 +359,12 @@ function DevicesContent() {
               ? "Ajoutez votre premier appareil pour commencer"
               : "Aucun appareil ne correspond aux filtres"}
           </p>
-          <AdminOnly>
-            {devices.length === 0 && (
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter un appareil
-              </Button>
-            )}
-          </AdminOnly>
+          {devices.length === 0 && (
+            <Button onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un appareil
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

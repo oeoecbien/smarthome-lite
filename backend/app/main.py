@@ -276,7 +276,7 @@ def get_metrics():
 
 
 # Enregistrement des routes
-from app.routes import auth, devices, events, rules, ai, smart_dimming, raspberry_pis, light_readings, presence
+from app.routes import auth, devices, events, rules, ai, smart_dimming, raspberry_pis, light_readings, presence, admin
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(devices.router, prefix="/api/devices", tags=["Devices"])
@@ -287,3 +287,4 @@ app.include_router(smart_dimming.router, prefix="/api/smart-dimming", tags=["Sma
 app.include_router(raspberry_pis.router, prefix="/api/raspberry-pis", tags=["Raspberry Pi"])
 app.include_router(light_readings.router, prefix="/api/light-readings", tags=["Light Readings"])
 app.include_router(presence.router, prefix="/api/presence", tags=["Presence"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])

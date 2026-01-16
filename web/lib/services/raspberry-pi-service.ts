@@ -12,6 +12,12 @@ export interface RaspberryPi {
   device_count?: number
 }
 
+export interface AvailableRaspberryPi {
+  id: number
+  name: string
+  location?: string
+}
+
 export interface RaspberryPiCreate {
   name: string
   location?: string
@@ -25,6 +31,10 @@ export interface RaspberryPiUpdate {
 }
 
 export const raspberryPiService = {
+  async getAvailableRaspberryPis(): Promise<AvailableRaspberryPi[]> {
+    return api.get<AvailableRaspberryPi[]>("/api/raspberry-pis/available")
+  },
+
   async getRaspberryPis(): Promise<RaspberryPi[]> {
     return api.get<RaspberryPi[]>("/api/raspberry-pis")
   },

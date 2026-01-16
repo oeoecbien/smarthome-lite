@@ -23,11 +23,16 @@ async def get_events(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère l'historique des événements avec filtres et pagination (uniquement pour les devices de l'utilisateur).
+    Récupère l'historique des événements avec filtres et pagination.
+    - Utilisateurs normaux: uniquement les événements de leurs appareils
+    - Admins: tous les événements
     """
-    # Filtrer par les devices de l'utilisateur
-    user_device_ids = [d.id for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()]
-    query = db.query(Event).filter(Event.device_id.in_(user_device_ids))
+    query = db.query(Event)
+    
+    # Filtrer par les devices de l'utilisateur si ce n'est pas un admin
+    if current_user.role != "admin":
+        user_device_ids = [d.id for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()]
+        query = query.filter(Event.device_id.in_(user_device_ids))
     
     # Filtres
     if filters.event_type:
@@ -37,16 +42,20 @@ async def get_events(
         query = query.filter(Event.source == filters.source)
     
     if filters.device_id:
-        # Vérifier que le device appartient à l'utilisateur
-        device = db.query(Device).filter(
-            Device.id == filters.device_id,
-            Device.user_id == current_user.id
-        ).first()
-        if device:
-            query = query.filter(Event.device_id == filters.device_id)
+        # Vérifier que le device appartient à l'utilisateur (si ce n'est pas un admin)
+        if current_user.role != "admin":
+            device = db.query(Device).filter(
+                Device.id == filters.device_id,
+                Device.user_id == current_user.id
+            ).first()
+            if device:
+                query = query.filter(Event.device_id == filters.device_id)
+            else:
+                # Device n'appartient pas à l'utilisateur, retourner liste vide
+                query = query.filter(Event.device_id == -1)  # Condition impossible
         else:
-            # Device n'appartient pas à l'utilisateur, retourner liste vide
-            query = query.filter(Event.device_id == -1)  # Condition impossible
+            # Admin peut voir tous les événements
+            query = query.filter(Event.device_id == filters.device_id)
     
     # Pagination
     events = query.order_by(Event.timestamp.desc()).offset(
@@ -82,23 +91,18 @@ async def get_device_events(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère les événements d'un appareil spécifique (uniquement si appartient à l'utilisateur).
-    """
-    # Vérifier que le device appartient à l'utilisateur
-    device = db.query(Device).filter(
-        Device.id == device_id,
-        Device.user_id == current_user.id
-    ).first()
-    
-    if not device:
-        raise HTTPException(status_code=404, detail="Device not found or access denied")
-    """
     Récupère les événements d'un appareil spécifique.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
     # Vérifier que l'appareil existe
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Appareil introuvable")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent voir que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     events = db.query(Event).filter(
         Event.device_id == device_id

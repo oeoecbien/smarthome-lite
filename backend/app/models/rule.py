@@ -2,9 +2,10 @@
 Modèle ORM pour la table 'rules'.
 Définit les règles d'automatisation du système.
 """
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text, CheckConstraint
+from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text, CheckConstraint, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.database import Base
 
@@ -51,12 +52,14 @@ class Rule(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     condition = Column(JSONB, nullable=False)
     action = Column(JSONB, nullable=False)
     enabled = Column(Boolean, default=True, nullable=False, index=True)
     priority = Column(Integer, default=5, nullable=False)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     
     # ========== Contraintes ==========
     __table_args__ = (
@@ -70,6 +73,9 @@ class Rule(Base):
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # ========== Relations ==========
+    user = relationship("User", backref="rules")
     
     def __repr__(self) -> str:
         status = "enabled" if self.enabled else "disabled"

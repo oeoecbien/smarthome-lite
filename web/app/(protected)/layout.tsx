@@ -17,13 +17,13 @@ const navItems = [
   { href: "/rules", label: "Règles", icon: Settings2 },
   { href: "/ai", label: "Intelligence IA", icon: Brain },
   { href: "/smart-dimming", label: "Smart Dimming", icon: SunDim },
-  { href: "/presence", label: "Présence Bluetooth", icon: Bluetooth },
-  { href: "/light-readings", label: "Luminosité", icon: Sun },
   { href: "/events", label: "Événements", icon: Calendar },
 ]
 
 const adminNavItems = [
   { href: "/admin", label: "Administration", icon: Shield },
+  { href: "/admin/presence", label: "Présence Bluetooth", icon: Bluetooth },
+  { href: "/admin/light-readings", label: "Luminosité", icon: Sun },
 ]
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
