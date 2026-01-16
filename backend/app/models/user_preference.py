@@ -43,7 +43,7 @@ class UserPreference(Base):
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="RESTRICT"), nullable=False)
     light_level = Column(Float, nullable=False)
     scenario = Column(Integer, nullable=False, index=True)
     auto_brightness = Column(Integer, nullable=False)

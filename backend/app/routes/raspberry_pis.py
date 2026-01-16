@@ -14,19 +14,44 @@ from app.schemas.raspberry_pi import (
     RaspberryPiUpdate,
     RaspberryPiResponse
 )
-from app.dependencies import get_current_user
-from app.utils.auth import generate_api_key
+from app.dependencies import get_current_user, require_admin
+from app.utils.auth import generate_api_key, hash_api_key
 
 router = APIRouter()
+
+
+@router.get("/available", response_model=List[dict])
+async def get_available_raspberry_pis(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Liste les Raspberry Pi disponibles pour la création d'appareils.
+    
+    Retourne une version simplifiée (id, name, location) accessible aux utilisateurs normaux
+    pour qu'ils puissent choisir un Raspberry Pi lors de la création d'un appareil.
+    """
+    raspberry_pis = db.query(RaspberryPi).all()
+    
+    return [
+        {
+            "id": rpi.id,
+            "name": rpi.name,
+            "location": rpi.location
+        }
+        for rpi in raspberry_pis
+    ]
 
 
 @router.get("/", response_model=List[RaspberryPiResponse])
 async def get_raspberry_pis(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Liste tous les Raspberry Pi enregistrés.
+    Liste tous les Raspberry Pi enregistrés avec détails complets (uniquement pour les admins).
+    
+    La gestion des Raspberry Pi est une fonctionnalité technique réservée aux administrateurs.
     """
     raspberry_pis = db.query(RaspberryPi).all()
     
@@ -42,7 +67,7 @@ async def get_raspberry_pis(
             "name": rpi.name,
             "location": rpi.location,
             "ip_address": rpi.ip_address,
-            "api_key": rpi.api_key,
+            "api_key": "***" + rpi.api_key_hash[-8:] if rpi.api_key_hash else None,  # Masquer le hash
             "is_online": rpi.is_online,
             "created_at": rpi.created_at,
             "updated_at": rpi.updated_at,
@@ -56,10 +81,10 @@ async def get_raspberry_pis(
 async def get_raspberry_pi(
     rpi_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Récupère un Raspberry Pi spécifique.
+    Récupère un Raspberry Pi spécifique (uniquement pour les admins).
     """
     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
     if not rpi:
@@ -74,7 +99,7 @@ async def get_raspberry_pi(
         "name": rpi.name,
         "location": rpi.location,
         "ip_address": rpi.ip_address,
-        "api_key": rpi.api_key,
+        "api_key": "***" + rpi.api_key_hash[-8:] if rpi.api_key_hash else None,  # Masquer le hash
         "is_online": rpi.is_online,
         "created_at": rpi.created_at,
         "updated_at": rpi.updated_at,
@@ -86,10 +111,10 @@ async def get_raspberry_pi(
 async def create_raspberry_pi(
     rpi_data: RaspberryPiCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Enregistre un nouveau Raspberry Pi.
+    Enregistre un nouveau Raspberry Pi (uniquement pour les admins).
     """
     # Vérifier que l'IP n'est pas déjà utilisée
     existing = db.query(RaspberryPi).filter(
@@ -101,15 +126,16 @@ async def create_raspberry_pi(
             detail=f"Un Raspberry Pi avec l'IP {rpi_data.ip_address} existe déjà"
         )
     
-    # Générer une clé API unique
-    api_key = generate_api_key()
+    # Générer une clé API unique et la hasher
+    api_key_plain = generate_api_key()
+    api_key_hash = hash_api_key(api_key_plain)
     
     # Créer le Raspberry Pi
     rpi = RaspberryPi(
         name=rpi_data.name,
         location=rpi_data.location,
         ip_address=rpi_data.ip_address,
-        api_key=api_key,
+        api_key_hash=api_key_hash,
         is_online=False
     )
     
@@ -117,16 +143,19 @@ async def create_raspberry_pi(
     db.commit()
     db.refresh(rpi)
     
+    # Retourner la clé en clair UNIQUEMENT lors de la création
+    # Elle ne sera plus jamais accessible après
     return {
         "id": rpi.id,
         "name": rpi.name,
         "location": rpi.location,
         "ip_address": rpi.ip_address,
-        "api_key": rpi.api_key,
+        "api_key": api_key_plain,  # Clé en clair UNIQUEMENT à la création
         "is_online": rpi.is_online,
         "created_at": rpi.created_at,
         "updated_at": rpi.updated_at,
-        "device_count": 0
+        "device_count": 0,
+        "warning": "IMPORTANT: Sauvegardez cette clé API maintenant. Elle ne sera plus jamais affichée."
     }
 
 
@@ -135,10 +164,10 @@ async def update_raspberry_pi(
     rpi_id: int,
     rpi_data: RaspberryPiUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin_user: User = Depends(require_admin)
 ):
     """
-    Met à jour un Raspberry Pi.
+    Met à jour un Raspberry Pi (uniquement pour les admins).
     """
     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
     if not rpi:
@@ -175,7 +204,7 @@ async def update_raspberry_pi(
         "name": rpi.name,
         "location": rpi.location,
         "ip_address": rpi.ip_address,
-        "api_key": rpi.api_key,
+        "api_key": "***" + rpi.api_key_hash[-8:] if rpi.api_key_hash else None,  # Masquer le hash
         "is_online": rpi.is_online,
         "created_at": rpi.created_at,
         "updated_at": rpi.updated_at,

@@ -18,7 +18,7 @@ class RaspberryPi(Base):
         name: Nom descriptif (ex: "RPi Salon")
         location: Pièce associée (ex: "Salon", "Chambre")
         ip_address: Adresse IPv4 unique
-        api_key: Clé d'authentification unique (64 caractères)
+        api_key_hash: Hash bcrypt de la clé API (jamais stockée en clair)
         is_online: Statut de connectivité (TRUE si accessible)
         created_at: Date d'ajout au système
         updated_at: Date de dernière modification
@@ -35,12 +35,13 @@ class RaspberryPi(Base):
     name = Column(String(100), nullable=False)
     location = Column(String(100), nullable=False, index=True)
     ip_address = Column(String(15), unique=True, nullable=True)
-    api_key = Column(String(64), unique=True, nullable=False, index=True)
+    api_key_hash = Column(String(255), unique=True, nullable=False, index=True)
     is_online = Column(Boolean, default=False, nullable=False)
     
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     
     # ========== Relations ==========
     devices = relationship(

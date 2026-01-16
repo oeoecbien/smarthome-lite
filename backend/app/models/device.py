@@ -50,6 +50,7 @@ class Device(Base):
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     
     # ========== Contraintes ==========
     __table_args__ = (

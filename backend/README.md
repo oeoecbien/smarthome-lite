@@ -93,6 +93,8 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Détection de présence Bluetooth** : Enregistrement et historique des détections Bluetooth avec adresse MAC et RSSI - routes `POST /api/presence` (appelé par RPi avec `device_mac_address` et `signal_strength`) et `GET /api/presence` (historique) avec mapping automatique MAC → utilisateur via table `bluetooth_devices` et déclenchement automatique des règles
 - **Mesures de luminosité** : Stockage des lectures de capteurs (BH1750/LDR) - routes `POST /api/light-readings` (appelé par RPi) et `GET /api/light-readings` (historique) avec déclenchement automatique du smart dimming
 - **Événements système** : Journalisation des événements (changements d'état, ajustements, etc.) - routes `GET /api/events` et `GET /api/events/device/{id}` avec filtres
+- **Journal d'audit** : Traçabilité des modifications sensibles (table `audit_log`) - enregistrement automatique des actions importantes
+- **Administration** : Routes d'administration pour statistiques globales - route `GET /api/admin/stats` (requiert droits admin)
 - **Historique Smart Dimming** : Suivi des ajustements automatiques - route `GET /api/smart-dimming/adjustments` avec filtres par `device_id` et `limit`
 - **Pause Smart Dimming** : Mise en pause temporaire par appareil - route `PUT /api/smart-dimming/pause/{device_id}` (pause de 30 minutes)
 - **Évaluation de règles** : Évaluation manuelle des règles d'automatisation - route `POST /api/rules/{id}/test` pour tester une règle dans le contexte actuel
@@ -130,7 +132,8 @@ backend/
 │   │   ├── event.py               # Événements système
 │   │   ├── smart_dimming_adjustment.py  # Historique smart dimming
 │   │   ├── training_data.py       # Données d'entraînement IA
-│   │   └── user_preference.py     # Préférences utilisateur
+│   │   ├── user_preference.py     # Préférences utilisateur
+│   │   └── audit_log.py           # Journal d'audit (traçabilité)
 │   │
 │   ├── schemas/                   # Schémas Pydantic
 │   │   ├── auth.py                # Authentification
@@ -149,7 +152,8 @@ backend/
 │   │   ├── rules.py               # CRUD règles
 │   │   ├── ai.py                  # Endpoints IA
 │   │   ├── smart_dimming.py      # Contrôle smart dimming
-│   │   └── events.py              # Historique événements
+│   │   ├── events.py              # Historique événements
+│   │   └── admin.py               # Routes d'administration (stats, etc.)
 │   │
 │   ├── services/                  # Logique métier
 │   │   ├── ai_service.py          # Service IA (classification)
@@ -515,6 +519,14 @@ Une fois le serveur lancé :
 - `GET /api/events` - Historique des événements système
 - `GET /api/events/device/{id}` - Événements d'un appareil spécifique
 
+### Administration
+
+- `GET /api/admin/stats` - Statistiques globales du système (uniquement pour les admins)
+  - Nombre total d'utilisateurs, appareils, événements
+  - Appareils par type et par état
+  - Statistiques Smart Dimming
+  - Événements récents
+
 ### Monitoring
 
 - `GET /health` - Vérification de santé (base de données, services IA, Ollama)
@@ -758,6 +770,7 @@ L'endpoint `POST /api/rules/{id}/test` permet de :
 - `smart_dimming_adjustments` : Historique des ajustements (filtrés par utilisateur)
 - `training_data` : Données d'entraînement IA
 - `user_preferences` : Préférences utilisateur (apprentissage)
+- `audit_log` : Journal d'audit pour traçabilité des modifications sensibles (INSERT, UPDATE, DELETE, LOGIN, etc.)
 
 **Isolation des données :**
 - Chaque utilisateur voit uniquement ses propres devices
