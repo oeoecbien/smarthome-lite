@@ -1,0 +1,14 @@
+# Dépendances pour le client Z-Wave et l'API Flask
+
+# Client HTTP asynchrone (pour REST - optionnel)
+httpx>=0.24.0
+
+# Client WebSocket (pour Z-Wave JS UI)
+websockets>=12.0
+
+# Framework web Flask (optionnel)
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Logging (inclus dans Python standard, mais utile pour la configuration)
+# Pas besoin d'installation

@@ -221,29 +221,36 @@ async def get_current_active_user(
 # ============================================================================
 
 async def verify_raspberry_pi(
-    x_api_key: str = Header(..., description="Clé API du Raspberry Pi"),
-    db: Session = Depends(get_db)
+    x_api_key: Optional[str] = Header(None, description="Clé API du Raspberry Pi"),
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(None, description="Token JWT Bearer")
 ) -> RaspberryPi:
     """
-    Vérifie l'authentification d'un Raspberry Pi via sa clé API.
+    Vérifie l'authentification d'un Raspberry Pi via sa clé API ou JWT.
     
     Cette dépendance est utilisée pour les endpoints appelés par les Raspberry Pi
     (envoi de mesures de capteurs, heartbeat, etc.)
     
     Processus d'authentification:
-        1. Extraction de la clé API depuis l'en-tête X-API-Key
-        2. Recherche du Raspberry Pi correspondant en base de données
-        3. Vérification de la clé avec comparaison sécurisée
+        Option 1 (API Key): 
+            1. Extraction de la clé API depuis l'en-tête X-API-Key
+            2. Recherche du Raspberry Pi correspondant en base de données
+            3. Vérification de la clé avec comparaison sécurisée
+        Option 2 (JWT):
+            1. Extraction du token JWT depuis l'en-tête Authorization
+            2. Décodage et validation du token
+            3. Utilisation du premier Raspberry Pi disponible (ou création d'un RPi système)
     
     Args:
-        x_api_key: Clé API extraite de l'en-tête HTTP X-API-Key
+        x_api_key: Clé API extraite de l'en-tête HTTP X-API-Key (optionnel)
+        credentials: Credentials JWT extraits automatiquement (optionnel)
         db: Session de base de données
         
     Returns:
         RaspberryPi: Instance du Raspberry Pi authentifié
         
     Raises:
-        HTTPException 401: Si la clé API est invalide
+        HTTPException 401: Si l'authentification échoue
         
     Utilisation:
         @app.post("/api/sensor/light")
@@ -256,42 +263,58 @@ async def verify_raspberry_pi(
     
     Sécurité:
         - Comparaison sécurisée des clés (protection timing attacks)
-        - Pas de différence dans les temps de réponse entre clé invalide et RPi inexistant
+        - Validation stricte du token JWT
         - Messages d'erreur génériques
-    
-    Format de la requête:
-        POST /api/sensor/light
-        Headers:
-            X-API-Key: a7f3b9c1e5d8f2a4b6c8d0e2f4a6b8c0d2e4f6a8b0c2d4e6f8a0b2c4d6e8f0a2
-        Body:
-            {"lux_value": 450.5}
     """
-    # Recherche de tous les Raspberry Pi (on doit vérifier le hash)
-    # Note: On ne peut plus chercher directement par clé car elle est hashée
-    all_rpis = db.query(RaspberryPi).all()
+    # Option 1: Authentification par API Key
+    if x_api_key:
+        all_rpis = db.query(RaspberryPi).all()
+        rpi = None
+        for candidate_rpi in all_rpis:
+            if verify_api_key(x_api_key, candidate_rpi.api_key_hash):
+                rpi = candidate_rpi
+                break
+        
+        if rpi:
+            if not rpi.is_online:
+                rpi.is_online = True
+                db.commit()
+                db.refresh(rpi)
+            return rpi
     
-    rpi = None
-    for candidate_rpi in all_rpis:
-        if verify_api_key(x_api_key, candidate_rpi.api_key_hash):
-            rpi = candidate_rpi
-            break
+    # Option 2: Authentification par JWT
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "")
+        payload = decode_access_token(token)
+        if payload:
+            # Utilisateur authentifié via JWT
+            # Utiliser le premier Raspberry Pi disponible ou créer un RPi système
+            rpi = db.query(RaspberryPi).first()
+            if not rpi:
+                # Créer un Raspberry Pi système si aucun n'existe
+                rpi = RaspberryPi(
+                    name="System",
+                    location="System",
+                    ip_address="127.0.0.1",
+                    is_online=True
+                )
+                db.add(rpi)
+                db.commit()
+                db.refresh(rpi)
+            
+            if not rpi.is_online:
+                rpi.is_online = True
+                db.commit()
+                db.refresh(rpi)
+            
+            return rpi
     
-    if not rpi:
-        # Message générique pour éviter l'énumération de clés
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Clé API invalide",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
-    
-    # Mettre à jour automatiquement le statut is_online à True
-    # car si le RPI envoie une requête authentifiée, il est forcément en ligne
-    if not rpi.is_online:
-        rpi.is_online = True
-        db.commit()
-        db.refresh(rpi)
-    
-    return rpi
+    # Aucune méthode d'authentification valide
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentification requise (API Key ou JWT)",
+        headers={"WWW-Authenticate": "ApiKey, Bearer"},
+    )
 
 
 async def verify_raspberry_pi_online(
