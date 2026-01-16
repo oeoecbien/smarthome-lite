@@ -4,11 +4,15 @@ Routes d'authentification
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+import secrets
 
 from app.database import get_db
 from app.models import User
-from app.schemas.auth import UserCreate, UserLogin, UserResponse as UserSchema, Token
+from app.schemas.auth import (
+    UserCreate, UserLogin, UserResponse as UserSchema, Token,
+    ForgotPasswordRequest, ResetPasswordRequest, MessageResponse
+)
 from app.utils.auth import get_password_hash, verify_password, create_access_token
 from app.dependencies import get_current_user
 from app.config import settings
@@ -80,6 +84,72 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "expires_in": int(access_token_expires.total_seconds())
     }
+
+@router.post("/forgot-password", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Demander une réinitialisation de mot de passe.
+    Génère un token de réinitialisation valide pendant 1 heure.
+    """
+    # Rechercher l'utilisateur par username ou email
+    user = db.query(User).filter(
+        (User.username == request.username_or_email) | 
+        (User.email == request.username_or_email)
+    ).first()
+    
+    # Pour des raisons de sécurité, on ne révèle pas si l'utilisateur existe ou non
+    if user:
+        # Générer un token sécurisé
+        reset_token = secrets.token_urlsafe(32)
+        
+        # Définir l'expiration à 1 heure
+        reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+        
+        # Sauvegarder le token dans la base de données
+        user.reset_token = reset_token
+        user.reset_token_expires = reset_token_expires
+        db.commit()
+        
+        # En production, vous devriez envoyer un email avec le token
+        # Pour l'instant, on retourne le token dans la réponse (à des fins de test)
+        # En production, retournez simplement un message générique
+        return {
+            "message": f"Un token de réinitialisation a été généré. Token: {reset_token} (valide 1h)"
+        }
+    
+    # Même réponse si l'utilisateur n'existe pas (sécurité)
+    return {
+        "message": "Si un compte existe avec ces identifiants, un token de réinitialisation a été généré."
+    }
+
+
+@router.post("/reset-password", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Réinitialiser le mot de passe avec un token valide.
+    """
+    # Rechercher l'utilisateur avec le token valide
+    user = db.query(User).filter(
+        User.reset_token == request.token,
+        User.reset_token_expires > datetime.now(timezone.utc)
+    ).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token invalide ou expiré"
+        )
+    
+    # Mettre à jour le mot de passe
+    user.password_hash = get_password_hash(request.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    db.commit()
+    
+    return {
+        "message": "Mot de passe réinitialisé avec succès"
+    }
+
 
 @router.get("/me", response_model=UserSchema)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):

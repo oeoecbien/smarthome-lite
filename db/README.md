@@ -101,11 +101,20 @@ sudo iptables -A INPUT -p tcp --dport 5432 -j ACCEPT
 3. **Création** : Crée une nouvelle base de données avec l'encodage UTF-8
 4. **Initialisation** : Exécute le script `init_database.sql` qui crée :
    - Toutes les tables (users, devices, raspberry_pis, etc.)
-   - Les index pour optimiser les performances
+     - Table `users` inclut les champs `reset_token` et `reset_token_expires` pour la réinitialisation de mot de passe
+   - Les index pour optimiser les performances (y compris index sur `reset_token` pour les recherches rapides)
    - Les triggers pour la mise à jour automatique
    - Les vues utiles
    - Les fonctions SQL
    - Les données de test
+
+## Structure de la table `users`
+
+La table `users` inclut les champs suivants pour la réinitialisation de mot de passe :
+- `reset_token` : Token de réinitialisation généré avec `secrets.token_urlsafe()` (VARCHAR(255), nullable)
+- `reset_token_expires` : Date d'expiration du token (généralement 1 heure après génération, TIMESTAMP WITH TIME ZONE, nullable)
+
+Un index est créé sur `reset_token` (`idx_users_reset_token`) pour optimiser les recherches lors de la validation des tokens de réinitialisation.
 
 ## Avertissement
 
