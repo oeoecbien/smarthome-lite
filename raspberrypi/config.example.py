@@ -5,8 +5,14 @@
 BACKEND_URL = "http://votre-serveur:8000"
 API_KEY = "votre-api-key-64-caracteres"  # Récupérée depuis le backend
 
-# GPIO Configuration
-PIR_SENSOR_PIN = 4          # GPIO 4 (Pin 7)
+# Bluetooth Configuration
+BLUETOOTH_SCAN_INTERVAL = 30      # Secondes entre chaque scan
+BLUETOOTH_SCAN_DURATION = 10       # Durée du scan en secondes
+BLUETOOTH_RSSI_THRESHOLD = -80     # RSSI minimum en dBm (-80 = proche, -100 = loin)
+BLUETOOTH_KNOWN_DEVICES = []       # Liste des MAC addresses à surveiller (optionnel)
+                                    # Exemple: ["AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"]
+
+# GPIO Configuration (pour autres capteurs/actionneurs)
 LIGHT_SENSOR_TYPE = "BH1750"  # "BH1750" ou "LDR"
 LIGHT_SENSOR_I2C_ADDRESS = 0x23  # Pour BH1750
 

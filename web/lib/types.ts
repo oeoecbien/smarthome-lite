@@ -11,6 +11,7 @@ export interface User {
 
 export interface Device {
   id: number
+  user_id: number
   name: string
   type: "light" | "dimmer" | "socket"
   raspberry_pi_id: number
@@ -113,8 +114,12 @@ export interface SmartDimmingAdjustment {
 export interface PresenceRecord {
   id: number
   raspberry_pi_id: number
-  detected: boolean
-  timestamp: string
+  raspberry_pi_name?: string
+  location?: string
+  detected_at: string
+  device_mac_address?: string
+  signal_strength?: number
+  user_id?: number
 }
 
 export interface LightReading {

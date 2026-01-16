@@ -29,11 +29,11 @@ async def get_devices(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Liste tous les appareils avec leur localisation
+    Liste tous les appareils de l'utilisateur connecté avec leur localisation
     Filtres optionnels: location, type
     """
     device_service = DeviceService(db)
-    devices = device_service.get_all_devices_with_location()
+    devices = device_service.get_all_devices_with_location(user_id=current_user.id)
     
     # Filtres
     if location:
@@ -50,13 +50,21 @@ async def get_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère un appareil spécifique par ID
+    Récupère un appareil spécifique par ID (uniquement si appartient à l'utilisateur)
     """
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or access denied")
+    
     device_service = DeviceService(db)
     
     try:
-        device = device_service.get_device_with_location(device_id)
-        return device
+        device_with_location = device_service.get_device_with_location(device_id, user_id=current_user.id)
+        return device_with_location
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -67,7 +75,7 @@ async def create_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Créer un nouvel appareil
+    Créer un nouvel appareil (assigné automatiquement à l'utilisateur connecté)
     """
     # Vérifier GPIO unique par RPi
     existing = db.query(Device).filter(
@@ -83,6 +91,7 @@ async def create_device(
     
     device = Device(
         **device_data.dict(),
+        user_id=current_user.id,  # Assigner automatiquement à l'utilisateur connecté
         state=False,
         brightness=0 if device_data.type == "dimmer" else 100
     )
@@ -101,8 +110,17 @@ async def set_device_state(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Change l'état ON/OFF d'un appareil
+    Change l'état ON/OFF d'un appareil (uniquement si appartient à l'utilisateur)
     """
+    # Vérifier que le device appartient à l'utilisateur
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or access denied")
+    
     device_service = DeviceService(db)
     
     try:
@@ -140,8 +158,17 @@ async def set_device_brightness(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Change l'intensité d'un appareil dimmable
+    Change l'intensité d'un appareil dimmable (uniquement si appartient à l'utilisateur)
     """
+    # Vérifier que le device appartient à l'utilisateur
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found or access denied")
+    
     device_service = DeviceService(db)
     
     try:
@@ -171,12 +198,15 @@ async def delete_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Supprime un appareil
+    Supprime un appareil (uniquement si appartient à l'utilisateur)
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.user_id == current_user.id
+    ).first()
     
     if not device:
-        raise HTTPException(status_code=404, detail="Device not found")
+        raise HTTPException(status_code=404, detail="Device not found or access denied")
     
     db.delete(device)
     db.commit()

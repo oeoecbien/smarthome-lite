@@ -1,6 +1,7 @@
 -- ============================================================================
 -- SmartHome Lite - Script d'Initialisation Base de Données
 -- Version finale conforme au document technique
+-- Détection de présence via Bluetooth (remplace PIR)
 -- ============================================================================
 
 -- ============================================================================
@@ -11,7 +12,7 @@
 DROP DATABASE IF EXISTS smarthome;
 
 -- Créer la base de données avec encodage UTF-8
-CREATE DATABASE smarthome
+CREATE DATABASE smarthome   
     WITH 
     OWNER = postgres
     ENCODING = 'UTF8'
@@ -79,6 +80,7 @@ COMMENT ON COLUMN raspberry_pis.is_online IS 'État de connexion (heartbeat tout
 -- ----------------------------------------------------------------------------
 CREATE TABLE devices (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL,
@@ -94,11 +96,13 @@ CREATE TABLE devices (
 );
 
 -- Index pour requêtes fréquentes (liste par emplacement, par type)
+CREATE INDEX idx_devices_user_id ON devices(user_id);
 CREATE INDEX idx_devices_raspberry_pi ON devices(raspberry_pi_id);
 CREATE INDEX idx_devices_type ON devices(type);
 CREATE INDEX idx_devices_state ON devices(state);
 
 COMMENT ON TABLE devices IS 'Appareils électriques contrôlables';
+COMMENT ON COLUMN devices.user_id IS 'Propriétaire de l''appareil (relation avec users)';
 COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO physique sur le Raspberry Pi (unique par RPi)';
 COMMENT ON COLUMN devices.brightness IS 'Intensité lumineuse pour les dimmers (0-100)';
 
@@ -126,19 +130,27 @@ COMMENT ON COLUMN light_readings.lux_value IS 'Intensité lumineuse en lux (0-65
 
 -- ----------------------------------------------------------------------------
 -- Table: presence
--- Description: Historique des détections de mouvement
+-- Description: Historique des détections de présence via Bluetooth
 -- ----------------------------------------------------------------------------
 CREATE TABLE presence (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
-    detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    device_mac_address VARCHAR(17),
+    signal_strength INTEGER,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 -- Index pour recherche par date et par Raspberry Pi
 CREATE INDEX idx_presence_detected_at ON presence(detected_at DESC);
 CREATE INDEX idx_presence_raspberry_pi ON presence(raspberry_pi_id);
+CREATE INDEX idx_presence_mac_address ON presence(device_mac_address);
+CREATE INDEX idx_presence_user_id ON presence(user_id);
 
-COMMENT ON TABLE presence IS 'Journal des détections PIR (mouvement/présence)';
+COMMENT ON TABLE presence IS 'Journal des détections Bluetooth (remplace PIR)';
+COMMENT ON COLUMN presence.device_mac_address IS 'Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF)';
+COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche)';
+COMMENT ON COLUMN presence.user_id IS 'ID de l''utilisateur associé (si MAC mappée dans bluetooth_devices)';
 
 -- ----------------------------------------------------------------------------
 -- Table: rules
@@ -275,6 +287,31 @@ COMMENT ON TABLE user_preferences IS 'Capture les ajustements manuels pour appre
 COMMENT ON COLUMN user_preferences.auto_brightness IS 'Intensité proposée par le système';
 COMMENT ON COLUMN user_preferences.manual_brightness IS 'Intensité choisie par l''utilisateur (feedback)';
 
+-- ----------------------------------------------------------------------------
+-- Table: bluetooth_devices
+-- Description: Association entre adresses MAC Bluetooth et utilisateurs
+-- ----------------------------------------------------------------------------
+CREATE TABLE bluetooth_devices (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    mac_address VARCHAR(17) NOT NULL UNIQUE,
+    device_name VARCHAR(100),
+    device_type VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index pour bluetooth_devices
+CREATE INDEX idx_bluetooth_devices_user ON bluetooth_devices(user_id);
+CREATE INDEX idx_bluetooth_devices_mac ON bluetooth_devices(mac_address);
+CREATE INDEX idx_bluetooth_devices_active ON bluetooth_devices(is_active);
+
+COMMENT ON TABLE bluetooth_devices IS 'Association entre adresses MAC Bluetooth et utilisateurs';
+COMMENT ON COLUMN bluetooth_devices.mac_address IS 'Adresse MAC du device (format: AA:BB:CC:DD:EE:FF)';
+COMMENT ON COLUMN bluetooth_devices.device_name IS 'Nom du device (ex: iPhone de Jean, Montre de Marie)';
+COMMENT ON COLUMN bluetooth_devices.device_type IS 'Type de device (phone, watch, headphones, etc.)';
+
 -- ============================================================================
 -- 3. CRÉATION DES FONCTIONS TRIGGERS
 -- ============================================================================
@@ -303,173 +340,22 @@ CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
 CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_bluetooth_devices_updated_at BEFORE UPDATE ON bluetooth_devices
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- ============================================================================
 -- 4. INSERTION DES DONNÉES DE TEST
 -- ============================================================================
 
--- Utilisateur administrateur (mot de passe: admin123)
--- Hash bcrypt généré avec 12 rounds
--- NOTE: Si vous avez des problèmes de connexion, exécutez le script de migration:
---       python backend/migrate_admin_password.py
-INSERT INTO users (username, email, password_hash, role) VALUES
-('admin', 'admin@smarthome.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYL3ZOE7jiq', 'admin');
-
--- Note: Utilisateur de test: admin / admin123 (CHANGER EN PRODUCTION)
--- Cet utilisateur a le rôle 'admin' pour accéder à l'interface d'administration
-
--- Configuration des Raspberry Pi
-INSERT INTO raspberry_pis (name, location, ip_address, api_key, is_online) VALUES
-('RPi-Salon', 'Salon', '192.168.1.101', 'rpi_salon_key_' || MD5(random()::text), TRUE),
-('RPi-Chambre', 'Chambre', '192.168.1.102', 'rpi_chambre_key_' || MD5(random()::text), TRUE),
-('RPi-Cuisine', 'Cuisine', '192.168.1.103', 'rpi_cuisine_key_' || MD5(random()::text), FALSE);
-
--- Appareils connectés
-INSERT INTO devices (raspberry_pi_id, name, type, state, brightness, gpio_pin) VALUES
--- Salon
-(1, 'Lampe Principale Salon', 'dimmer', TRUE, 75, 17),
-(1, 'Lampe d''Appoint Salon', 'light', FALSE, 0, 18),
-(1, 'Prise TV Salon', 'socket', TRUE, 100, 27),
-
--- Chambre
-(2, 'Lampe Chevet Gauche', 'dimmer', FALSE, 50, 22),
-(2, 'Lampe Chevet Droit', 'dimmer', FALSE, 50, 23),
-(2, 'Prise Chargeurs', 'socket', TRUE, 100, 24),
-
--- Cuisine
-(3, 'Plafonnier Cuisine', 'dimmer', TRUE, 100, 5),
-(3, 'Hotte Cuisine', 'socket', FALSE, 100, 6);
-
--- Mesures de luminosité (simulation des dernières 24h)
--- Insertion de valeurs réalistes par tranches horaires
-INSERT INTO light_readings (raspberry_pi_id, lux_value, sensor_type, measured_at) 
-SELECT 
-    1, -- RPi Salon
-    CASE 
-        WHEN EXTRACT(HOUR FROM ts) BETWEEN 0 AND 5 THEN 0 + random() * 10
-        WHEN EXTRACT(HOUR FROM ts) BETWEEN 6 AND 8 THEN 50 + random() * 100
-        WHEN EXTRACT(HOUR FROM ts) BETWEEN 9 AND 17 THEN 200 + random() * 500
-        WHEN EXTRACT(HOUR FROM ts) BETWEEN 18 AND 20 THEN 100 + random() * 200
-        ELSE 20 + random() * 50
-    END,
-    'BH1750',
-    ts
-FROM generate_series(
-    NOW() - INTERVAL '24 hours',
-    NOW(),
-    INTERVAL '30 minutes'
-) AS ts;
-
--- Détections de présence (simulation activité quotidienne)
-INSERT INTO presence (raspberry_pi_id, detected_at)
-SELECT 
-    (ARRAY[1, 2])[floor(random() * 2 + 1)], -- Alternance Salon/Chambre
-    NOW() - (random() * INTERVAL '24 hours')
-FROM generate_series(1, 50);
-
--- Règles d'automatisation pré-configurées
-INSERT INTO rules (name, description, enabled, condition, action, priority) VALUES
-(
-    'Éclairage Salon Soirée',
-    'Allume automatiquement la lampe du salon à 70% en soirée si présence détectée',
-    TRUE,
-    '{
-        "type": "AND",
-        "conditions": [
-            {"type": "presence", "location": "Salon", "value": true},
-            {"type": "time_range", "start": "18:00", "end": "23:00"}
-        ]
-    }',
-    '{
-        "type": "device_control",
-        "device_id": 1,
-        "action": "turn_on",
-        "brightness": 70
-    }',
-    10
-),
-(
-    'Économie Énergie Nuit',
-    'Éteint toutes les lampes après 10 minutes sans détection de présence',
-    TRUE,
-    '{
-        "type": "no_presence_duration",
-        "duration_minutes": 10
-    }',
-    '{
-        "type": "all_lights_off"
-    }',
-    5
-),
-(
-    'Smart Dimming Matin',
-    'Ajuste automatiquement l''éclairage selon la luminosité naturelle le matin',
-    TRUE,
-    '{
-        "type": "AND",
-        "conditions": [
-            {"type": "time_range", "start": "06:00", "end": "09:00"},
-            {"type": "light_level", "operator": ">", "value": 100}
-        ]
-    }',
-    '{
-        "type": "smart_dimming",
-        "target_devices": [1, 7]
-    }',
-    8
-);
-
--- Événements récents (historique simulation)
-INSERT INTO events (device_id, event_type, value, source, timestamp) VALUES
-(1, 'brightness_changed', '75', 'smart_dimming', NOW() - INTERVAL '10 minutes'),
-(1, 'state_changed', 'true', 'automatic', NOW() - INTERVAL '2 hours'),
-(3, 'state_changed', 'true', 'manual', NOW() - INTERVAL '3 hours'),
-(7, 'brightness_changed', '100', 'ai', NOW() - INTERVAL '5 hours');
-
--- Données d'entraînement IA (dataset équilibré pour 4 scénarios)
--- Scénario 0: Day (journée active)
-INSERT INTO training_data (hour, day_of_week, presence_detected, light_on, scenario) VALUES
-(8, 1, TRUE, TRUE, 0),
-(9, 2, TRUE, TRUE, 0),
-(10, 3, TRUE, FALSE, 0),
-(11, 4, TRUE, TRUE, 0),
-(12, 5, TRUE, FALSE, 0),
-(13, 1, TRUE, TRUE, 0),
-(14, 2, TRUE, FALSE, 0),
-(15, 3, TRUE, TRUE, 0),
-(16, 4, TRUE, FALSE, 0),
-(17, 5, TRUE, TRUE, 0);
-
--- Scénario 1: Night (nuit)
-INSERT INTO training_data (hour, day_of_week, presence_detected, light_on, scenario) VALUES
-(23, 1, TRUE, TRUE, 1),
-(0, 2, FALSE, FALSE, 1),
-(1, 3, FALSE, FALSE, 1),
-(2, 4, FALSE, FALSE, 1),
-(3, 5, FALSE, FALSE, 1),
-(4, 6, FALSE, FALSE, 1),
-(5, 0, FALSE, FALSE, 1);
-
--- Scénario 2: Away (absence)
-INSERT INTO training_data (hour, day_of_week, presence_detected, light_on, scenario) VALUES
-(10, 1, FALSE, FALSE, 2),
-(11, 2, FALSE, FALSE, 2),
-(14, 3, FALSE, FALSE, 2),
-(15, 4, FALSE, FALSE, 2),
-(16, 5, FALSE, FALSE, 2);
-
--- Scénario 3: Evening (soirée)
-INSERT INTO training_data (hour, day_of_week, presence_detected, light_on, scenario) VALUES
-(18, 1, TRUE, TRUE, 3),
-(19, 2, TRUE, TRUE, 3),
-(20, 3, TRUE, TRUE, 3),
-(21, 4, TRUE, TRUE, 3),
-(22, 5, TRUE, TRUE, 3);
-
--- Ajustements Smart Dimming (historique simulation)
-INSERT INTO smart_dimming_adjustments (device_id, light_reading_id, scenario, previous_brightness, target_brightness, applied_brightness, reason, adjusted_at) VALUES
-(1, 1, 0, 100, 60, 60, 'High natural light detected (350 lux)', NOW() - INTERVAL '1 hour'),
-(1, 2, 3, 60, 75, 75, 'Evening scenario activated', NOW() - INTERVAL '30 minutes'),
-(7, 3, 0, 80, 50, 50, 'Morning sunlight sufficient (450 lux)', NOW() - INTERVAL '2 hours');
+-- NOTE: Les données de test ont été supprimées.
+-- L'utilisateur admin et les données de test doivent être créés via le backend.
+-- 
+-- Pour créer l'utilisateur admin :
+-- 1. Démarrer le backend : uvicorn app.main:app --reload
+-- 2. Utiliser la route temporaire /api/auth/create-admin (si disponible)
+--    ou créer manuellement via l'interface d'administration
+--
+-- La base de données est initialisée vide, prête à recevoir les données via l'API.
 
 -- ============================================================================
 -- 5. CRÉATION DES VUES UTILES
@@ -494,19 +380,24 @@ JOIN raspberry_pis r ON d.raspberry_pi_id = r.id;
 COMMENT ON VIEW devices_with_location IS 'Vue simplifiée pour l''affichage dans l''application mobile';
 
 -- Vue: presence_last_24h
--- Affiche les détections de présence des dernières 24 heures
+-- Affiche les détections de présence Bluetooth des dernières 24 heures
 CREATE VIEW presence_last_24h AS
 SELECT 
     p.id,
     p.detected_at,
     r.name AS raspberry_pi_name,
-    r.location
+    r.location,
+    p.device_mac_address,
+    p.signal_strength,
+    p.user_id,
+    u.username AS user_name
 FROM presence p
 JOIN raspberry_pis r ON p.raspberry_pi_id = r.id
+LEFT JOIN users u ON p.user_id = u.id
 WHERE p.detected_at >= NOW() - INTERVAL '24 hours'
 ORDER BY p.detected_at DESC;
 
-COMMENT ON VIEW presence_last_24h IS 'Détections PIR des dernières 24h pour dashboard';
+COMMENT ON VIEW presence_last_24h IS 'Détections Bluetooth des dernières 24h pour dashboard';
 
 -- Vue: recent_events
 -- Affiche les 100 derniers événements avec informations détaillées
@@ -738,7 +629,7 @@ SELECT
 FROM pg_indexes 
 WHERE schemaname = 'public';
 
--- Statistiques des données insérées
+-- Statistiques des tables créées (base vide)
 SELECT 
     'Utilisateurs' AS table_name, 
     COUNT(*) AS row_count 
@@ -752,10 +643,12 @@ SELECT 'Mesures Luminosité', COUNT(*) FROM light_readings
 UNION ALL
 SELECT 'Détections Présence', COUNT(*) FROM presence
 UNION ALL
-SELECT 'Règles Actives', COUNT(*) FROM active_rules
+SELECT 'Règles', COUNT(*) FROM rules
 UNION ALL
 SELECT 'Événements', COUNT(*) FROM events
 UNION ALL
 SELECT 'Données IA', COUNT(*) FROM training_data
 UNION ALL
-SELECT 'Ajustements Smart Dimming', COUNT(*) FROM smart_dimming_adjustments;
+SELECT 'Ajustements Smart Dimming', COUNT(*) FROM smart_dimming_adjustments
+UNION ALL
+SELECT 'Devices Bluetooth', COUNT(*) FROM bluetooth_devices;

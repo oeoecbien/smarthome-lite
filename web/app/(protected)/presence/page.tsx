@@ -10,7 +10,7 @@ import { PresenceChart } from "@/components/presence-chart"
 import { presenceService } from "@/lib/services/presence-service"
 import { formatRelativeTime, formatDate } from "@/lib/formatters"
 import type { PresenceRecord } from "@/lib/types"
-import { RefreshCw, AlertCircle, Filter, UserCheck, Clock } from "lucide-react"
+import { RefreshCw, AlertCircle, Filter, UserCheck, Clock, Bluetooth } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function PresencePage() {
@@ -64,8 +64,11 @@ export default function PresencePage() {
   // Calculate stats
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const detectionsToday = records.filter((r) => r.detected && new Date(r.timestamp) >= today).length
-  const lastDetection = records.find((r) => r.detected)
+  const detectionsToday = records.filter((r) => {
+    return new Date(r.detected_at) >= today
+  }).length
+  const lastDetection = records[0] // Les records sont déjà triés par date décroissante
+  const uniqueDevices = new Set(records.filter(r => r.device_mac_address).map(r => r.device_mac_address)).size
 
   return (
     <div className="space-y-6">
@@ -73,7 +76,7 @@ export default function PresencePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-balance">Historique de présence</h1>
-          <p className="text-muted-foreground">Détections de présence par les capteurs</p>
+          <p className="text-muted-foreground">Détections Bluetooth des devices à proximité</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -82,7 +85,7 @@ export default function PresencePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -105,9 +108,23 @@ export default function PresencePage() {
               </div>
               <div>
                 <p className="text-lg font-medium">
-                  {lastDetection ? formatRelativeTime(lastDetection.timestamp) : "Aucune"}
+                  {lastDetection ? formatRelativeTime(lastDetection.detected_at) : "Aucune"}
                 </p>
                 <p className="text-sm text-muted-foreground">Dernière détection</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-accent/10">
+                <Bluetooth className="h-6 w-6 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{uniqueDevices}</p>
+                <p className="text-sm text-muted-foreground">Devices Bluetooth uniques</p>
               </div>
             </div>
           </CardContent>
@@ -153,27 +170,49 @@ export default function PresencePage() {
             <p className="text-center text-muted-foreground py-8">Aucun enregistrement</p>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-lg",
-                    record.detected ? "bg-secondary/10" : "bg-muted/50",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn("w-2 h-2 rounded-full", record.detected ? "bg-secondary" : "bg-muted-foreground")}
-                    />
-                    <span className="text-sm font-medium">{record.detected ? "Présence" : "Absence"}</span>
-                    <span className="text-xs text-muted-foreground">RPi #{record.raspberry_pi_id}</span>
+              {records.map((record) => {
+                const hasMac = !!record.device_mac_address
+                return (
+                  <div
+                    key={record.id}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-lg border",
+                      hasMac ? "bg-secondary/10 border-secondary/20" : "bg-muted/50 border-border",
+                    )}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={cn("w-2 h-2 rounded-full", hasMac ? "bg-secondary" : "bg-muted-foreground")} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">Détection Bluetooth</span>
+                          {record.location && (
+                            <span className="text-xs text-muted-foreground">• {record.location}</span>
+                          )}
+                        </div>
+                        {record.device_mac_address && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs font-mono text-muted-foreground">{record.device_mac_address}</span>
+                            {record.signal_strength && (
+                              <span className="text-xs text-muted-foreground">
+                                ({record.signal_strength} dBm)
+                              </span>
+                            )}
+                            {record.user_id && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                Utilisateur #{record.user_id}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <p className="text-xs text-muted-foreground">{formatRelativeTime(record.detected_at)}</p>
+                      <p className="text-xs text-muted-foreground/60">{formatDate(record.detected_at)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">{formatRelativeTime(record.timestamp)}</p>
-                    <p className="text-xs text-muted-foreground/60">{formatDate(record.timestamp)}</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>

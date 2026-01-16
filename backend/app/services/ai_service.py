@@ -200,7 +200,7 @@ class AIService:
         hour = now.hour
         day_of_week = now.weekday()  # 0=Lundi, 6=Dimanche
         
-        # Vérifier la présence dans les 5 dernières minutes
+        # Vérifier la présence dans les 5 dernières minutes (via Bluetooth)
         from datetime import timedelta
         five_minutes_ago = now - timedelta(minutes=5)
         
@@ -213,6 +213,14 @@ class AIService:
             )
         
         presence_detected = presence_query.first() is not None
+        
+        # Optionnel: obtenir les utilisateurs détectés
+        detected_users = []
+        if presence_detected:
+            user_presence = presence_query.filter(
+                Presence.user_id.isnot(None)
+            ).distinct(Presence.user_id).all()
+            detected_users = [p.user_id for p in user_presence if p.user_id]
         
         # Vérifier si au moins une lampe est allumée
         device_query = db.query(Device).filter(
@@ -235,7 +243,9 @@ class AIService:
             "day_of_week": day_of_week,
             "presence_detected": presence_detected,
             "light_on": light_on,
-            "raspberry_pi_id": raspberry_pi_id
+            "raspberry_pi_id": raspberry_pi_id,
+            "detected_users": detected_users,  # Liste des user_id détectés
+            "user_count": len(detected_users)
         }
         
         return result
