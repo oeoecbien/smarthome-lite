@@ -37,10 +37,23 @@ class User(Base):
     # Timestamps automatiques
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, onupdate=func.now())
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     
     # ========== Relations ==========
+    devices = relationship(
+        "Device",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
     preferences = relationship(
         "UserPreference",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+    
+    bluetooth_devices = relationship(
+        "BluetoothDevice",
         back_populates="user",
         cascade="all, delete-orphan"
     )

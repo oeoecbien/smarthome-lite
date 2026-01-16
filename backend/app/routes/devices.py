@@ -29,11 +29,15 @@ async def get_devices(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Liste tous les appareils avec leur localisation
+    Liste les appareils avec leur localisation.
+    - Utilisateurs normaux: voient uniquement leurs appareils
+    - Admins: voient tous les appareils
     Filtres optionnels: location, type
     """
     device_service = DeviceService(db)
-    devices = device_service.get_all_devices_with_location()
+    # Les admins voient tous les appareils, les utilisateurs normaux uniquement les leurs
+    user_id = None if current_user.role == "admin" else current_user.id
+    devices = device_service.get_all_devices_with_location(user_id=user_id)
     
     # Filtres
     if location:
@@ -50,13 +54,26 @@ async def get_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Récupère un appareil spécifique par ID
+    Récupère un appareil spécifique par ID.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent voir que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     device_service = DeviceService(db)
     
     try:
-        device = device_service.get_device_with_location(device_id)
-        return device
+        # Les admins peuvent voir tous les appareils, les utilisateurs normaux uniquement les leurs
+        user_id = None if current_user.role == "admin" else current_user.id
+        device_with_location = device_service.get_device_with_location(device_id, user_id=user_id)
+        return device_with_location
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -67,8 +84,18 @@ async def create_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Créer un nouvel appareil
+    Créer un nouvel appareil (assigné automatiquement à l'utilisateur connecté)
     """
+    from app.models import RaspberryPi
+    
+    # Vérifier que le Raspberry Pi existe
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == device_data.raspberry_pi_id).first()
+    if not rpi:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Raspberry Pi avec l'ID {device_data.raspberry_pi_id} introuvable"
+        )
+    
     # Vérifier GPIO unique par RPi
     existing = db.query(Device).filter(
         Device.raspberry_pi_id == device_data.raspberry_pi_id,
@@ -83,6 +110,7 @@ async def create_device(
     
     device = Device(
         **device_data.dict(),
+        user_id=current_user.id,  # Assigner automatiquement à l'utilisateur connecté
         state=False,
         brightness=0 if device_data.type == "dimmer" else 100
     )
@@ -101,8 +129,19 @@ async def set_device_state(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Change l'état ON/OFF d'un appareil
+    Change l'état ON/OFF d'un appareil.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent modifier que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     device_service = DeviceService(db)
     
     try:
@@ -140,8 +179,19 @@ async def set_device_brightness(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Change l'intensité d'un appareil dimmable
+    Change l'intensité d'un appareil dimmable.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent modifier que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
     device_service = DeviceService(db)
     
     try:
@@ -171,12 +221,18 @@ async def delete_device(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Supprime un appareil
+    Supprime un appareil.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
     device = db.query(Device).filter(Device.id == device_id).first()
     
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent supprimer que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     db.delete(device)
     db.commit()

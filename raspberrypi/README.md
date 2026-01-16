@@ -4,7 +4,7 @@ Service Flask exécuté sur Raspberry Pi pour gérer les capteurs et actionneurs
 
 ## Fonctionnalités
 
-- **Lecture des capteurs** : PIR (détection de présence) et luminosité (BH1750 ou LDR)
+- **Lecture des capteurs** : Bluetooth (détection de présence) et luminosité (BH1750 ou LDR)
 - **Contrôle des actionneurs** : LED avec PWM (dimming) et relais (prises connectées)
 - **Publication d'événements** : Envoi automatique des détections et mesures au backend
 - **Réception de commandes** : API Flask locale pour recevoir les commandes du backend
@@ -19,7 +19,7 @@ Service Flask exécuté sur Raspberry Pi pour gérer les capteurs et actionneurs
 - Python 3.9+
 - Accès GPIO (nécessite les permissions appropriées)
 - Composants matériels :
-  - Capteur PIR
+  - Bluetooth intégré du Raspberry Pi (pour détection de présence)
   - Capteur de luminosité (BH1750 via I2C ou LDR via SPI/ADC)
   - LED avec résistance
   - Relais (optionnel)
@@ -57,9 +57,15 @@ python main.py
 - `BACKEND_URL` : URL du backend FastAPI (ex: `http://10.109.150.75:8000`)
 - `API_KEY` : Clé API récupérée depuis le backend (64 caractères)
 
+### Configuration Bluetooth
+
+- `BLUETOOTH_SCAN_INTERVAL` : Intervalle entre scans en secondes (défaut: 30)
+- `BLUETOOTH_SCAN_DURATION` : Durée du scan en secondes (défaut: 10)
+- `BLUETOOTH_RSSI_THRESHOLD` : RSSI minimum en dBm (défaut: -80, plus élevé = plus proche)
+- `BLUETOOTH_KNOWN_DEVICES` : Liste des MAC addresses à surveiller (optionnel, vide = tous)
+
 ### Configuration GPIO
 
-- `PIR_SENSOR_PIN` : GPIO pour le capteur PIR (défaut: GPIO 4)
 - `LIGHT_SENSOR_TYPE` : Type de capteur (`BH1750` ou `LDR`)
 - `LIGHT_SENSOR_I2C_ADDRESS` : Adresse I2C pour BH1750 (défaut: 0x23)
 - `LED_PWM_PIN` : GPIO pour la LED avec PWM (défaut: GPIO 18)
@@ -90,13 +96,14 @@ raspberrypi/
 │
 ├── sensors/                   # Modules capteurs
 │   ├── __init__.py
-│   ├── pir.py                 # Gestion capteur PIR
+│   ├── bluetooth.py           # Gestion scan Bluetooth (détection de présence)
 │   └── light.py               # Gestion capteur luminosité (BH1750/LDR)
 │
 ├── actuators/                 # Modules actionneurs
 │   ├── __init__.py
 │   ├── led.py                 # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle relais
+│   ├── relay.py               # Contrôle relais
+│   └── zwave_lamp.py          # Contrôle lampe Z-Wave (via contrôleur Z-Wave)
 │
 ├── api/                       # API Flask locale
 │   ├── __init__.py
@@ -113,10 +120,13 @@ raspberrypi/
 
 ### Capteurs
 
-**Capteur PIR (détection de présence) :**
-- Détection automatique des mouvements
-- Envoi immédiat d'événements au backend via `POST /api/presence`
-- Anti-rebond matériel et logiciel intégré
+**Capteur Bluetooth (détection de présence) :**
+- Scan périodique des devices Bluetooth à proximité
+- Envoi des détections au backend via `POST /api/presence` avec MAC address et RSSI
+- Support Bluetooth Classic (pybluez) et Bluetooth Low Energy (bleak)
+- Détection des apparitions/disparitions de devices
+- Filtrage par RSSI pour ne détecter que les devices proches
+- **Méthode principale de détection de présence**
 
 **Capteur de luminosité :**
 - Lecture périodique selon `LIGHT_READING_INTERVAL`
@@ -139,7 +149,7 @@ raspberrypi/
 ### Communication Backend
 
 **Envoi d'événements :**
-- Détections de présence → `POST /api/presence`
+- Détections Bluetooth (MAC + RSSI) → `POST /api/presence`
 - Mesures de luminosité → `POST /api/light-readings`
 - Authentification via header `X-API-Key`
 

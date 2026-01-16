@@ -37,7 +37,7 @@ class SmartDimmingAdjustment(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="RESTRICT"), nullable=False)
     light_reading_id = Column(Integer, ForeignKey("light_readings.id", ondelete="SET NULL"), nullable=True)
     scenario = Column(Integer, nullable=False)
     previous_brightness = Column(Integer, nullable=False)

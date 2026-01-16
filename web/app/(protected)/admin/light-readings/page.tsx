@@ -1,20 +1,36 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { PresenceChart } from "@/components/presence-chart"
-import { presenceService } from "@/lib/services/presence-service"
-import { formatRelativeTime, formatDate } from "@/lib/formatters"
-import type { PresenceRecord } from "@/lib/types"
-import { RefreshCw, AlertCircle, Filter, UserCheck, Clock } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { LightChart } from "@/components/light-chart"
+import { lightReadingService } from "@/lib/services/light-reading-service"
+import { formatRelativeTime, formatDate, formatNumber } from "@/lib/formatters"
+import type { LightReading } from "@/lib/types"
+import { Sun, RefreshCw, AlertCircle, Filter, Gauge } from "lucide-react"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
-export default function PresencePage() {
-  const [records, setRecords] = useState<PresenceRecord[]>([])
+export default function LightReadingsPage() {
+  const isAdmin = useIsAdmin()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  if (!isAdmin) {
+    return null
+  }
+  const [readings, setReadings] = useState<LightReading[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,14 +40,14 @@ export default function PresencePage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const data = await presenceService.getPresenceHistory(
+      const data = await lightReadingService.getLightReadings(
         filterRpiId ? Number.parseInt(filterRpiId) : undefined,
         filterLimit,
       )
-      setRecords(data)
+      setReadings(data)
       setError(null)
     } catch {
-      setError("Erreur lors du chargement de l'historique")
+      setError("Erreur lors du chargement des mesures")
     } finally {
       setIsLoading(false)
     }
@@ -39,14 +55,14 @@ export default function PresencePage() {
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 30000)
+    const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
   }, [fetchData])
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingSpinner size="lg" text="Chargement de l'historique..." />
+        <LoadingSpinner size="lg" text="Chargement des mesures..." />
       </div>
     )
   }
@@ -62,18 +78,17 @@ export default function PresencePage() {
   }
 
   // Calculate stats
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const detectionsToday = records.filter((r) => r.detected && new Date(r.timestamp) >= today).length
-  const lastDetection = records.find((r) => r.detected)
+  const lastReading = readings[0]
+  const avgLux = readings.length > 0 ? readings.reduce((sum, r) => sum + r.lux, 0) / readings.length : 0
+  const avgPercent = readings.length > 0 ? readings.reduce((sum, r) => sum + r.percentage, 0) / readings.length : 0
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-balance">Historique de présence</h1>
-          <p className="text-muted-foreground">Détections de présence par les capteurs</p>
+          <h1 className="text-2xl font-semibold text-balance">Historique de luminosité</h1>
+          <p className="text-muted-foreground">Mesures des capteurs de luminosité</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -82,16 +97,30 @@ export default function PresencePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-warning/10">
+                <Sun className="h-6 w-6 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{lastReading ? formatNumber(lastReading.lux) : "-"}</p>
+                <p className="text-sm text-muted-foreground">Dernière mesure (lux)</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-primary/10">
-                <UserCheck className="h-6 w-6 text-primary" />
+                <Gauge className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{detectionsToday}</p>
-                <p className="text-sm text-muted-foreground">Détections aujourd&apos;hui</p>
+                <p className="text-2xl font-bold">{formatNumber(avgLux, 1)}</p>
+                <p className="text-sm text-muted-foreground">Moyenne lux ({readings.length} mesures)</p>
               </div>
             </div>
           </CardContent>
@@ -101,13 +130,11 @@ export default function PresencePage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-secondary/10">
-                <Clock className="h-6 w-6 text-secondary" />
+                <Gauge className="h-6 w-6 text-secondary" />
               </div>
               <div>
-                <p className="text-lg font-medium">
-                  {lastDetection ? formatRelativeTime(lastDetection.timestamp) : "Aucune"}
-                </p>
-                <p className="text-sm text-muted-foreground">Dernière détection</p>
+                <p className="text-2xl font-bold">{formatNumber(avgPercent, 1)}%</p>
+                <p className="text-sm text-muted-foreground">Moyenne pourcentage</p>
               </div>
             </div>
           </CardContent>
@@ -115,7 +142,7 @@ export default function PresencePage() {
       </div>
 
       {/* Chart */}
-      <PresenceChart data={records} />
+      <LightChart data={readings} />
 
       {/* Filters and History */}
       <Card>
@@ -123,7 +150,7 @@ export default function PresencePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-lg">Historique détaillé</CardTitle>
-              <CardDescription>{records.length} enregistrement(s)</CardDescription>
+              <CardDescription>{readings.length} mesure(s)</CardDescription>
             </div>
             <div className="flex gap-2">
               <Input
@@ -149,28 +176,23 @@ export default function PresencePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {records.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Aucun enregistrement</p>
+          {readings.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Aucune mesure</p>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-lg",
-                    record.detected ? "bg-secondary/10" : "bg-muted/50",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn("w-2 h-2 rounded-full", record.detected ? "bg-secondary" : "bg-muted-foreground")}
-                    />
-                    <span className="text-sm font-medium">{record.detected ? "Présence" : "Absence"}</span>
-                    <span className="text-xs text-muted-foreground">RPi #{record.raspberry_pi_id}</span>
+              {readings.map((reading) => (
+                <div key={reading.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Sun className="h-4 w-4 text-warning" />
+                      <span className="font-medium">{formatNumber(reading.lux)} lux</span>
+                    </div>
+                    <span className="text-sm text-muted-foreground">{reading.percentage}%</span>
+                    <span className="text-xs text-muted-foreground">RPi #{reading.raspberry_pi_id}</span>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">{formatRelativeTime(record.timestamp)}</p>
-                    <p className="text-xs text-muted-foreground/60">{formatDate(record.timestamp)}</p>
+                    <p className="text-xs text-muted-foreground">{formatRelativeTime(reading.timestamp)}</p>
+                    <p className="text-xs text-muted-foreground/60">{formatDate(reading.timestamp)}</p>
                   </div>
                 </div>
               ))}

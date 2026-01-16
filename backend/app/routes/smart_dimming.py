@@ -27,7 +27,9 @@ async def get_smart_dimming_status(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Obtient l'état global du système Smart Dimming.
+    Obtient l'état du système Smart Dimming.
+    - Utilisateurs normaux: statistiques de leurs appareils uniquement
+    - Admins: statistiques globales de tous les appareils
     """
     service = SmartDimmingService(db)
     stats = service.get_statistics()
@@ -37,17 +39,30 @@ async def get_smart_dimming_status(
     from app.models import SmartDimmingAdjustment, Device
     
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_count = db.query(SmartDimmingAdjustment).filter(
+    query_adjustments = db.query(SmartDimmingAdjustment).filter(
         SmartDimmingAdjustment.adjusted_at >= today_start
-    ).count()
+    )
     
-    # Obtenir les appareils actifs (dimmables allumés qui ont eu des ajustements récents)
-    # On considère comme "actifs" les appareils dimmables allumés
-    recent_time = datetime.now() - timedelta(hours=2)
-    active_device_ids = db.query(Device.id).filter(
+    # Filtrer par les devices de l'utilisateur si ce n'est pas un admin
+    if current_user.role != "admin":
+        user_device_ids = [d.id for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()]
+        query_adjustments = query_adjustments.filter(
+            SmartDimmingAdjustment.device_id.in_(user_device_ids)
+        )
+    
+    today_count = query_adjustments.count()
+    
+    # Obtenir les appareils actifs (dimmables allumés)
+    query_devices = db.query(Device.id).filter(
         Device.type == "dimmer",
         Device.state == True
-    ).distinct().all()
+    )
+    
+    # Filtrer par les devices de l'utilisateur si ce n'est pas un admin
+    if current_user.role != "admin":
+        query_devices = query_devices.filter(Device.user_id == current_user.id)
+    
+    active_device_ids = query_devices.distinct().all()
     active_devices = [device_id[0] for device_id in active_device_ids]
     
     return {
@@ -66,14 +81,31 @@ async def get_adjustments(
 ):
     """
     Récupère l'historique des ajustements Smart Dimming.
+    - Utilisateurs normaux: uniquement les ajustements de leurs appareils
+    - Admins: tous les ajustements
     """
+    from app.models import Device
+    
+    # Si device_id fourni, vérifier les permissions
+    if device_id:
+        device = db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            raise HTTPException(status_code=404, detail="Device not found")
+        # Vérifier les permissions: les utilisateurs normaux ne peuvent voir que leurs appareils
+        if current_user.role != "admin" and device.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+    
     service = SmartDimmingService(db)
     adjustments = service.get_adjustment_history(device_id=device_id, limit=limit)
+    
+    # Filtrer pour ne garder que les ajustements des devices de l'utilisateur si ce n'est pas un admin
+    if current_user.role != "admin":
+        user_device_ids = {d[0] for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()}
+        adjustments = [adj for adj in adjustments if adj.device_id in user_device_ids]
     
     result = []
     for adj in adjustments:
         # Récupérer le nom de l'appareil
-        from app.models import Device
         device = db.query(Device).filter(Device.id == adj.device_id).first()
         device_name = device.name if device else "Unknown"
         
@@ -131,6 +163,8 @@ async def pause_smart_dimming_for_device(
     
     Utile si l'utilisateur ajuste manuellement l'intensité et veut éviter
     que le système ne la modifie automatiquement.
+    - Utilisateurs normaux: uniquement leurs appareils
+    - Admins: tous les appareils
     """
     from app.models import Device
     from datetime import datetime, timedelta
@@ -138,6 +172,10 @@ async def pause_smart_dimming_for_device(
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Appareil introuvable")
+    
+    # Vérifier les permissions: les utilisateurs normaux ne peuvent modifier que leurs appareils
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
     
     # Pour l'instant, on utilise un champ dans la config ou on pourrait
     # ajouter un champ `smart_dimming_paused_until` dans le modèle Device

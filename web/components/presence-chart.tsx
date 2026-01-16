@@ -18,10 +18,8 @@ export function PresenceChart({ data }: PresenceChartProps) {
     }
 
     data.forEach((record) => {
-      if (record.detected) {
-        const hour = new Date(record.timestamp).getHours()
-        hourCounts[hour]++
-      }
+      const hour = new Date(record.detected_at).getHours()
+      hourCounts[hour]++
     })
 
     return Object.entries(hourCounts).map(([hour, count]) => ({
@@ -34,7 +32,7 @@ export function PresenceChart({ data }: PresenceChartProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Détections par heure</CardTitle>
-        <CardDescription>Répartition des détections de présence sur 24h</CardDescription>
+        <CardDescription>Répartition des détections Bluetooth sur 24h</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
