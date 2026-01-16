@@ -28,6 +28,7 @@ export interface RaspberryPiUpdate {
   name?: string
   location?: string
   ip_address?: string
+  is_online?: boolean
 }
 
 export const raspberryPiService = {
