@@ -46,6 +46,33 @@ async def lifespan(app: FastAPI):
             logger.info("Schéma base de données initialisé")
         except Exception as e:
             logger.warning(f"Impossible d'initialiser le schéma BDD (peut-être déjà créé): {e}")
+        
+        # Créer l'admin par défaut s'il n'existe pas
+        try:
+            from app.database import SessionLocal
+            from app.models import User
+            from app.utils.auth import get_password_hash
+            
+            db = SessionLocal()
+            try:
+                admin_user = db.query(User).filter(User.username == "admin").first()
+                if not admin_user:
+                    hashed_password = get_password_hash("admin123")
+                    admin_user = User(
+                        username="admin",
+                        email=None,
+                        password_hash=hashed_password,
+                        role="admin"
+                    )
+                    db.add(admin_user)
+                    db.commit()
+                    logger.info("Utilisateur admin créé automatiquement (username: admin, password: admin123)")
+                else:
+                    logger.debug("Utilisateur admin existe déjà")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Impossible de créer l'admin par défaut: {e}")
     except Exception as e:
         logger.warning(
             f"Base de données non accessible: {e}\n"
@@ -261,18 +288,6 @@ def health_check():
         "ollama": ollama_status,
         "environment": settings.environment
     }
-
-
-@app.get("/metrics", tags=["Monitoring"])
-def get_metrics():
-    """Retourne les métriques de performance."""
-    try:
-        from app.utils.metrics import get_metrics_collector
-        metrics = get_metrics_collector()
-        return metrics.get_stats()
-    except Exception as e:
-        logger.error(f"Erreur lors de la récupération des métriques: {e}")
-        return {"error": "Impossible de récupérer les métriques"}
 
 
 # Enregistrement des routes
