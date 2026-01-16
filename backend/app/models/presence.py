@@ -35,7 +35,7 @@ class Presence(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    raspberry_pi_id = Column(Integer, ForeignKey("raspberry_pis.id", ondelete="CASCADE"), nullable=False)
+    raspberry_pi_id = Column(Integer, ForeignKey("raspberry_pis.id", ondelete="RESTRICT"), nullable=False)
     detected_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
     
     # Colonnes Bluetooth

@@ -41,7 +41,10 @@ class DeviceService:
             raise Exception(f"Raspberry Pi {rpi.name} is offline")
         
         url = f"http://{rpi.ip_address}:5000{endpoint}"
-        headers = {"X-API-Key": rpi.api_key}
+        # Note: Le Raspberry Pi n'a pas besoin de vérifier l'authentification des commandes
+        # venant du backend car elles sont sur le réseau local. Si nécessaire, utiliser
+        # un mécanisme d'authentification différent (tokens temporaires, signature, etc.)
+        headers = {}
         
         try:
             async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:

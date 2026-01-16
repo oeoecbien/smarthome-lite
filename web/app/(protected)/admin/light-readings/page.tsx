@@ -1,6 +1,10 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,8 +15,21 @@ import { lightReadingService } from "@/lib/services/light-reading-service"
 import { formatRelativeTime, formatDate, formatNumber } from "@/lib/formatters"
 import type { LightReading } from "@/lib/types"
 import { Sun, RefreshCw, AlertCircle, Filter, Gauge } from "lucide-react"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 export default function LightReadingsPage() {
+  const isAdmin = useIsAdmin()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  if (!isAdmin) {
+    return null
+  }
   const [readings, setReadings] = useState<LightReading[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -241,7 +241,7 @@ def generate_api_key() -> str:
         64 caractères hexadécimaux (256 bits d'entropie)
         
     Returns:
-        str: Clé API unique
+        str: Clé API unique (en clair, à hasher avant stockage)
         
     Exemple:
         >>> api_key = generate_api_key()
@@ -254,26 +254,49 @@ def generate_api_key() -> str:
         Utilise secrets.token_hex() qui fait appel au générateur
         cryptographiquement sécurisé du système d'exploitation.
         Ne JAMAIS utiliser random.randint() pour générer des clés.
+        IMPORTANT: Hasher cette clé avec hash_api_key() avant stockage.
     """
     return secrets.token_hex(32)  # 32 bytes = 64 caractères hex
 
 
-def verify_api_key(provided_key: str, stored_key: str) -> bool:
+def hash_api_key(api_key: str) -> str:
     """
-    Vérifie une clé API en comparaison constante en temps.
+    Hache une clé API avec bcrypt (comme les mots de passe).
     
     Args:
-        provided_key (str): Clé fournie dans la requête
-        stored_key (str): Clé stockée en base de données
+        api_key (str): Clé API en clair
         
     Returns:
-        bool: True si les clés correspondent
+        str: Hash bcrypt de la clé API
         
     Sécurité:
-        Utilise secrets.compare_digest() pour éviter les timing attacks.
+        Utilise bcrypt avec 12 rounds pour hasher les API keys.
+        Les API keys ne doivent JAMAIS être stockées en clair.
+    """
+    api_key_bytes = api_key.encode('utf-8')
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    hashed = bcrypt.hashpw(api_key_bytes, salt)
+    return hashed.decode('utf-8')
+
+
+def verify_api_key(provided_key: str, stored_hash: str) -> bool:
+    """
+    Vérifie une clé API en comparant avec le hash stocké.
+    
+    Args:
+        provided_key (str): Clé API fournie dans la requête (en clair)
+        stored_hash (str): Hash bcrypt stocké en base de données
+        
+    Returns:
+        bool: True si la clé correspond au hash
+        
+    Sécurité:
+        Utilise bcrypt.checkpw() qui effectue une comparaison constante en temps.
         Ne JAMAIS comparer avec == ou != directement.
     """
-    return secrets.compare_digest(provided_key, stored_key)
+    provided_bytes = provided_key.encode('utf-8')
+    stored_bytes = stored_hash.encode('utf-8')
+    return bcrypt.checkpw(provided_bytes, stored_bytes)
 
 
 # ========== Fonctions utilitaires pour extraction de données ==========
