@@ -1,27 +1,8 @@
 -- ============================================================================
 -- SmartHome Lite - Script d'Initialisation Base de Données
--- Version finale conforme au document technique
+-- Version sécurisée avec corrections des failles de sécurité
 -- Détection de présence via Bluetooth (remplace PIR)
 -- ============================================================================
-
--- ============================================================================
--- 1. CRÉATION DE LA BASE DE DONNÉES
--- ============================================================================
-
--- Supprimer la base si elle existe déjà (ATTENTION: supprime toutes les données)
-DROP DATABASE IF EXISTS smarthome;
-
--- Créer la base de données avec encodage UTF-8
-CREATE DATABASE smarthome   
-    WITH 
-    OWNER = postgres
-    ENCODING = 'UTF8'
-    LC_COLLATE = 'fr_FR.UTF-8'
-    LC_CTYPE = 'fr_FR.UTF-8'
-    TEMPLATE = template0;
-
--- Se connecter à la base de données
-\c smarthome
 
 -- ============================================================================
 -- 2. CRÉATION DES TABLES
@@ -31,57 +12,70 @@ CREATE DATABASE smarthome
 -- Table: users
 -- Description: Gestion des utilisateurs du système
 -- ----------------------------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL,
+    CONSTRAINT check_password_hash_length CHECK (LENGTH(password_hash) >= 60),
+    CONSTRAINT check_role CHECK (role IN ('user', 'admin'))
 );
 
 -- Index pour recherche rapide par username (connexion fréquente)
-CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE deleted_at IS NULL;
 -- Index pour recherche par rôle
-CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE deleted_at IS NULL;
+-- Index pour soft delete
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE users IS 'Utilisateurs du système SmartHome';
-COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt du mot de passe (12 rounds minimum)';
+COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt du mot de passe (12 rounds minimum, 60+ caractères)';
 COMMENT ON COLUMN users.username IS 'Nom d''utilisateur unique pour connexion';
 COMMENT ON COLUMN users.role IS 'Rôle de l''utilisateur: "user" (par défaut) ou "admin"';
+COMMENT ON COLUMN users.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------
 -- Table: raspberry_pis
 -- Description: Configuration des Raspberry Pi dans le réseau
+-- SÉCURITÉ: API keys hashées avec bcrypt
 -- ----------------------------------------------------------------------------
-CREATE TABLE raspberry_pis (
+CREATE TABLE IF NOT EXISTS raspberry_pis (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     location VARCHAR(100) NOT NULL,
     ip_address VARCHAR(15),
-    api_key VARCHAR(64) UNIQUE NOT NULL,
+    api_key_hash VARCHAR(255) NOT NULL UNIQUE,
     is_online BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL,
+    CONSTRAINT check_ip_format CHECK (ip_address IS NULL OR ip_address ~ '^([0-9]{1,3}\.){3}[0-9]{1,3}$'),
+    CONSTRAINT check_api_key_hash_length CHECK (LENGTH(api_key_hash) >= 60)
 );
 
 -- Index pour recherche par localisation et état
-CREATE INDEX idx_raspberry_pis_location ON raspberry_pis(location);
-CREATE INDEX idx_raspberry_pis_online ON raspberry_pis(is_online);
+CREATE INDEX IF NOT EXISTS idx_raspberry_pis_location ON raspberry_pis(location) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_raspberry_pis_online ON raspberry_pis(is_online) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_raspberry_pis_deleted_at ON raspberry_pis(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE raspberry_pis IS 'Raspberry Pi déployés dans l''habitat';
-COMMENT ON COLUMN raspberry_pis.api_key IS 'Clé d''authentification unique pour communication sécurisée';
+COMMENT ON COLUMN raspberry_pis.api_key_hash IS 'Hash bcrypt de la clé API (12 rounds minimum, jamais stockée en clair)';
 COMMENT ON COLUMN raspberry_pis.is_online IS 'État de connexion (heartbeat toutes les 30s)';
+COMMENT ON COLUMN raspberry_pis.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------
 -- Table: devices
 -- Description: Appareils connectés (lampes, prises, etc.)
+-- SÉCURITÉ: ON DELETE RESTRICT pour éviter perte de données
 -- ----------------------------------------------------------------------------
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE RESTRICT,
     name VARCHAR(100) NOT NULL,
     type VARCHAR(20) NOT NULL,
     state BOOLEAN DEFAULT FALSE NOT NULL,
@@ -89,6 +83,7 @@ CREATE TABLE devices (
     gpio_pin INTEGER NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL,
     CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket')),
     CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 40),
     CONSTRAINT check_brightness_range CHECK (brightness >= 0 AND brightness <= 100),
@@ -96,24 +91,26 @@ CREATE TABLE devices (
 );
 
 -- Index pour requêtes fréquentes (liste par emplacement, par type)
-CREATE INDEX idx_devices_user_id ON devices(user_id);
-CREATE INDEX idx_devices_raspberry_pi ON devices(raspberry_pi_id);
-CREATE INDEX idx_devices_type ON devices(type);
-CREATE INDEX idx_devices_state ON devices(state);
+CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_raspberry_pi ON devices(raspberry_pi_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(type) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_state ON devices(state) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_deleted_at ON devices(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE devices IS 'Appareils électriques contrôlables';
 COMMENT ON COLUMN devices.user_id IS 'Propriétaire de l''appareil (relation avec users)';
 COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO physique sur le Raspberry Pi (unique par RPi)';
 COMMENT ON COLUMN devices.brightness IS 'Intensité lumineuse pour les dimmers (0-100)';
+COMMENT ON COLUMN devices.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------
 -- Table: light_readings
 -- Description: Mesures de luminosité ambiante
--- Nouvelle table pour le Smart Dimming
+-- OPTIMISATION: Préparé pour partitionnement par date
 -- ----------------------------------------------------------------------------
-CREATE TABLE light_readings (
+CREATE TABLE IF NOT EXISTS light_readings (
     id SERIAL PRIMARY KEY,
-    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
+    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE RESTRICT,
     lux_value REAL NOT NULL,
     sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750',
     measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -122,8 +119,10 @@ CREATE TABLE light_readings (
 );
 
 -- Index pour requêtes temporelles (graphiques, tendances)
-CREATE INDEX idx_light_readings_measured_at ON light_readings(measured_at DESC);
-CREATE INDEX idx_light_readings_raspberry_pi ON light_readings(raspberry_pi_id);
+CREATE INDEX IF NOT EXISTS idx_light_readings_measured_at ON light_readings(measured_at DESC);
+CREATE INDEX IF NOT EXISTS idx_light_readings_raspberry_pi ON light_readings(raspberry_pi_id);
+-- Index composite pour requêtes fréquentes
+CREATE INDEX IF NOT EXISTS idx_light_readings_rpi_measured ON light_readings(raspberry_pi_id, measured_at DESC);
 
 COMMENT ON TABLE light_readings IS 'Historique des mesures de luminosité ambiante';
 COMMENT ON COLUMN light_readings.lux_value IS 'Intensité lumineuse en lux (0-65535 pour BH1750)';
@@ -131,33 +130,46 @@ COMMENT ON COLUMN light_readings.lux_value IS 'Intensité lumineuse en lux (0-65
 -- ----------------------------------------------------------------------------
 -- Table: presence
 -- Description: Historique des détections de présence via Bluetooth
+-- SÉCURITÉ: Validation format MAC, déduplication anti-DoS
 -- ----------------------------------------------------------------------------
-CREATE TABLE presence (
+CREATE TABLE IF NOT EXISTS presence (
     id SERIAL PRIMARY KEY,
-    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE CASCADE,
+    raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE RESTRICT,
     detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     device_mac_address VARCHAR(17),
     signal_strength INTEGER,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT check_mac_format CHECK (
+        device_mac_address IS NULL OR 
+        device_mac_address ~ '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'
+    ),
+    CONSTRAINT check_signal_strength CHECK (signal_strength IS NULL OR (signal_strength >= -100 AND signal_strength <= 0))
 );
 
 -- Index pour recherche par date et par Raspberry Pi
-CREATE INDEX idx_presence_detected_at ON presence(detected_at DESC);
-CREATE INDEX idx_presence_raspberry_pi ON presence(raspberry_pi_id);
-CREATE INDEX idx_presence_mac_address ON presence(device_mac_address);
-CREATE INDEX idx_presence_user_id ON presence(user_id);
+CREATE INDEX IF NOT EXISTS idx_presence_detected_at ON presence(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_presence_raspberry_pi ON presence(raspberry_pi_id);
+CREATE INDEX IF NOT EXISTS idx_presence_mac_address ON presence(device_mac_address);
+CREATE INDEX IF NOT EXISTS idx_presence_user_id ON presence(user_id);
+-- Index composite pour requêtes fréquentes
+CREATE INDEX IF NOT EXISTS idx_presence_rpi_detected ON presence(raspberry_pi_id, detected_at DESC);
+-- Index pour déduplication (anti-DoS)
+CREATE INDEX IF NOT EXISTS idx_presence_mac_time ON presence(device_mac_address, detected_at DESC) 
+    WHERE device_mac_address IS NOT NULL;
 
 COMMENT ON TABLE presence IS 'Journal des détections Bluetooth (remplace PIR)';
 COMMENT ON COLUMN presence.device_mac_address IS 'Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF)';
-COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche)';
+COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche, -100 à 0)';
 COMMENT ON COLUMN presence.user_id IS 'ID de l''utilisateur associé (si MAC mappée dans bluetooth_devices)';
 
 -- ----------------------------------------------------------------------------
 -- Table: rules
 -- Description: Règles d'automatisation définies par l'utilisateur
+-- SÉCURITÉ: Ajout user_id pour isolation
 -- ----------------------------------------------------------------------------
-CREATE TABLE rules (
+CREATE TABLE IF NOT EXISTS rules (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     enabled BOOLEAN DEFAULT TRUE NOT NULL,
@@ -166,23 +178,29 @@ CREATE TABLE rules (
     priority INTEGER DEFAULT 5 NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP WITH TIME ZONE NULL,
     CONSTRAINT check_priority_range CHECK (priority >= 1 AND priority <= 10)
 );
 
 -- Index pour recherche des règles actives et tri par priorité
-CREATE INDEX idx_rules_enabled ON rules(enabled);
-CREATE INDEX idx_rules_priority ON rules(priority DESC);
+CREATE INDEX IF NOT EXISTS idx_rules_user_id ON rules(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rules_enabled ON rules(enabled) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rules_priority ON rules(priority DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rules_deleted_at ON rules(deleted_at) WHERE deleted_at IS NOT NULL;
 
 COMMENT ON TABLE rules IS 'Règles d''automatisation (format JSON pour flexibilité)';
+COMMENT ON COLUMN rules.user_id IS 'Propriétaire de la règle';
 COMMENT ON COLUMN rules.condition IS 'Conditions d''activation (JSON: type, value, operators)';
 COMMENT ON COLUMN rules.action IS 'Action à exécuter (JSON: type, device_id, parameters)';
 COMMENT ON COLUMN rules.priority IS '1=basse, 10=haute (ordre d''évaluation)';
+COMMENT ON COLUMN rules.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------
 -- Table: events
 -- Description: Journal des événements système (actions, changements d'état)
+-- OPTIMISATION: Index composite pour requêtes fréquentes
 -- ----------------------------------------------------------------------------
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     id SERIAL PRIMARY KEY,
     device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL,
     event_type VARCHAR(50) NOT NULL,
@@ -193,10 +211,12 @@ CREATE TABLE events (
 );
 
 -- Index pour recherche par device, type et date
-CREATE INDEX idx_events_device_id ON events(device_id);
-CREATE INDEX idx_events_timestamp ON events(timestamp DESC);
-CREATE INDEX idx_events_source ON events(source);
-CREATE INDEX idx_events_event_type ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_events_device_id ON events(device_id);
+CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_events_source ON events(source);
+CREATE INDEX IF NOT EXISTS idx_events_event_type ON events(event_type);
+-- Index composite pour requêtes fréquentes
+CREATE INDEX IF NOT EXISTS idx_events_device_timestamp ON events(device_id, timestamp DESC) WHERE device_id IS NOT NULL;
 
 COMMENT ON TABLE events IS 'Audit trail de toutes les actions système';
 COMMENT ON COLUMN events.source IS 'Origine de l''événement (ajout "smart_dimming")';
@@ -205,7 +225,7 @@ COMMENT ON COLUMN events.source IS 'Origine de l''événement (ajout "smart_dimm
 -- Table: training_data
 -- Description: Données d'entraînement pour l'algorithme de classification IA
 -- ----------------------------------------------------------------------------
-CREATE TABLE training_data (
+CREATE TABLE IF NOT EXISTS training_data (
     id SERIAL PRIMARY KEY,
     hour INTEGER NOT NULL,
     day_of_week INTEGER NOT NULL,
@@ -219,8 +239,8 @@ CREATE TABLE training_data (
 );
 
 -- Index pour analyse de données
-CREATE INDEX idx_training_data_scenario ON training_data(scenario);
-CREATE INDEX idx_training_data_hour ON training_data(hour);
+CREATE INDEX IF NOT EXISTS idx_training_data_scenario ON training_data(scenario);
+CREATE INDEX IF NOT EXISTS idx_training_data_hour ON training_data(hour);
 
 COMMENT ON TABLE training_data IS 'Dataset pour entraînement Decision Tree (4 scénarios)';
 COMMENT ON COLUMN training_data.scenario IS '0=Day, 1=Night, 2=Away, 3=Evening';
@@ -228,11 +248,10 @@ COMMENT ON COLUMN training_data.scenario IS '0=Day, 1=Night, 2=Away, 3=Evening';
 -- ----------------------------------------------------------------------------
 -- Table: smart_dimming_adjustments
 -- Description: Historique des ajustements automatiques d'intensité
--- Nouvelle table pour traçabilité Smart Dimming
 -- ----------------------------------------------------------------------------
-CREATE TABLE smart_dimming_adjustments (
+CREATE TABLE IF NOT EXISTS smart_dimming_adjustments (
     id SERIAL PRIMARY KEY,
-    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE RESTRICT,
     light_reading_id INTEGER REFERENCES light_readings(id) ON DELETE SET NULL,
     scenario INTEGER NOT NULL,
     previous_brightness INTEGER NOT NULL,
@@ -247,9 +266,9 @@ CREATE TABLE smart_dimming_adjustments (
 );
 
 -- Index pour analyse des ajustements
-CREATE INDEX idx_dimming_device ON smart_dimming_adjustments(device_id);
-CREATE INDEX idx_dimming_adjusted_at ON smart_dimming_adjustments(adjusted_at DESC);
-CREATE INDEX idx_dimming_scenario ON smart_dimming_adjustments(scenario);
+CREATE INDEX IF NOT EXISTS idx_dimming_device ON smart_dimming_adjustments(device_id);
+CREATE INDEX IF NOT EXISTS idx_dimming_adjusted_at ON smart_dimming_adjustments(adjusted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dimming_scenario ON smart_dimming_adjustments(scenario);
 
 COMMENT ON TABLE smart_dimming_adjustments IS 'Enregistre chaque ajustement automatique pour analyse';
 COMMENT ON COLUMN smart_dimming_adjustments.reason IS 'Justification textuelle (ex: "High natural light")';
@@ -259,12 +278,11 @@ COMMENT ON COLUMN smart_dimming_adjustments.applied_brightness IS 'Intensité r�
 -- ----------------------------------------------------------------------------
 -- Table: user_preferences
 -- Description: Apprentissage des préférences utilisateur
--- Nouvelle table pour personnalisation future
 -- ----------------------------------------------------------------------------
-CREATE TABLE user_preferences (
+CREATE TABLE IF NOT EXISTS user_preferences (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+    device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE RESTRICT,
     light_level REAL NOT NULL,
     scenario INTEGER NOT NULL,
     auto_brightness INTEGER NOT NULL,
@@ -279,9 +297,9 @@ CREATE TABLE user_preferences (
 );
 
 -- Index pour analyse des préférences
-CREATE INDEX idx_preferences_user ON user_preferences(user_id);
-CREATE INDEX idx_preferences_device ON user_preferences(device_id);
-CREATE INDEX idx_preferences_scenario ON user_preferences(scenario);
+CREATE INDEX IF NOT EXISTS idx_preferences_user ON user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_preferences_device ON user_preferences(device_id);
+CREATE INDEX IF NOT EXISTS idx_preferences_scenario ON user_preferences(scenario);
 
 COMMENT ON TABLE user_preferences IS 'Capture les ajustements manuels pour apprentissage personnalisé';
 COMMENT ON COLUMN user_preferences.auto_brightness IS 'Intensité proposée par le système';
@@ -290,8 +308,9 @@ COMMENT ON COLUMN user_preferences.manual_brightness IS 'Intensité choisie par 
 -- ----------------------------------------------------------------------------
 -- Table: bluetooth_devices
 -- Description: Association entre adresses MAC Bluetooth et utilisateurs
+-- SÉCURITÉ: Validation format MAC
 -- ----------------------------------------------------------------------------
-CREATE TABLE bluetooth_devices (
+CREATE TABLE IF NOT EXISTS bluetooth_devices (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     mac_address VARCHAR(17) NOT NULL UNIQUE,
@@ -299,18 +318,51 @@ CREATE TABLE bluetooth_devices (
     device_type VARCHAR(50),
     is_active BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_bluetooth_mac_format CHECK (
+        mac_address ~ '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'
+    )
 );
 
 -- Index pour bluetooth_devices
-CREATE INDEX idx_bluetooth_devices_user ON bluetooth_devices(user_id);
-CREATE INDEX idx_bluetooth_devices_mac ON bluetooth_devices(mac_address);
-CREATE INDEX idx_bluetooth_devices_active ON bluetooth_devices(is_active);
+CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_user ON bluetooth_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_mac ON bluetooth_devices(mac_address);
+CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_active ON bluetooth_devices(is_active);
 
 COMMENT ON TABLE bluetooth_devices IS 'Association entre adresses MAC Bluetooth et utilisateurs';
 COMMENT ON COLUMN bluetooth_devices.mac_address IS 'Adresse MAC du device (format: AA:BB:CC:DD:EE:FF)';
 COMMENT ON COLUMN bluetooth_devices.device_name IS 'Nom du device (ex: iPhone de Jean, Montre de Marie)';
 COMMENT ON COLUMN bluetooth_devices.device_type IS 'Type de device (phone, watch, headphones, etc.)';
+
+-- ----------------------------------------------------------------------------
+-- Table: audit_log
+-- Description: Journal d'audit pour traçabilité des modifications sensibles
+-- NOUVEAU: Table d'audit pour sécurité
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS audit_log (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    action_type VARCHAR(50) NOT NULL,
+    table_name VARCHAR(50) NOT NULL,
+    record_id INTEGER,
+    old_values JSONB,
+    new_values JSONB,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_action_type CHECK (action_type IN ('INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'FAILED_LOGIN'))
+);
+
+-- Index pour recherche d'audit
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_table_name ON audit_log(table_name);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action_type ON audit_log(action_type);
+
+COMMENT ON TABLE audit_log IS 'Journal d''audit pour traçabilité des actions sensibles';
+COMMENT ON COLUMN audit_log.action_type IS 'Type d''action: INSERT, UPDATE, DELETE, LOGIN, LOGOUT, FAILED_LOGIN';
+COMMENT ON COLUMN audit_log.old_values IS 'Valeurs avant modification (JSON)';
+COMMENT ON COLUMN audit_log.new_values IS 'Valeurs après modification (JSON)';
 
 -- ============================================================================
 -- 3. CRÉATION DES FONCTIONS TRIGGERS
@@ -327,21 +379,135 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION update_updated_at_column() IS 'Trigger générique pour mise à jour automatique de updated_at';
 
+-- Fonction pour journaliser les modifications dans audit_log
+CREATE OR REPLACE FUNCTION log_audit_event()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_user_id INTEGER;
+    v_action VARCHAR(50);
+    v_old_values JSONB;
+    v_new_values JSONB;
+BEGIN
+    -- Déterminer l'action
+    IF TG_OP = 'INSERT' THEN
+        v_action := 'INSERT';
+        v_new_values := to_jsonb(NEW);
+        v_old_values := NULL;
+    ELSIF TG_OP = 'UPDATE' THEN
+        v_action := 'UPDATE';
+        v_old_values := to_jsonb(OLD);
+        v_new_values := to_jsonb(NEW);
+    ELSIF TG_OP = 'DELETE' THEN
+        v_action := 'DELETE';
+        v_old_values := to_jsonb(OLD);
+        v_new_values := NULL;
+    END IF;
+    
+    -- Tables sensibles à auditer
+    IF TG_TABLE_NAME IN ('users', 'raspberry_pis', 'devices', 'rules') THEN
+        -- Récupérer user_id depuis la session si disponible (via current_setting)
+        -- Note: Le backend doit définir current_setting('app.user_id') avant les opérations
+        BEGIN
+            v_user_id := current_setting('app.user_id', true)::INTEGER;
+        EXCEPTION WHEN OTHERS THEN
+            v_user_id := NULL;
+        END;
+        
+        INSERT INTO audit_log (
+            user_id,
+            action_type,
+            table_name,
+            record_id,
+            old_values,
+            new_values
+        ) VALUES (
+            v_user_id,
+            v_action,
+            TG_TABLE_NAME,
+            COALESCE(NEW.id, OLD.id),
+            v_old_values,
+            v_new_values
+        );
+    END IF;
+    
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION log_audit_event() IS 'Trigger pour journaliser les modifications dans audit_log';
+
+-- Fonction pour déduplication des détections de présence (anti-DoS)
+CREATE OR REPLACE FUNCTION prevent_duplicate_presence()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_recent_count INTEGER;
+BEGIN
+    -- Vérifier s'il y a une détection récente (30 secondes) pour la même MAC
+    IF NEW.device_mac_address IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_recent_count
+        FROM presence
+        WHERE device_mac_address = NEW.device_mac_address
+          AND raspberry_pi_id = NEW.raspberry_pi_id
+          AND detected_at > NOW() - INTERVAL '30 seconds';
+        
+        -- Si détection récente, annuler l'insertion
+        IF v_recent_count > 0 THEN
+            RETURN NULL;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION prevent_duplicate_presence() IS 'Empêche les détections de présence dupliquées (anti-DoS)';
+
 -- Appliquer le trigger sur les tables avec updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_raspberry_pis_updated_at ON raspberry_pis;
 CREATE TRIGGER update_raspberry_pis_updated_at BEFORE UPDATE ON raspberry_pis
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_devices_updated_at ON devices;
 CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_rules_updated_at ON rules;
 CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_bluetooth_devices_updated_at ON bluetooth_devices;
 CREATE TRIGGER update_bluetooth_devices_updated_at BEFORE UPDATE ON bluetooth_devices
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Appliquer les triggers d'audit sur les tables sensibles
+DROP TRIGGER IF EXISTS audit_users ON users;
+CREATE TRIGGER audit_users AFTER INSERT OR UPDATE OR DELETE ON users
+    FOR EACH ROW EXECUTE FUNCTION log_audit_event();
+
+DROP TRIGGER IF EXISTS audit_raspberry_pis ON raspberry_pis;
+CREATE TRIGGER audit_raspberry_pis AFTER INSERT OR UPDATE OR DELETE ON raspberry_pis
+    FOR EACH ROW EXECUTE FUNCTION log_audit_event();
+
+DROP TRIGGER IF EXISTS audit_devices ON devices;
+CREATE TRIGGER audit_devices AFTER INSERT OR UPDATE OR DELETE ON devices
+    FOR EACH ROW EXECUTE FUNCTION log_audit_event();
+
+DROP TRIGGER IF EXISTS audit_rules ON rules;
+CREATE TRIGGER audit_rules AFTER INSERT OR UPDATE OR DELETE ON rules
+    FOR EACH ROW EXECUTE FUNCTION log_audit_event();
+
+-- Appliquer le trigger de déduplication sur presence
+DROP TRIGGER IF EXISTS prevent_duplicate_presence_trigger ON presence;
+CREATE TRIGGER prevent_duplicate_presence_trigger BEFORE INSERT ON presence
+    FOR EACH ROW EXECUTE FUNCTION prevent_duplicate_presence();
 
 -- ============================================================================
 -- 4. INSERTION DES DONNÉES DE TEST
@@ -363,7 +529,7 @@ CREATE TRIGGER update_bluetooth_devices_updated_at BEFORE UPDATE ON bluetooth_de
 
 -- Vue: devices_with_location
 -- Affiche les appareils avec leur localisation (via Raspberry Pi)
-CREATE VIEW devices_with_location AS
+CREATE OR REPLACE VIEW devices_with_location AS
 SELECT 
     d.id,
     d.name,
@@ -375,13 +541,14 @@ SELECT
     r.location,
     r.is_online AS raspberry_pi_online
 FROM devices d
-JOIN raspberry_pis r ON d.raspberry_pi_id = r.id;
+JOIN raspberry_pis r ON d.raspberry_pi_id = r.id
+WHERE d.deleted_at IS NULL AND r.deleted_at IS NULL;
 
 COMMENT ON VIEW devices_with_location IS 'Vue simplifiée pour l''affichage dans l''application mobile';
 
 -- Vue: presence_last_24h
 -- Affiche les détections de présence Bluetooth des dernières 24 heures
-CREATE VIEW presence_last_24h AS
+CREATE OR REPLACE VIEW presence_last_24h AS
 SELECT 
     p.id,
     p.detected_at,
@@ -395,13 +562,14 @@ FROM presence p
 JOIN raspberry_pis r ON p.raspberry_pi_id = r.id
 LEFT JOIN users u ON p.user_id = u.id
 WHERE p.detected_at >= NOW() - INTERVAL '24 hours'
+  AND r.deleted_at IS NULL
 ORDER BY p.detected_at DESC;
 
 COMMENT ON VIEW presence_last_24h IS 'Détections Bluetooth des dernières 24h pour dashboard';
 
 -- Vue: recent_events
 -- Affiche les 100 derniers événements avec informations détaillées
-CREATE VIEW recent_events AS
+CREATE OR REPLACE VIEW recent_events AS
 SELECT 
     e.id,
     e.timestamp,
@@ -413,6 +581,7 @@ SELECT
 FROM events e
 LEFT JOIN devices d ON e.device_id = d.id
 LEFT JOIN raspberry_pis r ON d.raspberry_pi_id = r.id
+WHERE d.deleted_at IS NULL OR d.deleted_at IS NULL
 ORDER BY e.timestamp DESC
 LIMIT 100;
 
@@ -420,23 +589,24 @@ COMMENT ON VIEW recent_events IS 'Historique récent avec contexte complet pour 
 
 -- Vue: active_rules
 -- Affiche uniquement les règles actives triées par priorité
-CREATE VIEW active_rules AS
+CREATE OR REPLACE VIEW active_rules AS
 SELECT 
     id,
+    user_id,
     name,
     description,
     condition,
     action,
     priority
 FROM rules
-WHERE enabled = TRUE
+WHERE enabled = TRUE AND deleted_at IS NULL
 ORDER BY priority DESC;
 
 COMMENT ON VIEW active_rules IS 'Règles actives pour évaluation moteur d''automatisation';
 
 -- Vue: light_readings_hourly_avg
 -- Moyenne horaire de luminosité par emplacement (dernières 24h)
-CREATE VIEW light_readings_hourly_avg AS
+CREATE OR REPLACE VIEW light_readings_hourly_avg AS
 SELECT 
     r.location,
     EXTRACT(HOUR FROM l.measured_at) AS hour,
@@ -444,6 +614,7 @@ SELECT
 FROM light_readings l
 JOIN raspberry_pis r ON l.raspberry_pi_id = r.id
 WHERE l.measured_at >= NOW() - INTERVAL '24 hours'
+  AND r.deleted_at IS NULL
 GROUP BY r.location, EXTRACT(HOUR FROM l.measured_at)
 ORDER BY r.location, hour;
 
@@ -451,7 +622,7 @@ COMMENT ON VIEW light_readings_hourly_avg IS 'Tendance luminosité pour graphiqu
 
 -- Vue: smart_dimming_effectiveness
 -- Statistiques d'efficacité du Smart Dimming
-CREATE VIEW smart_dimming_effectiveness AS
+CREATE OR REPLACE VIEW smart_dimming_effectiveness AS
 SELECT 
     d.name AS device_name,
     r.location,
@@ -462,6 +633,7 @@ SELECT
 FROM smart_dimming_adjustments sda
 JOIN devices d ON sda.device_id = d.id
 JOIN raspberry_pis r ON d.raspberry_pi_id = r.id
+WHERE d.deleted_at IS NULL AND r.deleted_at IS NULL
 GROUP BY d.name, r.location;
 
 COMMENT ON VIEW smart_dimming_effectiveness IS 'KPIs Smart Dimming pour monitoring et amélioration';
@@ -496,6 +668,8 @@ BEGIN
     JOIN raspberry_pis r ON d.raspberry_pi_id = r.id
     LEFT JOIN events e ON e.device_id = d.id
     WHERE d.id = device_id_param
+      AND d.deleted_at IS NULL
+      AND r.deleted_at IS NULL
     GROUP BY d.id, d.name, d.type, d.state, d.brightness, r.location, r.is_online;
 END;
 $$ LANGUAGE plpgsql;
@@ -522,6 +696,7 @@ BEGIN
     JOIN raspberry_pis r ON p.raspberry_pi_id = r.id
     WHERE r.location = location_param
         AND p.detected_at BETWEEN start_date AND end_date
+        AND r.deleted_at IS NULL
     GROUP BY EXTRACT(HOUR FROM p.detected_at)
     ORDER BY hour_of_day;
 END;
@@ -590,14 +765,29 @@ COMMENT ON FUNCTION get_learning_dataset(INTEGER) IS 'Dataset pour entraînement
 -- 7. PERMISSIONS ET SÉCURITÉ
 -- ============================================================================
 
--- Créer un utilisateur applicatif avec permissions limitées (optionnel)
--- Décommenter et adapter en production :
+-- Créer un utilisateur applicatif avec permissions limitées (recommandé en production)
+-- Décommenter et adapter selon vos besoins :
 
 -- CREATE USER smarthome_app WITH PASSWORD 'mot_de_passe_fort_genere';
 -- GRANT CONNECT ON DATABASE smarthome TO smarthome_app;
 -- GRANT USAGE ON SCHEMA public TO smarthome_app;
--- GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO smarthome_app;
--- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO smarthome_app;
+-- 
+-- -- Permissions en lecture seule pour analytics
+-- CREATE ROLE smarthome_readonly;
+-- GRANT SELECT ON ALL TABLES IN SCHEMA public TO smarthome_readonly;
+-- GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO smarthome_readonly;
+-- GRANT smarthome_readonly TO smarthome_app;
+-- 
+-- -- Permissions en écriture pour l'API (sans accès direct aux mots de passe)
+-- CREATE ROLE smarthome_api;
+-- GRANT SELECT, INSERT, UPDATE ON devices, events, presence, light_readings, 
+--     smart_dimming_adjustments, user_preferences, training_data TO smarthome_api;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON rules TO smarthome_api;
+-- -- Accès limité à users (pas de SELECT sur password_hash)
+-- GRANT SELECT (id, username, email, role, created_at, updated_at) ON users TO smarthome_api;
+-- GRANT INSERT, UPDATE (username, email, role) ON users TO smarthome_api;
+-- GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO smarthome_api;
+-- GRANT smarthome_api TO smarthome_app;
 
 -- ============================================================================
 -- 8. AFFICHAGE DES STATISTIQUES FINALES
@@ -651,4 +841,6 @@ SELECT 'Données IA', COUNT(*) FROM training_data
 UNION ALL
 SELECT 'Ajustements Smart Dimming', COUNT(*) FROM smart_dimming_adjustments
 UNION ALL
-SELECT 'Devices Bluetooth', COUNT(*) FROM bluetooth_devices;
+SELECT 'Devices Bluetooth', COUNT(*) FROM bluetooth_devices
+UNION ALL
+SELECT 'Audit Log', COUNT(*) FROM audit_log;

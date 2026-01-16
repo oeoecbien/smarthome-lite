@@ -266,19 +266,18 @@ async def verify_raspberry_pi(
         Body:
             {"lux_value": 450.5}
     """
-    # Recherche du Raspberry Pi par clé API
-    rpi = db.query(RaspberryPi).filter(RaspberryPi.api_key == x_api_key).first()
+    # Recherche de tous les Raspberry Pi (on doit vérifier le hash)
+    # Note: On ne peut plus chercher directement par clé car elle est hashée
+    all_rpis = db.query(RaspberryPi).all()
+    
+    rpi = None
+    for candidate_rpi in all_rpis:
+        if verify_api_key(x_api_key, candidate_rpi.api_key_hash):
+            rpi = candidate_rpi
+            break
     
     if not rpi:
         # Message générique pour éviter l'énumération de clés
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Clé API invalide",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
-    
-    # Vérification supplémentaire avec comparaison sécurisée
-    if not verify_api_key(x_api_key, rpi.api_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Clé API invalide",
