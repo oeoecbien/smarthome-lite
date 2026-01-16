@@ -84,6 +84,8 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 ### Implémentées
 
 - **Authentification** : JWT avec tokens d'accès (HS256, expiration 24h) - routes `/api/auth/login`, `/api/auth/register`, `/api/auth/me`
+- **Création automatique d'administrateur** : Création automatique de l'admin par défaut (username: `admin`, password: `admin123`) au démarrage si inexistant
+- **Réinitialisation de mot de passe** : Système de mot de passe oublié sans 2FA - routes `/api/auth/forgot-password` (génération de token) et `/api/auth/reset-password` (réinitialisation avec token valide 1h)
 - **Gestion d'appareils** : CRUD complet et contrôle en temps réel - routes `/api/devices` avec contrôle d'état (`PUT /api/devices/{id}/state`) et intensité (`PUT /api/devices/{id}/brightness`)
 - **Moteur de règles** : Automatisation IF-THEN avec évaluation conditionnelle - routes `/api/rules` (CRUD complet) avec évaluation automatique lors des événements
 - **Smart Dimming** : Ajustement intelligent de l'éclairage basé sur la luminosité ambiante - routes `/api/smart-dimming/status`, `/api/smart-dimming/adjustments`, `/api/smart-dimming/enable`, `/api/smart-dimming/pause/{device_id}`
@@ -102,7 +104,7 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Modèle préférences utilisateur** : Table `user_preferences` créée en base de données pour apprentissage futur (pas encore de route dédiée)
 - **Régression IA** : Prédiction d'intensité lumineuse optimale (Random Forest Regressor) - route `/api/ai/predict-intensity` avec intégration dans smart dimming
 - **Ollama (IA générative)** : Service d'IA générative pour descriptions intelligentes, parsing de règles en langage naturel et recommandations personnalisées - routes `/api/ai/ollama/*`
-- **Monitoring et Observabilité** : Métriques de performance, logs structurés, health checks avancés - routes `/health` et `/metrics`
+- **Monitoring et Observabilité** : Logs structurés, health checks avancés - route `/health`
 - **Sécurité renforcée** : Rate limiting, collecte de métriques, logs détaillés
 - **Tests** : Structure de tests unitaires et d'intégration avec pytest
 
@@ -454,6 +456,13 @@ Une fois le serveur lancé :
 - `POST /api/auth/register` - Création de compte utilisateur
 - `POST /api/auth/login` - Authentification (retourne JWT)
 - `GET /api/auth/me` - Informations utilisateur actuel (requiert JWT)
+- `POST /api/auth/forgot-password` - Demander une réinitialisation de mot de passe
+  - Body: `{ "username_or_email": "nom_utilisateur" }`
+  - Génère un token de réinitialisation valide 1 heure
+  - Retourne le token dans la réponse (pour développement) ou envoie par email (production)
+- `POST /api/auth/reset-password` - Réinitialiser le mot de passe avec un token
+  - Body: `{ "token": "token_reçu", "new_password": "NouveauMotDePasse123" }`
+  - Le nouveau mot de passe doit respecter les règles de validation (min 8 caractères, 1 majuscule, 1 chiffre)
 
 ### Appareils
 
@@ -530,7 +539,6 @@ Une fois le serveur lancé :
 ### Monitoring
 
 - `GET /health` - Vérification de santé (base de données, services IA, Ollama)
-- `GET /metrics` - Métriques de performance (requêtes, erreurs, temps de réponse)
 
 ## Intelligence Artificielle
 
@@ -853,9 +861,16 @@ Le Raspberry Pi envoie des événements au backend :
 ### Monitoring et Observabilité
 
 - **Logs structurés** : Format standardisé avec timestamp, niveau, module, message
-- **Métriques de performance** : Collecte automatique (temps de réponse, taux d'erreur, requêtes par endpoint)
 - **Health checks** : Vérification de l'état des services (base de données, IA, Ollama)
-- **Endpoint `/metrics`** : Retourne les statistiques de performance en temps réel
+
+## Compte Administrateur par Défaut
+
+Au démarrage de l'application, un compte administrateur est automatiquement créé s'il n'existe pas déjà :
+- **Username** : `admin`
+- **Password** : `admin123`
+- **Rôle** : `admin`
+
+**Important** : En production, changez immédiatement le mot de passe de l'administrateur par défaut après le premier démarrage.
 
 ## Déploiement
 

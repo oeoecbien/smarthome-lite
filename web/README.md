@@ -43,6 +43,7 @@ web/
 │   │   ├── ai/                  # Interface IA (scénarios, prédictions)
 │   │   └── admin/              # Interface d'administration
 │   ├── login/                   # Page de connexion
+│   ├── forgot-password/         # Page de réinitialisation de mot de passe
 │   ├── layout.tsx               # Layout racine
 │   ├── page.tsx                 # Page d'accueil
 │   └── globals.css              # Styles globaux
@@ -55,6 +56,9 @@ web/
 │
 ├── lib/                         # Utilitaires et helpers
 │   ├── api.ts                   # Client API (fetch vers backend)
+│   ├── auth-context.tsx         # Contexte d'authentification React
+│   ├── services/                # Services API
+│   │   └── auth-service.ts      # Service d'authentification (login, register, forgot-password, reset-password)
 │   ├── types.ts                 # Types TypeScript
 │   └── utils.ts                 # Fonctions utilitaires
 │
@@ -142,6 +146,12 @@ npm run lint
 ### Authentification
 
 - **Page de connexion** : `/login`
+  - Affichage/masquage du mot de passe avec icône œil
+  - Lien "Mot de passe oublié ?" pour accéder à la réinitialisation
+- **Réinitialisation de mot de passe** : `/forgot-password`
+  - Demande de token de réinitialisation (username ou email)
+  - Réinitialisation avec token et nouveau mot de passe
+  - Affichage/masquage des mots de passe avec icônes œil
 - **Gestion des tokens JWT** : Stockage sécurisé dans le navigateur
 - **Routes protégées** : Toutes les routes sous `(protected)` nécessitent une authentification
 - **Redirection automatique** : Redirection vers `/login` si non authentifié
