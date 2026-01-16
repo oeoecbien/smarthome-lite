@@ -284,6 +284,13 @@ async def verify_raspberry_pi(
             headers={"WWW-Authenticate": "ApiKey"},
         )
     
+    # Mettre à jour automatiquement le statut is_online à True
+    # car si le RPI envoie une requête authentifiée, il est forcément en ligne
+    if not rpi.is_online:
+        rpi.is_online = True
+        db.commit()
+        db.refresh(rpi)
+    
     return rpi
 
 
