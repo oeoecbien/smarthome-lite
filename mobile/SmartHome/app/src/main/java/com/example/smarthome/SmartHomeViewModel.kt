@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
 
@@ -27,18 +28,16 @@ class SmartHomeViewModel : ViewModel() {
     var currentUsername by mutableStateOf("")
         private set
 
+    var currentPassword by mutableStateOf("")
+        private set
 
-    init {
-        // Au démarrage, on tente de se connecter et charger les lampes
-        loadData()
-    }
 
-    fun loadData() {
+    fun loadData(username : String, password : String) {
         viewModelScope.launch {
             try {
                 errorMessage.value = null
 
-                val tokenResponse = RetrofitInstance.api.login(LoginRequest("jean", "Password123"))
+                val tokenResponse = RetrofitInstance.api.login(LoginRequest(username, password))
 
                 val bearerToken = "Bearer ${tokenResponse.access_token}"
 
@@ -103,6 +102,7 @@ class SmartHomeViewModel : ViewModel() {
 
                 // 4. Sauvegarder le nom pour la fonction HomeScreen()
                 currentUsername = username
+                currentPassword = password
 
                 // 5. Si tout est OK, on valide la connexion
                 isLoggedIn = true

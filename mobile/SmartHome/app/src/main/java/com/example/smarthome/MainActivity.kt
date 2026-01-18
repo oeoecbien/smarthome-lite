@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,20 +41,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.tooling.preview.PreviewScreenSizes
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.datastore.core.Storage
 import com.example.smarthome.ui.theme.SmartHomeTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lint.kotlin.metadata.Visibility
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontStyle
+import androidx.core.view.WindowCompat
+
+
+val backgroundColor = Color(0xFF0E1624)
+val cardColor = Color(0xFF1B2433)
+val accentBlue = Color(0xFF2F80FF)
+
+val colorWhite = Color(0xFFFFFFF)
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +91,9 @@ fun SmartHomeApp(viewModel: SmartHomeViewModel) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor),
         navigationSuiteItems = {
             AppDestinations.entries.forEach {
                 item(
@@ -97,8 +105,16 @@ fun SmartHomeApp(viewModel: SmartHomeViewModel) {
             }
         }
     ) {
-        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            Box(modifier = Modifier.padding(innerPadding)) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = backgroundColor
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backgroundColor)
+                    .padding(innerPadding)
+            ) {
                 when (currentDestination) {
                     // On passe le viewModel à HomeScreen pour qu'il affiche les données chargées
                     AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
@@ -127,61 +143,85 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: SmartHomeViewModel = vi
 
     var selectedLampId by remember { mutableStateOf<Int?>(null) }
 
-    Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
-        if (lampId == null) {
-            Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-                Text(
-                    text = "Bonjour ${viewModel.currentUsername},",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor)
+    ) {
+        Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
+            if (lampId == null) {
+                Column(modifier = modifier
+                    .fillMaxSize()
+                    .padding(16.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Bonjour ${viewModel.currentUsername},",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
 
-                // Affichage d'erreur si besoin
-                if (error != null) {
-                    Text(
-                        text = error ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    Button(onClick = { viewModel.loadData() }) {
-                        Text("Réessayer")
+                        Button(
+                            onClick = {
+                                viewModel.loadData(
+                                    viewModel.currentUsername,
+                                    viewModel.currentPassword
+                                )
+                            }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                            )
+                        }
                     }
-                }
 
-                Text(
-                    text = "Appareils détectés (${lamps.size})",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 24.dp)
-                )
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(lamps.size) { index ->
-                        LampCard(
-                            lamp = lamps[index],
-                            onClick = { selectedLampId = lamps[index].id }
+                    // Affichage d'erreur si besoin
+                    if (error != null) {
+                        Text(
+                            text = error ?: "",
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                }
-            }
-        } else {
-            // Vue Détails
-            val activeLamp = lamps.find { it.id == lampId }
-            if (activeLamp != null) {
-                LampControlScreen(
-                    lamp = activeLamp,
-                    onBack = { selectedLampId = null },
-                    onUpdate = { updatedLamp ->
-                        viewModel.updateLamp(updatedLamp)
+
+                    Text(
+                        text = "Appareils détectés (${lamps.size})",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 24.dp)
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(lamps.size) { index ->
+                            LampCard(
+                                lamp = lamps[index],
+                                onClick = { selectedLampId = lamps[index].id }
+                            )
+                        }
                     }
-                )
+                }
+            } else {
+                // Vue Détails
+                val activeLamp = lamps.find { it.id == lampId }
+                if (activeLamp != null) {
+                    LampControlScreen(
+                        lamp = activeLamp,
+                        onBack = { selectedLampId = null },
+                        onUpdate = { updatedLamp ->
+                            viewModel.updateLamp(updatedLamp)
+                        }
+                    )
+                }
             }
         }
     }
+
 }
 
 
@@ -197,7 +237,9 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
@@ -209,7 +251,7 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
             ) {
                 // Utilisation d'une icône standard pour éviter les erreurs de dépendances
                 Icon(
-                    imageVector = Icons.Default.Edit, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
+                    imageVector = Icons.Filled.Lightbulb, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
                     contentDescription = "Lampe",
                     tint = MaterialTheme.colorScheme.onSurface
                 )
@@ -255,7 +297,7 @@ fun LampControlScreen(lamp: SmartLamp, onBack: () -> Unit, onUpdate: (SmartLamp)
         ) {
             // Icône géante représentant la lampe
             Icon(
-                imageVector = Icons.Default.Info, // Remplace par Lightbulb si dispo
+                imageVector = Icons.Filled.Lightbulb,
                 contentDescription = null,
                 modifier = Modifier.size(100.dp),
                 tint = if (lamp.isOn) Color(0xFFFFC107) else Color.Gray // Jaune si allumé
@@ -373,7 +415,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
-                text = "Welcome Home",
+                text = "SmartHome",
                 color = Color.White,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
@@ -382,7 +424,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Sign in to control your smart devices",
+                text = "Connecter vous pour accéder à vos appareils",
                 color = Color(0xFF9AA4B2),
                 fontSize = 14.sp
             )
@@ -433,7 +475,6 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-
             // Message d'erreur (si existe)
             if (error != null) {
                 Text(
@@ -446,7 +487,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
             // Bouton de connexion
             Button(
                 onClick = { viewModel.login(username, password) },
-                enabled = !isLoading, // Désactive le bouton pendant le chargement
+                enabled = !isLoading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -468,21 +509,19 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Forgot Password?",
-                color = Color(0xFF9AA4B2),
-                fontSize = 14.sp
-            )
+            Button(
+                onClick = { /* TODO */ },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent
+                )
 
+            ) {
+                Text(
+                    text = "Mot de passe oublié ?",
+                    fontSize = 14.sp,
+                )
+            }
             Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "Scan Setup Code",
-                color = Color(0xFF9AA4B2),
-                fontSize = 14.sp
-            )
-
-
         }
     }
 }
