@@ -82,6 +82,7 @@ class SmartHomeViewModel : ViewModel() {
         currentList[index] = lamp
         lamps.value = currentList
 
+
         // 2. Logique Debounce
         if (oldLamp.isOn != lamp.isOn) {
             sendUpdateToApi(lamp, oldLamp)
