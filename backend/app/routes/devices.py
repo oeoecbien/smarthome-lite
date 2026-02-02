@@ -2,9 +2,9 @@
 Routes pour la gestion des appareils
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.database import get_db
 from app.models import Device, User
@@ -174,15 +174,32 @@ async def set_device_state(
 @router.put("/{device_id}/brightness")
 async def set_device_brightness(
     device_id: int,
-    brightness_data: DeviceBrightness,
+    brightness_data: Optional[DeviceBrightness] = Body(None),
+    intensity: Optional[float] = Query(None, ge=0, le=100, description="Intensité 0-100 ou 0-1 (sera converti)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Change l'intensité d'un appareil dimmable.
+    Accepte soit un body JSON { "brightness": 0-100, "transition"?: number }
+    soit un paramètre de requête intensity (0-100 ou 0-1).
     - Utilisateurs normaux: uniquement leurs appareils
     - Admins: tous les appareils
     """
+    if brightness_data is not None:
+        brightness = brightness_data.brightness
+        transition = brightness_data.transition
+    elif intensity is not None:
+        # Accepter 0-1 (ex: 0.5) ou 0-100
+        brightness = int(round(intensity * 100)) if intensity <= 1 else int(round(intensity))
+        brightness = max(0, min(100, brightness))
+        transition = None
+    else:
+        raise HTTPException(
+            status_code=422,
+            detail="Fournir soit un body avec 'brightness' (0-100), soit le paramètre de requête 'intensity'."
+        )
+
     device = db.query(Device).filter(Device.id == device_id).first()
     
     if not device:
@@ -197,9 +214,9 @@ async def set_device_brightness(
     try:
         device = await device_service.set_device_brightness(
             device_id,
-            brightness_data.brightness,
+            brightness,
             source="manual",
-            transition=brightness_data.transition
+            transition=transition
         )
         
         return {
