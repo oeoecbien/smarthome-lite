@@ -6,13 +6,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,8 +54,14 @@ import com.example.smarthome.ui.theme.SmartHomeTheme
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.WindowCompat
 
 
@@ -60,6 +70,19 @@ val cardColor = Color(0xFF1B2433)
 val accentBlue = Color(0xFF2F80FF)
 
 val colorWhite = Color(0xFFFFFFF)
+
+val DarkBackground = Color(0xFF10111A)
+val CardBackground = Color(0xFF1E1F2B)
+val PrimaryBlue = Color(0xFF2D60FF)
+val AccentOrange = Color(0xFFFF8B3E)
+val TextWhite = Color(0xFFFFFFFF)
+val TextGray = Color(0xFF88889D)
+
+
+
+val AccentPurple = Color(0xFF9747FF) // Pour l'icône API
+val DangerRed = Color(0xFFFF4C4C)    // Pour le logout
+
 
 
 class MainActivity : ComponentActivity() {
@@ -119,7 +142,12 @@ fun SmartHomeApp(viewModel: SmartHomeViewModel) {
                     // On passe le viewModel à HomeScreen pour qu'il affiche les données chargées
                     AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
                     AppDestinations.FAVORITES -> FavoritesScreen()
-                    AppDestinations.PROFILE -> GreetingName(name = "Profile")
+                    AppDestinations.PROFILE -> ProfileScreen(name = viewModel.currentUsername,
+                        viewModel.currentEmail,
+                        onLogoutClick = {
+                            viewModel.logout()
+                        }
+                    )
                 }
             }
         }
@@ -133,7 +161,7 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
     PROFILE("Profile", Icons.Default.AccountBox),
 }
 
-
+/*
 // Page Home
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier, viewModel: SmartHomeViewModel = viewModel()) {
@@ -224,7 +252,7 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: SmartHomeViewModel = vi
 
 }
 
-
+*/
 @Composable
 fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
     Card(
@@ -348,14 +376,6 @@ fun LampControlScreen(lamp: SmartLamp, onBack: () -> Unit, onUpdate: (SmartLamp)
 }
 
 
-// Reste des fonctions (Greeting, FavoritesScreen) inchangées...
-@Composable
-fun GreetingName(name: String, modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Profil de $name!")
-    }
-}
-
 
 @Composable
 fun FavoritesScreen(modifier: Modifier = Modifier) {
@@ -368,8 +388,8 @@ fun FavoritesScreen(modifier: Modifier = Modifier) {
 @Composable
 fun LoginScreen(viewModel: SmartHomeViewModel) {
     // Variables locales pour les champs de texte
-    var username by remember { mutableStateOf("mehdi") } // Pré-rempli pour tester vite
-    var password by remember { mutableStateOf("Test2005") }
+    var username by remember { mutableStateOf("jean") } // Pré-rempli pour tester vite
+    var password by remember { mutableStateOf("Password123") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val isLoading by viewModel.isLoading
@@ -529,6 +549,219 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
 
 
 @Composable
+fun ProfileScreen(
+    name: String,
+    email: String, // Valeur par défaut ou passée par le VM
+    onLogoutClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(DarkBackground)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // --- 1. Header ---
+        Text(
+            text = "Profile Settings",
+            style = MaterialTheme.typography.titleLarge,
+            color = TextWhite,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+        // --- 2. Avatar Section ---
+        Box(
+            contentAlignment = Alignment.BottomEnd,
+            modifier = Modifier.size(120.dp)
+        ) {
+            // Image de profil (Cercle principal)
+            // Note: Remplace Icons.Default.Person par une vraie image avec painterResource(R.drawable.avatar)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(Color(0xFFE0E0E0)), // Fond gris clair si pas d'image
+                contentAlignment = Alignment.Center
+            ) {
+                // Utilise une image ici si tu as l'asset, sinon icône
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    tint = Color.Gray
+                )
+            }
+
+            // Badge Appareil Photo (Petit rond bleu)
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(PrimaryBlue)
+                    .border(3.dp, DarkBackground, CircleShape) // Bordure pour séparer de l'avatar
+                    .clickable { /* Action changer photo */ },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = "Change photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // --- 3. User Info ---
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = name.ifEmpty { "Utilisateur" },
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextWhite,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.Edit,
+                contentDescription = "Edit name",
+                tint = PrimaryBlue,
+                modifier = Modifier.size(20.dp).clickable { }
+            )
+        }
+
+        Text(
+            text = email,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextGray
+        )
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // --- 4. Settings Menu ---
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+            ProfileMenuItem(
+                icon = Icons.Default.Lock,
+                title = "Account Security",
+                subtitle = "Password, 2FA",
+                iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
+                iconColor = PrimaryBlue
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Default.Notifications,
+                title = "Notification Preferences",
+                subtitle = "Push, Email, SMS",
+                iconBgColor = AccentOrange.copy(alpha = 0.1f),
+                iconColor = AccentOrange
+            )
+
+            ProfileMenuItem(
+                icon = Icons.Default.Code, // Ou Terminal
+                title = "API Configuration",
+                subtitle = "Keys & Webhooks",
+                iconBgColor = AccentPurple.copy(alpha = 0.1f),
+                iconColor = AccentPurple
+            )
+        }
+
+        Spacer(modifier = Modifier.weight(1f)) // Pousse le bouton vers le bas
+
+        // --- 5. Logout Button ---
+        Button(
+            onClick = onLogoutClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = CardBackground, // Fond sombre
+                contentColor = DangerRed       // Texte rouge
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ExitToApp,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Log Out",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        // Espace pour la barre de navigation du bas
+        Spacer(modifier = Modifier.height(20.dp))
+    }
+}
+
+// --- Composant réutilisable pour les lignes de menu ---
+@Composable
+fun ProfileMenuItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    iconBgColor: Color,
+    iconColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(CardBackground)
+            .clickable { }
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Icon Box
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(iconBgColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor
+            )
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        // Texts
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = TextWhite,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp
+            )
+            Text(
+                text = subtitle,
+                color = TextGray,
+                fontSize = 12.sp
+            )
+        }
+
+        // Arrow
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint = TextGray
+        )
+    }
+}
+
+@Composable
 fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFF2979FF),
     unfocusedBorderColor = Color(0xFF2A3245),
@@ -541,4 +774,344 @@ fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     unfocusedLeadingIconColor = Color(0xFF9AA4B2),
     focusedTrailingIconColor = Color(0xFF9AA4B2),
     unfocusedTrailingIconColor = Color(0xFF9AA4B2)
+)
+
+
+
+@Composable
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    viewModel: SmartHomeViewModel = viewModel()
+) {
+    val lamps by viewModel.lamps
+    val error by viewModel.errorMessage
+    var selectedLampId by remember { mutableStateOf<Int?>(null) }
+
+    // Navigation entre Liste et Détail
+    Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
+        if (lampId == null) {
+            // --- VUE PRINCIPALE (Design de l'image) ---
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(DarkBackground) // Fond sombre global
+                    .padding(horizontal = 20.dp)
+            ) {
+                // 1. En-tête (Profil + Notif)
+                HeaderSection(name = "${viewModel.currentUsername},")
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2. Status Chips (3 Lights On, Temp, etc.)
+                StatusChipsSection()
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 3. Section Scènes
+                Text(
+                    text = "Scenes",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                ScenesRow()
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 4. Section Devices (Grille)
+                Text(
+                    text = "My Devices",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Grille intelligente
+                DeviceGrid(
+                    lamps = lamps,
+                    onLampClick = { selectedLampId = it.id },
+                    onToggleLamp = { lamp, newState ->
+                        viewModel.updateLamp(lamp.copy(isOn = newState))
+                    }
+                )
+            }
+        } else {
+            // --- VUE DÉTAIL (Code précédent) ---
+            val activeLamp = lamps.find { it.id == lampId }
+            if (activeLamp != null) {
+                LampControlScreen(
+                    lamp = activeLamp,
+                    onBack = { selectedLampId = null },
+                    onUpdate = { viewModel.updateLamp(it) }
+                )
+            }
+        }
+    }
+}
+
+// --- SOUS-COMPOSANTS ---
+
+@Composable
+fun HeaderSection(name: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Avatar (Placeholder)
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFFCC80)), // Couleur peau
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Person, contentDescription = null, tint = Color.White)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text("Bonjour", color = TextGray, fontSize = 14.sp)
+                Text(name, color = TextWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+        // Cloche Notification
+        IconButton(
+            onClick = {},
+            modifier = Modifier
+                .size(45.dp)
+                .clip(CircleShape)
+                .background(CardBackground)
+        ) {
+            Icon(Icons.Outlined.Notifications, contentDescription = "Alerts", tint = TextWhite)
+        }
+    }
+}
+
+@Composable
+fun StatusChipsSection() {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        item {
+            StatusChip(
+                icon = Icons.Default.Lightbulb,
+                label = "3 Lights On",
+                color = PrimaryBlue, // Bleu actif
+                textColor = Color.White
+            )
+        }
+        item {
+            StatusChip(
+                icon = Icons.Default.Thermostat, // Icône température par défaut
+                label = "21.5°C Avg",
+                color = CardBackground,
+                textColor = TextWhite
+            )
+        }
+        item {
+            StatusChip(
+                icon = Icons.Default.Security,
+                label = "System Safe",
+                color = CardBackground,
+                textColor = TextWhite
+            )
+        }
+    }
+}
+
+@Composable
+fun StatusChip(icon: ImageVector, label: String, color: Color, textColor: Color) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(30.dp))
+            .background(color)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, color = textColor, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun ScenesRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        SceneCard("Home", Icons.Default.Home, PrimaryBlue)
+        SceneCard("Away", Icons.Default.ExitToApp, CardBackground)
+        SceneCard("Movie", Icons.Default.PlayArrow, CardBackground)
+    }
+}
+
+@Composable
+fun SceneCard(name: String, icon: ImageVector, backgroundColor: Color) {
+    Column(
+        modifier = Modifier
+            .width(100.dp)
+            .height(100.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
+            .clickable { },
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, contentDescription = name, tint = TextWhite, modifier = Modifier.size(32.dp))
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(name, color = TextWhite, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+fun DeviceGrid(
+    lamps: List<SmartLamp>,
+    onLampClick: (SmartLamp) -> Unit,
+    onToggleLamp: (SmartLamp, Boolean) -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.height(400.dp) // Hauteur fixe ou weight(1f)
+    ) {
+        // --- LAMPES (Depuis l'API) ---
+        items(lamps.size) { index ->
+            val lamp = lamps[index]
+            DeviceCard(
+                name = lamp.name,
+                status = if (lamp.isOn) "On • ${(lamp.brightness * 100).toInt()}%" else "Off",
+                isOn = lamp.isOn,
+                icon = Icons.Default.Lightbulb, // Tu peux varier selon le nom
+                onClick = { onLampClick(lamp) },
+                onToggle = { onToggleLamp(lamp, it) }
+            )
+        }
+
+        // --- THERMOSTAT (Fictif, prend 2 colonnes) ---
+        item(span = { GridItemSpan(2) }) {
+            ThermostatCard()
+        }
+    }
+}
+
+
+@Composable
+fun DeviceCard(
+    name: String,
+    status: String,
+    isOn: Boolean,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    onToggle: (Boolean) -> Unit
+) {
+    val background = if (isOn) PrimaryBlue.copy(alpha = 0.2f) else CardBackground
+    val iconTint = if (isOn) PrimaryBlue else TextWhite
+
+    // Dégradé bleu subtil si actif
+    val modifierBackground = if (isOn) {
+        Modifier.background(
+            brush = Brush.verticalGradient(
+                colors = listOf(PrimaryBlue.copy(alpha = 0.4f), PrimaryBlue.copy(alpha = 0.1f))
+            )
+        )
+    } else {
+        Modifier.background(CardBackground)
+    }
+
+    Column(
+        modifier = Modifier
+            .aspectRatio(1f) // Carré
+            .clip(RoundedCornerShape(24.dp))
+            .then(modifierBackground)
+            .clickable { onClick() }
+            .padding(16.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Icone dans un cercle
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if(isOn)
+                            TextWhite
+                        else
+                            Color.White.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = if(isOn) PrimaryBlue else TextWhite)
+            }
+
+            // Switch personnalisé
+            Switch(
+                checked = isOn,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = TextWhite,
+                    checkedTrackColor = PrimaryBlue,
+                    uncheckedThumbColor = TextGray,
+                    uncheckedTrackColor = DarkBackground
+                ),
+                modifier = Modifier.scale(0.8f) // Un peu plus petit
+            )
+        }
+
+        Column {
+            Text(name, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(status, color = if(isOn) PrimaryBlue else TextGray, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+fun ThermostatCard() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(CardBackground)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2A2018)), // Fond orange très sombre
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null, tint = AccentOrange)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text("Thermostat", color = TextWhite, fontWeight = FontWeight.Bold)
+                Text("Heating to 23°C", color = TextGray, fontSize = 12.sp)
+            }
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = {}) { Icon(Icons.Default.Remove, null, tint = TextGray) } // Utilise une icône '-'
+            Text("21°", color = TextWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = {}) { Icon(Icons.Default.Add, null, tint = TextWhite) }
+        }
+    }
+}
+
+
+
+// Extension pour le scale du switch
+fun Modifier.scale(scale: Float): Modifier = this.then(
+    androidx.compose.ui.Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
 )

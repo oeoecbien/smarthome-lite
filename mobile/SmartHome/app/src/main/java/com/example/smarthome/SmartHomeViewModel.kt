@@ -6,9 +6,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-
+import kotlinx.coroutines.time.delay
 
 
 class SmartHomeViewModel : ViewModel() {
@@ -31,8 +32,16 @@ class SmartHomeViewModel : ViewModel() {
     var currentPassword by mutableStateOf("")
         private set
 
+    // --- CORRECTION ICI : On déclare le token pour qu'il soit accessible partout ---
+    private var token: String? = null
 
-    fun loadData(username : String, password : String) {
+    private var debounceJob: Job? = null
+
+    var currentEmail by mutableStateOf("")
+        private set
+
+
+    fun loadData(username: String, password: String) {
         viewModelScope.launch {
             try {
                 errorMessage.value = null
@@ -58,18 +67,63 @@ class SmartHomeViewModel : ViewModel() {
             }
 
 
-
         }
     }
+
     // Fonction fictive pour simuler l'update (à connecter à l'API plus tard)
     fun updateLamp(lamp: SmartLamp) {
-        // Ici, il faudra ajouter un appel API @PUT ou @PATCH
-        // Pour l'instant on met à jour localement pour que l'UI réagisse
+        // 1. Optimiste UI Update
         val currentList = lamps.value.toMutableList()
         val index = currentList.indexOfFirst { it.id == lamp.id }
-        if (index != -1) {
-            currentList[index] = lamp
-            lamps.value = currentList
+
+        if (index == -1) return
+
+        val oldLamp = currentList[index]
+        currentList[index] = lamp
+        lamps.value = currentList
+
+        // 2. Logique Debounce
+        if (oldLamp.isOn != lamp.isOn) {
+            sendUpdateToApi(lamp, oldLamp)
+            return
+        }
+
+        if (oldLamp.brightness != lamp.brightness) {
+            debounceJob?.cancel()
+            debounceJob = viewModelScope.launch {
+                delay(500)
+                sendUpdateToApi(lamp, oldLamp)
+            }
+        }
+    }
+
+    // --- 3. FONCTION PRIVÉE POUR L'APPEL API ---
+    // J'ai isolé l'appel API pour ne pas dupliquer le code
+    private fun sendUpdateToApi(newLamp: SmartLamp, oldLamp: SmartLamp) {
+        viewModelScope.launch {
+            try {
+                // Vérification que le token existe
+                if (token == null) return@launch
+
+                // Appel API
+                // Ici token!! fonctionne car on a vérifié qu'il n'est pas null juste avant
+                RetrofitInstance.api.updateBrightness(
+                    token = token!!,
+                    deviceId = newLamp.id,
+                    intensity = newLamp.brightness
+                )
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Rollback en cas d'erreur
+                val currentList = lamps.value.toMutableList()
+                val idx = currentList.indexOfFirst { it.id == newLamp.id }
+                if (idx != -1) {
+                    currentList[idx] = oldLamp
+                    lamps.value = currentList
+                }
+                errorMessage.value = "Erreur synchro : ${e.localizedMessage}"
+            }
         }
     }
 
@@ -77,20 +131,28 @@ class SmartHomeViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 isLoading.value = true
-                errorMessage.value = null // Reset erreur précédente
+                errorMessage.value = null
 
-                // 1. Connexion (Login)
+                // 1. Connexion (POST /api/auth/login)
                 val tokenResponse = RetrofitInstance.api.login(
                     LoginRequest(username, password)
                 )
 
-                val bearerToken = "Bearer ${tokenResponse.access_token}"
+                // Sauvegarde du token
+                token = "Bearer ${tokenResponse.access_token}"
 
-                // 2. Récupération des devices
-                // Note : Assure-toi que le @GET est bien sur "api/devices" ou "devices" selon ton test précédent
-                val apiDevices = RetrofitInstance.api.getDevices(bearerToken)
+                // 2. Récupération des infos utilisateur (GET /api/auth/me)
+                // C'est ici que la magie opère !
+                val userInfo = RetrofitInstance.api.getUserInfo(token!!)
 
-                // 3. Conversion
+                // Mise à jour des variables d'état
+                currentUsername = userInfo.username
+                currentEmail = userInfo.email ?: "Pas d'email" // Gère le null
+
+
+                // 3. Récupération des lampes (GET /api/devices)
+                val apiDevices = RetrofitInstance.api.getDevices(token!!)
+
                 lamps.value = apiDevices.map { device ->
                     SmartLamp(
                         id = device.id,
@@ -100,19 +162,12 @@ class SmartHomeViewModel : ViewModel() {
                     )
                 }
 
-                // 4. Sauvegarder le nom pour la fonction HomeScreen()
-                currentUsername = username
-                currentPassword = password
-
-                // 5. Si tout est OK, on valide la connexion
+                // Tout est chargé, on ouvre l'app
                 isLoggedIn = true
-
-
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Afficher l'erreur à l'utilisateur (ex: 404, mot de passe incorrect...)
-                errorMessage.value = "Échec connexion : ${e.localizedMessage}"
+                errorMessage.value = "Erreur : ${e.localizedMessage}"
                 isLoggedIn = false
             } finally {
                 isLoading.value = false
@@ -120,4 +175,16 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    fun logout() {
+        debounceJob?.cancel()
+
+        // Nettoyage complet
+        token = null
+        currentUsername = ""
+        currentEmail = ""
+        lamps.value = emptyList()
+        errorMessage.value = null
+
+        isLoggedIn = false
+    }
 }
