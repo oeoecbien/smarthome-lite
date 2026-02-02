@@ -39,6 +39,10 @@ class User(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, onupdate=func.now())
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     
+    # Réinitialisation de mot de passe
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(TIMESTAMP(timezone=True), nullable=True)
+    
     # ========== Relations ==========
     devices = relationship(
         "Device",

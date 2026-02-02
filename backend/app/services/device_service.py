@@ -37,9 +37,6 @@ class DeviceService:
         Returns:
             Réponse JSON du Raspberry Pi
         """
-        if not rpi.is_online:
-            raise Exception(f"Raspberry Pi {rpi.name} is offline")
-        
         url = f"http://{rpi.ip_address}:5000{endpoint}"
         # Note: Le Raspberry Pi n'a pas besoin de vérifier l'authentification des commandes
         # venant du backend car elles sont sur le réseau local. Si nécessaire, utiliser
@@ -50,15 +47,37 @@ class DeviceService:
             async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:
                 response = await client.post(url, json=data, headers=headers)
                 response.raise_for_status()
+                
+                # Si la commande réussit, mettre à jour is_online à True
+                if not rpi.is_online:
+                    rpi.is_online = True
+                    self.db.commit()
+                    self.db.refresh(rpi)
+                    logger.info(f"Raspberry Pi {rpi.name} is now online (command succeeded)")
+                
                 return response.json()
         
         except httpx.TimeoutException:
             logger.error(f"Timeout connecting to {rpi.name} at {url}")
+            # Mettre à jour is_online à False si timeout
+            if rpi.is_online:
+                rpi.is_online = False
+                self.db.commit()
+                self.db.refresh(rpi)
             raise Exception(f"Raspberry Pi {rpi.name} not responding")
         
         except httpx.HTTPError as e:
             logger.error(f"HTTP error with {rpi.name}: {e}")
+            # Mettre à jour is_online à False si erreur HTTP
+            if rpi.is_online:
+                rpi.is_online = False
+                self.db.commit()
+                self.db.refresh(rpi)
             raise Exception(f"Communication error with {rpi.name}")
+        
+        except Exception as e:
+            logger.error(f"Unexpected error with {rpi.name}: {e}")
+            raise Exception(f"Error communicating with {rpi.name}")
     
     async def set_device_state(
         self,

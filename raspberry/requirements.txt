@@ -1,0 +1,15 @@
+# Dépendances pour le client Z-Wave et l'API Flask
+
+# Client Socket.IO (Z-Wave JS UI sur port 8091)
+python-socketio[asyncio_client]>=5.10.0
+aiohttp>=3.9.0  # requis par le client Socket.IO asynchrone
+
+# Client HTTP asynchrone (optionnel)
+httpx>=0.24.0
+
+# Framework web Flask
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Logging (inclus dans Python standard, mais utile pour la configuration)
+# Pas besoin d'installation
