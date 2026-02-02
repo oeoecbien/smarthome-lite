@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,7 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { AdminOnly } from "@/components/admin-only"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useRouter } from "next/navigation"
-import { raspberryPiService, type RaspberryPi, type RaspberryPiCreate } from "@/lib/services/raspberry-pi-service"
+import { raspberryPiService, type RaspberryPi, type RaspberryPiCreate, type RaspberryPiUpdate } from "@/lib/services/raspberry-pi-service"
 import { Cpu, Plus, RefreshCw, AlertCircle, Trash2, Edit, Copy, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
@@ -30,6 +31,7 @@ export default function AdminRaspberryPisPage() {
   const [error, setError] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [editingRpi, setEditingRpi] = useState<RaspberryPi | null>(null)
   const [copiedKey, setCopiedKey] = useState<number | null>(null)
 
@@ -38,6 +40,7 @@ export default function AdminRaspberryPisPage() {
     location: "",
     ip_address: "",
   })
+  const [isOnline, setIsOnline] = useState(false)
 
   useEffect(() => {
     if (!isAdmin) {
@@ -71,6 +74,7 @@ export default function AdminRaspberryPisPage() {
       await raspberryPiService.createRaspberryPi(formData)
       setIsDialogOpen(false)
       setFormData({ name: "", location: "", ip_address: "" })
+      setEditingRpi(null)
       fetchRaspberryPis()
       toast({
         title: "Raspberry Pi créé",
@@ -84,6 +88,40 @@ export default function AdminRaspberryPisPage() {
       })
     } finally {
       setIsCreating(false)
+    }
+  }
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingRpi) return
+
+    setIsUpdating(true)
+
+    try {
+      const updateData: RaspberryPiUpdate = {
+        name: formData.name,
+        location: formData.location || undefined,
+        ip_address: formData.ip_address,
+        is_online: isOnline,
+      }
+      await raspberryPiService.updateRaspberryPi(editingRpi.id, updateData)
+      setIsDialogOpen(false)
+      setFormData({ name: "", location: "", ip_address: "" })
+      setIsOnline(false)
+      setEditingRpi(null)
+      fetchRaspberryPis()
+      toast({
+        title: "Raspberry Pi modifié",
+        description: "Le Raspberry Pi a été mis à jour avec succès.",
+      })
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Erreur lors de la modification",
+      })
+    } finally {
+      setIsUpdating(false)
     }
   }
 
@@ -108,19 +146,58 @@ export default function AdminRaspberryPisPage() {
     }
   }
 
-  const handleCopyKey = (apiKey: string, id: number) => {
-    navigator.clipboard.writeText(apiKey)
-    setCopiedKey(id)
-    setTimeout(() => setCopiedKey(null), 2000)
-    toast({
-      title: "Clé API copiée",
-      description: "La clé API a été copiée dans le presse-papiers.",
-    })
+  const handleCopyKey = async (apiKey: string, id: number) => {
+    try {
+      // Vérifier que navigator.clipboard est disponible
+      if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(apiKey)
+        setCopiedKey(id)
+        setTimeout(() => setCopiedKey(null), 2000)
+        toast({
+          title: "Clé API copiée",
+          description: "La clé API a été copiée dans le presse-papiers.",
+        })
+      } else {
+        // Fallback pour les navigateurs qui ne supportent pas clipboard API
+        const textArea = document.createElement("textarea")
+        textArea.value = apiKey
+        textArea.style.position = "fixed"
+        textArea.style.left = "-999999px"
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textArea)
+        setCopiedKey(id)
+        setTimeout(() => setCopiedKey(null), 2000)
+        toast({
+          title: "Clé API copiée",
+          description: "La clé API a été copiée dans le presse-papiers.",
+        })
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de copier la clé API dans le presse-papiers.",
+      })
+    }
   }
 
   const openCreateDialog = () => {
     setEditingRpi(null)
     setFormData({ name: "", location: "", ip_address: "" })
+    setIsOnline(false)
+    setIsDialogOpen(true)
+  }
+
+  const openEditDialog = (rpi: RaspberryPi) => {
+    setEditingRpi(rpi)
+    setFormData({
+      name: rpi.name,
+      location: rpi.location || "",
+      ip_address: rpi.ip_address,
+    })
+    setIsOnline(rpi.is_online)
     setIsDialogOpen(true)
   }
 
@@ -232,7 +309,12 @@ export default function AdminRaspberryPisPage() {
                   </div>
                 </div>
                 <div className="pt-2 border-t flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1" disabled>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1" 
+                    onClick={() => openEditDialog(rpi)}
+                  >
                     <Edit className="h-4 w-4 mr-1" />
                     Modifier
                   </Button>
@@ -251,14 +333,27 @@ export default function AdminRaspberryPisPage() {
         </div>
       )}
 
-      {/* Create Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open)
+        if (!open) {
+          setEditingRpi(null)
+          setFormData({ name: "", location: "", ip_address: "" })
+          setIsOnline(false)
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ajouter un Raspberry Pi</DialogTitle>
-            <DialogDescription>Enregistrez un nouveau Raspberry Pi dans le système</DialogDescription>
+            <DialogTitle>
+              {editingRpi ? "Modifier un Raspberry Pi" : "Ajouter un Raspberry Pi"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingRpi 
+                ? "Modifiez les informations du Raspberry Pi" 
+                : "Enregistrez un nouveau Raspberry Pi dans le système"}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreate}>
+          <form onSubmit={editingRpi ? handleUpdate : handleCreate}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nom</Label>
@@ -289,13 +384,35 @@ export default function AdminRaspberryPisPage() {
                   required
                 />
               </div>
+              {editingRpi && (
+                <div className="flex items-center justify-between space-x-2 py-2">
+                  <Label htmlFor="is_online" className="flex-1">
+                    Statut en ligne
+                  </Label>
+                  <Switch
+                    id="is_online"
+                    checked={isOnline}
+                    onCheckedChange={setIsOnline}
+                  />
+                </div>
+              )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isCreating}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setIsDialogOpen(false)
+                  setEditingRpi(null)
+                  setFormData({ name: "", location: "", ip_address: "" })
+                  setIsOnline(false)
+                }} 
+                disabled={isCreating || isUpdating}
+              >
                 Annuler
               </Button>
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? "Création..." : "Créer"}
+              <Button type="submit" disabled={isCreating || isUpdating}>
+                {isCreating ? "Création..." : isUpdating ? "Modification..." : editingRpi ? "Modifier" : "Créer"}
               </Button>
             </DialogFooter>
           </form>

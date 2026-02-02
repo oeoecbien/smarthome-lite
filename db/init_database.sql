@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL,
+    reset_token VARCHAR(255) NULL,
+    reset_token_expires TIMESTAMP WITH TIME ZONE NULL,
     CONSTRAINT check_password_hash_length CHECK (LENGTH(password_hash) >= 60),
     CONSTRAINT check_role CHECK (role IN ('user', 'admin'))
 );
@@ -31,12 +33,16 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username) WHERE deleted_a
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE deleted_at IS NULL;
 -- Index pour soft delete
 CREATE INDEX IF NOT EXISTS idx_users_deleted_at ON users(deleted_at) WHERE deleted_at IS NOT NULL;
+-- Index pour réinitialisation de mot de passe
+CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL;
 
 COMMENT ON TABLE users IS 'Utilisateurs du système SmartHome';
 COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt du mot de passe (12 rounds minimum, 60+ caractères)';
 COMMENT ON COLUMN users.username IS 'Nom d''utilisateur unique pour connexion';
 COMMENT ON COLUMN users.role IS 'Rôle de l''utilisateur: "user" (par défaut) ou "admin"';
 COMMENT ON COLUMN users.deleted_at IS 'Timestamp de suppression (soft delete)';
+COMMENT ON COLUMN users.reset_token IS 'Token de réinitialisation de mot de passe (généré avec secrets.token_urlsafe)';
+COMMENT ON COLUMN users.reset_token_expires IS 'Date d''expiration du token de réinitialisation (généralement 1 heure après génération)';
 
 -- ----------------------------------------------------------------------------
 -- Table: raspberry_pis
