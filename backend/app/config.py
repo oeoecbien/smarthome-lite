@@ -51,21 +51,18 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True)
     environment: str = Field(default="development")
     
-    # CORS (.env : chaîne séparée par des virgules, ex. http://localhost:3000,http://localhost:5173)
-    cors_origins: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:5173", "http://10.109.150.75:3000"]
+    # CORS : en .env chaîne séparée par des virgules (pas de JSON). Exposé en liste via property.
+    _cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:5173,http://10.109.150.75:3000",
+        alias="cors_origins",
     )
     cors_allow_credentials: bool = Field(default=True)
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: object) -> List[str]:
-        if isinstance(v, list):
-            return v
-        if isinstance(v, str):
-            return [x.strip() for x in v.split(",") if x.strip()]
-        return list(v) if v else []
-    
+    @property
+    def cors_origins(self) -> List[str]:
+        """Liste des origines CORS (chaîne .env découpée sur les virgules)."""
+        return [x.strip() for x in self._cors_origins.split(",") if x.strip()]
+
     # Raspberry Pi
     raspberry_pi_protocol: str = Field(default="http")
     raspberry_pi_port: int = Field(default=5000)
