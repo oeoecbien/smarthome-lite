@@ -2,16 +2,20 @@
 Point d'entrée principal de l'application SmartHome Lite.
 Configure FastAPI, les middlewares, et enregistre toutes les routes.
 """
-from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+import asyncio
 from contextlib import asynccontextmanager
 import logging
 import time
 
+import httpx
+from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+
 from app.config import settings, validate_production_config
-from app.database import engine, Base, init_db
+from app.database import engine, Base, init_db, SessionLocal
+from app.models import RaspberryPi, Device
 
 logging.basicConfig(
     level=settings.log_level,
@@ -95,9 +99,69 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Impossible de charger modèle IA: {e}")
     
     logger.info(f"API accessible sur http://{settings.api_host}:{settings.api_port}")
-    
+
+    # Heartbeat périodique : ping des RPi pour mettre à jour is_online
+    _heartbeat_task = None
+
+    async def _rpi_heartbeat_loop():
+        """Ping périodique des RPi via GET /api/devices/{gpio_pin}/state (comme le backend)."""
+        headers = {}
+        if getattr(settings, "raspberry_pi_api_key", None):
+            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        interval = max(15, getattr(settings, "raspberry_pi_heartbeat_interval", 60))
+        timeout = getattr(settings, "raspberry_pi_timeout", 5)
+        base = f"{settings.raspberry_pi_protocol}://{{ip}}:{settings.raspberry_pi_port}"
+        await asyncio.sleep(3)  # Premier ping 3 s après démarrage
+        while True:
+            try:
+                db = SessionLocal()
+                try:
+                    rpis = db.query(RaspberryPi).all()
+                    for rpi in rpis:
+                        # Utiliser GET /api/devices/{gpio_pin}/state (répond vite, comme les autres GET)
+                        device = db.query(Device).filter(Device.raspberry_pi_id == rpi.id).first()
+                        path = f"/api/devices/{device.gpio_pin}/state" if device else "/"
+                        url = (base.format(ip=rpi.ip_address)) + path
+                        try:
+                            async with httpx.AsyncClient(timeout=timeout) as client:
+                                r = await client.get(url, headers=headers or None)
+                                r.raise_for_status()
+                            if not rpi.is_online:
+                                rpi.is_online = True
+                                db.commit()
+                                db.refresh(rpi)
+                                logger.debug(f"Heartbeat: {rpi.name} is now online")
+                        except Exception as e:
+                            if rpi.is_online:
+                                rpi.is_online = False
+                                db.commit()
+                                db.refresh(rpi)
+                                logger.debug(f"Heartbeat: {rpi.name} offline ({e})")
+                finally:
+                    db.close()
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"Heartbeat RPi error: {e}")
+                await asyncio.sleep(interval)
+
+    try:
+        _heartbeat_task = asyncio.create_task(_rpi_heartbeat_loop())
+        logger.info("Heartbeat RPi démarré (mise à jour is_online)")
+    except Exception as e:
+        logger.warning(f"Impossible de démarrer le heartbeat RPi: {e}")
+
     yield
-    
+
+    if _heartbeat_task and not _heartbeat_task.done():
+        _heartbeat_task.cancel()
+        try:
+            await _heartbeat_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Heartbeat RPi arrêté")
+
     logger.info("Arrêt SmartHome Lite API")
     engine.dispose()
     
