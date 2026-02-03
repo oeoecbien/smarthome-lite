@@ -383,6 +383,10 @@ export default function AdminRaspberryPisPage() {
                   placeholder="192.168.1.100"
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Le backend utilise cette adresse pour vérifier si le RPi est en ligne (ping GET / sur le port 5000). 
+                  Si <em>is_online</em> reste à false, vérifiez que l’IP correspond bien à celle du RPi (ex. 10.109.150.133).
+                </p>
               </div>
               {editingRpi && (
                 <div className="flex items-center justify-between space-x-2 py-2">
