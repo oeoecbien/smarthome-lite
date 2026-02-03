@@ -51,11 +51,20 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True)
     environment: str = Field(default="development")
     
-    # CORS
+    # CORS (.env : chaîne séparée par des virgules, ex. http://localhost:3000,http://localhost:5173)
     cors_origins: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173", "http://10.109.150.75:3000"]
     )
     cors_allow_credentials: bool = Field(default=True)
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> List[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return list(v) if v else []
     
     # Raspberry Pi
     raspberry_pi_protocol: str = Field(default="http")
