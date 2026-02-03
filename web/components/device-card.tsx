@@ -38,7 +38,7 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
     
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, checked ? "ON" : "OFF")
+      await deviceService.updateState(device.id, checked)
       onUpdate()
       toast({
         title: "Appareil mis à jour",

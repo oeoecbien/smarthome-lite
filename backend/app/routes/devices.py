@@ -121,6 +121,38 @@ async def create_device(
     
     return device
 
+@router.get("/{device_id}/state")
+async def get_device_state(
+    device_id: int,
+    sync: bool = Query(False, description="Rafraîchir l'état depuis le RPi (lampe réelle)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    État actuel de l'appareil (state, brightness).
+    - Par défaut : valeur en base (celle du dernier contrôle).
+    - Avec ?sync=true : lecture depuis le RPi puis mise à jour en base (état réel de la lampe).
+    Utilisable par le front mobile pour afficher l'état à jour.
+    """
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if sync:
+        device_service = DeviceService(db)
+        updated = await device_service.sync_device_state_from_rpi(device_id)
+        if updated:
+            device = updated
+    return {
+        "id": device.id,
+        "name": device.name,
+        "state": device.state,
+        "brightness": device.brightness,
+    }
+
+
 @router.put("/{device_id}/state")
 async def set_device_state(
     device_id: int,

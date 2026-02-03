@@ -468,9 +468,10 @@ Une fois le serveur lancé :
 
 - `GET /api/devices` - Liste des appareils (filtres: location, type)
 - `GET /api/devices/{id}` - Détails d'un appareil
+- `GET /api/devices/{id}/state` - État actuel (state, brightness). Option `?sync=true` pour rafraîchir depuis le RPi (état réel de la lampe). **Utilisable par le front mobile.**
 - `POST /api/devices` - Créer un appareil
-- `PUT /api/devices/{id}/state` - Changer état (ON/OFF)
-- `PUT /api/devices/{id}/brightness` - Ajuster intensité (0-100%)
+- `PUT /api/devices/{id}/state` - Changer état (ON/OFF), body: `{"state": true|false, "brightness": 0-100 (optionnel)}`
+- `PUT /api/devices/{id}/brightness` - Ajuster intensité (0-100%), body: `{"brightness": 0-100}` ou query `?intensity=0-100`
 - `DELETE /api/devices/{id}` - Supprimer un appareil
 
 ### Raspberry Pi
@@ -796,14 +797,32 @@ Pour optimiser les requêtes time-series sur `light_readings` :
 SELECT create_hypertable('light_readings', 'measured_at');
 ```
 
+## Chaîne de contrôle : Mobile / Web → Backend → RPi → Lampe
+
+Pour qu’un utilisateur contrôle la lampe depuis son téléphone (ou le web) :
+
+1. **Front (mobile ou web)** : appelle le **backend** avec un JWT (après login).
+2. **Backend** : vérifie l’auth, charge l’appareil et le RPi associé, envoie la commande au **RPi** (IP + port depuis la config).
+3. **RPi** (API Flask Z-Wave, port 5000) : reçoit la commande, parle en WebSocket au **Z-Wave JS** (port 3000) ou Socket.IO (port 8091), qui pilote la **lampe Z-Wave**.
+
+**Endpoints utiles pour le mobile :**
+
+- `POST /api/auth/login` → récupérer le JWT.
+- `GET /api/devices` → liste des appareils de l’utilisateur (avec state, brightness, location, raspberry_pi_online).
+- `GET /api/devices/{id}/state?sync=true` → état réel de la lampe (lecture depuis le RPi).
+- `PUT /api/devices/{id}/state` → allumer/éteindre (body: `{"state": true}` ou `{"state": false}`).
+- `PUT /api/devices/{id}/brightness` → régler l’intensité (body: `{"brightness": 0-100}`).
+
+**Prérequis :** un **Raspberry Pi** enregistré en base (avec l’IP du RPi qui héberge l’API Flask Z-Wave, ex. 10.109.150.133), et un **device** lié à ce RPi avec `gpio_pin` = node_id Z-Wave de la lampe (ex. 3 pour l’ampoule ABUS).
+
 ## Communication avec Raspberry Pi
 
 ### Protocole
 
 - **Protocole** : HTTP/REST
 - **Format** : JSON
-- **Authentification** : API Key (header `X-API-Key`)
-- **Port** : 5000 (Flask API locale sur RPi)
+- **Port** : configurable via `RASPBERRY_PI_PORT` (défaut 5000). URL : `http://<rpi.ip>:<port>`.
+- **Authentification** : optionnelle (header `X-API-Key` si le RPi exige une clé)
 
 ### Commandes Envoyées
 
