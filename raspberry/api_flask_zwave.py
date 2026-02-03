@@ -297,8 +297,11 @@ def _backend_heartbeat_loop():
         return
     url = f"{BACKEND_URL}/api/raspberry-pis/heartbeat"
     interval = max(15, BACKEND_HEARTBEAT_INTERVAL)
+    first_run = True
     while True:
-        time.sleep(interval)
+        if not first_run:
+            time.sleep(interval)
+        first_run = False
         try:
             req = urllib.request.Request(url, method="GET", headers={"X-API-Key": API_KEY})
             urllib.request.urlopen(req, timeout=5)
