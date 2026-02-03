@@ -269,15 +269,19 @@ function DevicesContent() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="gpio">GPIO Pin</Label>
+                      <Label htmlFor="gpio">Broche / Node ID</Label>
                       <Input
                         id="gpio"
                         type="number"
-                        min="0"
+                        min="1"
+                        max="40"
                         value={formData.gpio_pin}
-                        onChange={(e) => setFormData({ ...formData, gpio_pin: Number.parseInt(e.target.value) })}
+                        onChange={(e) => setFormData({ ...formData, gpio_pin: Number.parseInt(e.target.value) || 17 })}
                         required
                       />
+                      <p className="text-xs text-muted-foreground">
+                        Sur un RPi Z-Wave : node_id du nœud (ex. 3 pour une ampoule). Sinon numéro GPIO (1–40).
+                      </p>
                     </div>
                   </div>
 

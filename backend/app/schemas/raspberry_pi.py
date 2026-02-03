@@ -52,7 +52,8 @@ class RaspberryPiUpdate(BaseModel):
     location: Optional[str] = Field(None, min_length=1, max_length=100)
     ip_address: Optional[str] = None
     is_online: Optional[bool] = None
-    
+    api_key: Optional[str] = Field(None, min_length=1, description="Nouvelle clé API (ex. celle du .env du RPi, RASPBERRY_API_KEY)")
+
     @validator("ip_address")
     def validate_ip_address(cls, v):
         """Vérifie le format de l'adresse IPv4."""
