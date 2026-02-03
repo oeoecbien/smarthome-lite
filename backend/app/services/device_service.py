@@ -27,6 +27,13 @@ class DeviceService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _rpi_headers(self) -> dict:
+        """Headers pour les appels au RPi (X-API-Key si configuré)."""
+        headers = dict()
+        if getattr(settings, "raspberry_pi_api_key", None):
+            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        return headers
+
     async def _request_rpi(
         self,
         rpi: RaspberryPi,
@@ -36,8 +43,12 @@ class DeviceService:
     ) -> dict:
         """
         Requête HTTP vers le RPi (GET ou POST). Met à jour is_online selon le résultat.
+        Envoie X-API-Key si RASPBERRY_PI_API_KEY est défini (requis si le RPi exige une clé).
         """
         url = _rpi_base_url(rpi) + endpoint
+        headers = {**self._rpi_headers(), **kwargs.pop("headers", {})}
+        if headers:
+            kwargs["headers"] = headers
         try:
             async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:
                 if method.upper() == "GET":
@@ -58,6 +69,19 @@ class DeviceService:
                 self.db.commit()
                 self.db.refresh(rpi)
             raise Exception(f"Raspberry Pi {rpi.name} not responding")
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            body = (e.response.text or "")[:200]
+            logger.error(f"HTTP error with {rpi.name}: {status} - {body}")
+            if rpi.is_online:
+                rpi.is_online = False
+                self.db.commit()
+                self.db.refresh(rpi)
+            if status == 401:
+                raise Exception(
+                    f"Communication error with {rpi.name}: invalid or missing API key (configure RASPBERRY_PI_API_KEY in backend .env)"
+                )
+            raise Exception(f"Communication error with {rpi.name} (HTTP {status})")
         except httpx.HTTPError as e:
             logger.error(f"HTTP error with {rpi.name}: {e}")
             if rpi.is_online:

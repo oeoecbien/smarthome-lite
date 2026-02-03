@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     raspberry_pi_timeout: int = Field(default=5)
     raspberry_pi_heartbeat_interval: int = Field(default=60)
     raspberry_pi_offline_threshold: int = Field(default=180)
+    # Clé API envoyée au RPi (X-API-Key). À définir si le RPi exige RASPBERRY_API_KEY.
+    raspberry_pi_api_key: Optional[str] = Field(default=None, description="Clé API pour appels backend → RPi")
     
     # Machine Learning
     ml_model_path: str = Field(default="ml/models/scenario_classifier.pkl")
