@@ -91,7 +91,23 @@ python api_flask_zwave.py
 En production :  
 `gunicorn -w 1 -b 0.0.0.0:5000 api_flask_zwave:app`
 
-### 5. Vérifications
+### 5. Heartbeat (RPi « en ligne » dans l’interface)
+
+Pour que le backend marque le RPi comme **en ligne** et que l’interface affiche le statut :
+
+- Dans `sae_s5/.env` sur le RPi (ou partagé) : `BACKEND_URL=http://<ip-backend>:8000` et `RASPBERRY_API_KEY=<clé>`.
+- La clé doit correspondre à celle enregistrée pour ce RPi dans l’admin (ou à `RASPBERRY_PI_API_KEY` du backend si une clé globale est utilisée).
+- Au démarrage, l’API Flask envoie périodiquement `GET {BACKEND_URL}/api/raspberry-pis/heartbeat` avec le header `X-API-Key`. Le backend met alors à jour l’IP du RPi et `is_online = true`.
+
+### 6. Contrôle depuis l’interface web
+
+1. **Admin** enregistre le RPi (Admin → Raspberry Pis) puis les utilisateurs voient la liste dans « Ajouter un appareil ».
+2. **Utilisateur** va sur **Appareils** → **Nouvel appareil** : choisit le RPi, saisit le **node_id Z-Wave** dans le champ « GPIO Pin », nom et type, puis crée.
+3. Les cartes appareil permettent d’**allumer/éteindre** (switch) et de régler l’**intensité** (slider). Les commandes passent par le backend qui appelle `http://<rpi.ip>:5000/api/devices/<node_id>/state` ou `/brightness`.
+
+Si le RPi est hors ligne, l’interface affiche une erreur explicite et peut afficher le statut « RPi hors ligne » sur la carte.
+
+### 7. Vérifications
 
 - Backend : `http://<backend>:8000/docs` → tester `PUT /api/devices/{id}/state` et `PUT /api/devices/{id}/brightness`.
 - RPi : `curl http://<rpi.ip>:5000/health` → `{"status":"ok", "zwave_js_ui_url":"http://localhost:8091"}`.
