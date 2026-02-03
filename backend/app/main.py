@@ -131,8 +131,11 @@ async def lifespan(app: FastAPI):
                         except Exception as e:
                             # Ne pas passer is_online à False ici : le RPi peut être joignable
                             # via son heartbeat (GET /api/raspberry-pis/heartbeat) alors que le
-                            # ping GET / depuis le backend échoue (réseau, firewall, etc.).
-                            logger.debug(f"Raspberry Pi {rpi.name} ping échoué (non mis hors ligne): {e}")
+                            # ping GET / depuis le backend échoue (réseau, firewall, IP incorrecte, etc.).
+                            logger.info(
+                                "Raspberry Pi %s ping échoué (URL: %s) — vérifier l'IP en base ou que le RPi appelle /api/raspberry-pis/heartbeat: %s",
+                                rpi.name, url, e,
+                            )
                 finally:
                     db.close()
                 await asyncio.sleep(interval)
