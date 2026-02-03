@@ -2,7 +2,7 @@
 Routes pour la gestion des Raspberry Pi.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import func
@@ -14,10 +14,42 @@ from app.schemas.raspberry_pi import (
     RaspberryPiUpdate,
     RaspberryPiResponse
 )
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_user, require_admin, verify_raspberry_pi
 from app.utils.auth import generate_api_key, hash_api_key
 
 router = APIRouter()
+
+
+def _client_ip(request: Request) -> str | None:
+    """IP du client (prise en compte X-Forwarded-For si proxy)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or None
+    if request.client:
+        return request.client.host
+    return None
+
+
+@router.get("/heartbeat", status_code=204)
+async def raspberry_pi_heartbeat(
+    request: Request,
+    db: Session = Depends(get_db),
+    rpi: RaspberryPi = Depends(verify_raspberry_pi),
+):
+    """
+    Appelé périodiquement par le RPi (avec X-API-Key) pour signaler qu'il est en ligne.
+    Met à jour is_online = True pour ce RPi. Si l'IP réelle du client diffère de celle
+    en base, met à jour ip_address pour que les prochains pings backend ciblent la bonne machine.
+    Retourne 204 No Content.
+    """
+    # Mise à jour de l'IP si le RPi appelle depuis une adresse différente (ex. typo 10.103 vs 10.109)
+    client_ip = _client_ip(request)
+    if client_ip and client_ip != rpi.ip_address:
+        pi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi.id).first()
+        if pi:
+            pi.ip_address = client_ip
+            db.commit()
+    return None
 
 
 @router.get("/available", response_model=List[dict])
@@ -191,6 +223,8 @@ async def update_raspberry_pi(
         rpi.ip_address = rpi_data.ip_address
     if rpi_data.is_online is not None:
         rpi.is_online = rpi_data.is_online
+    if rpi_data.api_key is not None and rpi_data.api_key.strip():
+        rpi.api_key_hash = hash_api_key(rpi_data.api_key.strip())
     
     db.commit()
     db.refresh(rpi)

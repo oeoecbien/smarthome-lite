@@ -1,5 +1,6 @@
 """
-Service de gestion des appareils
+Service de gestion des appareils.
+Chaîne : Front (web/mobile) → Backend (auth) → RPi (API Flask :5000) → Lampe Z-Wave.
 """
 
 import logging
@@ -12,72 +13,127 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def _rpi_base_url(rpi: RaspberryPi) -> str:
+    """URL de base de l'API Flask sur le RPi (port depuis config)."""
+    return f"{settings.raspberry_pi_protocol}://{rpi.ip_address}:{settings.raspberry_pi_port}"
+
+
 class DeviceService:
     """
-    Service pour contrôler les appareils via Raspberry Pi
+    Service pour contrôler les appareils via Raspberry Pi (API Flask Z-Wave sur le RPi).
     """
-    
+
     def __init__(self, db: Session):
         self.db = db
-    
-    async def send_command_to_rpi(
+
+    def _rpi_headers(self) -> dict:
+        """Headers pour les appels au RPi (X-API-Key si configuré)."""
+        headers = dict()
+        if getattr(settings, "raspberry_pi_api_key", None):
+            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        return headers
+
+    async def _request_rpi(
         self,
         rpi: RaspberryPi,
+        method: str,
         endpoint: str,
-        data: dict
+        **kwargs,
     ) -> dict:
         """
-        Envoie une commande HTTP au Raspberry Pi
-        
-        Args:
-            rpi: Instance RaspberryPi
-            endpoint: Endpoint de l'API Flask (ex: "/api/devices/1/state")
-            data: Données JSON à envoyer
-        
-        Returns:
-            Réponse JSON du Raspberry Pi
+        Requête HTTP vers le RPi (GET ou POST). Met à jour is_online selon le résultat.
+        Envoie X-API-Key si RASPBERRY_PI_API_KEY est défini (requis si le RPi exige une clé).
         """
-        url = f"http://{rpi.ip_address}:5000{endpoint}"
-        # Note: Le Raspberry Pi n'a pas besoin de vérifier l'authentification des commandes
-        # venant du backend car elles sont sur le réseau local. Si nécessaire, utiliser
-        # un mécanisme d'authentification différent (tokens temporaires, signature, etc.)
-        headers = {}
-        
+        url = _rpi_base_url(rpi) + endpoint
+        headers = {**self._rpi_headers(), **kwargs.pop("headers", {})}
+        if headers:
+            kwargs["headers"] = headers
         try:
             async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:
-                response = await client.post(url, json=data, headers=headers)
+                if method.upper() == "GET":
+                    response = await client.get(url, **kwargs)
+                else:
+                    response = await client.post(url, **kwargs)
                 response.raise_for_status()
-                
-                # Si la commande réussit, mettre à jour is_online à True
                 if not rpi.is_online:
                     rpi.is_online = True
                     self.db.commit()
                     self.db.refresh(rpi)
-                    logger.info(f"Raspberry Pi {rpi.name} is now online (command succeeded)")
-                
+                    logger.info(f"Raspberry Pi {rpi.name} is now online")
                 return response.json()
-        
         except httpx.TimeoutException:
             logger.error(f"Timeout connecting to {rpi.name} at {url}")
-            # Mettre à jour is_online à False si timeout
             if rpi.is_online:
                 rpi.is_online = False
                 self.db.commit()
                 self.db.refresh(rpi)
             raise Exception(f"Raspberry Pi {rpi.name} not responding")
-        
+        except httpx.HTTPStatusError as e:
+            status = e.response.status_code
+            body = (e.response.text or "")[:200]
+            logger.error(f"HTTP error with {rpi.name}: {status} - {body}")
+            if rpi.is_online:
+                rpi.is_online = False
+                self.db.commit()
+                self.db.refresh(rpi)
+            if status == 401:
+                raise Exception(
+                    f"Communication error with {rpi.name}: invalid or missing API key (configure RASPBERRY_PI_API_KEY in backend .env)"
+                )
+            raise Exception(f"Communication error with {rpi.name} (HTTP {status})")
         except httpx.HTTPError as e:
             logger.error(f"HTTP error with {rpi.name}: {e}")
-            # Mettre à jour is_online à False si erreur HTTP
             if rpi.is_online:
                 rpi.is_online = False
                 self.db.commit()
                 self.db.refresh(rpi)
             raise Exception(f"Communication error with {rpi.name}")
-        
+
+    async def send_command_to_rpi(
+        self,
+        rpi: RaspberryPi,
+        endpoint: str,
+        data: dict,
+    ) -> dict:
+        """Envoie une commande POST au RPi (ex: state, brightness)."""
+        return await self._request_rpi(rpi, "POST", endpoint, json=data)
+
+    async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
+        """
+        Récupère l'état réel depuis le RPi (GET /api/devices/{gpio_pin}/state).
+        Retourne {"state": bool, "brightness": int} ou None en cas d'erreur.
+        """
+        rpi = device.raspberry_pi
+        endpoint = f"/api/devices/{device.gpio_pin}/state"
+        try:
+            data = await self._request_rpi(rpi, "GET", endpoint)
+            if isinstance(data, dict) and "state" in data:
+                return {
+                    "state": bool(data.get("state", False)),
+                    "brightness": int(data.get("brightness", 0)),
+                }
+            return None
         except Exception as e:
-            logger.error(f"Unexpected error with {rpi.name}: {e}")
-            raise Exception(f"Error communicating with {rpi.name}")
+            logger.debug("get_state_from_rpi device %s: %s", device.id, e)
+            return None
+
+    async def sync_device_state_from_rpi(self, device_id: int) -> Optional[Device]:
+        """
+        Met à jour l'appareil en base avec l'état lu depuis le RPi.
+        Retourne le device rafraîchi ou None si la lecture RPi échoue.
+        """
+        device = self.db.query(Device).filter(Device.id == device_id).first()
+        if not device:
+            return None
+        state_data = await self.get_state_from_rpi(device)
+        if state_data is None:
+            return None
+        device.state = state_data["state"]
+        device.brightness = state_data["brightness"]
+        self.db.commit()
+        self.db.refresh(device)
+        return device
     
     async def set_device_state(
         self,

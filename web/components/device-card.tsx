@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
-import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
@@ -25,12 +25,14 @@ const deviceIcons = {
 
 export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 100)
   const [isDragging, setIsDragging] = useState(false)
 
   const Icon = deviceIcons[device.type] || Lightbulb
-  const isOn = device.state === "ON"
+  const isOn = device.state === true || device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
+  const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
     // Ne pas permettre le changement si déjà en cours de mise à jour
@@ -38,7 +40,7 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
     
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, checked ? "ON" : "OFF")
+      await deviceService.updateState(device.id, checked)
       onUpdate()
       toast({
         title: "Appareil mis à jour",
@@ -69,6 +71,21 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
       onUpdate()
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handleSyncFromRpi = async () => {
+    if (isSyncing) return
+    setIsSyncing(true)
+    try {
+      await deviceService.getDeviceState(device.id, true)
+      onUpdate()
+      toast({ title: "État synchronisé", description: `État de ${device.name} rafraîchi depuis le RPi.` })
+    } catch {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire l'état depuis le RPi." })
+      onUpdate()
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -163,8 +180,19 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
             </div>
           </div>
 
-          {/* Toggle and Delete */}
+          {/* Toggle, Sync, Delete */}
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={handleSyncFromRpi}
+              disabled={isSyncing}
+              title="Synchroniser l'état depuis le RPi"
+              aria-label="Synchroniser état RPi"
+            >
+              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
             {isUpdating ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
@@ -210,9 +238,15 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
         )}
 
         {/* Device Details */}
-        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
           <span>RPi #{device.raspberry_pi_id}</span>
           <span>GPIO {device.gpio_pin}</span>
+          {rpiOnline !== undefined && (
+            <span className={cn("flex items-center gap-1", rpiOnline ? "text-green-600" : "")} title={rpiOnline ? "Raspberry Pi en ligne" : "Raspberry Pi hors ligne"}>
+              {rpiOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              {rpiOnline ? "En ligne" : "Hors ligne"}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
