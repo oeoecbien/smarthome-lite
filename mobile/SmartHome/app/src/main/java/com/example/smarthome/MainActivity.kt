@@ -156,9 +156,9 @@ fun SmartHomeApp(viewModel: SmartHomeViewModel) {
 
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
-    HOME("Home", Icons.Default.Home),
-    FAVORITES("Favorites", Icons.Default.Favorite),
-    PROFILE("Profile", Icons.Default.AccountBox),
+    HOME("Accueil", Icons.Default.Home),
+    FAVORITES("Favoris", Icons.Default.Favorite),
+    PROFILE("Profil", Icons.Default.AccountBox),
 }
 
 /*
@@ -564,7 +564,7 @@ fun ProfileScreen(
     ) {
         // --- 1. Header ---
         Text(
-            text = "Profile Settings",
+            text = "Profil",
             style = MaterialTheme.typography.titleLarge,
             color = TextWhite,
             fontWeight = FontWeight.Bold,
