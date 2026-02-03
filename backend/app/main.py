@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings, validate_production_config
 from app.database import engine, Base, init_db, SessionLocal
-from app.models import RaspberryPi, Device
+from app.models import RaspberryPi
 
 logging.basicConfig(
     level=settings.log_level,
@@ -104,13 +104,12 @@ async def lifespan(app: FastAPI):
     _heartbeat_task = None
 
     async def _rpi_heartbeat_loop():
-        """Ping périodique des RPi via GET /api/devices/{gpio_pin}/state (comme le backend)."""
+        """Ping périodique des RPi via GET / : si la RPi répond → is_online = True."""
         headers = {}
         if getattr(settings, "raspberry_pi_api_key", None):
             headers["X-API-Key"] = settings.raspberry_pi_api_key
         interval = max(15, getattr(settings, "raspberry_pi_heartbeat_interval", 60))
         timeout = getattr(settings, "raspberry_pi_timeout", 5)
-        base = f"{settings.raspberry_pi_protocol}://{{ip}}:{settings.raspberry_pi_port}"
         await asyncio.sleep(3)  # Premier ping 3 s après démarrage
         while True:
             try:
@@ -118,25 +117,24 @@ async def lifespan(app: FastAPI):
                 try:
                     rpis = db.query(RaspberryPi).all()
                     for rpi in rpis:
-                        # Utiliser GET /api/devices/{gpio_pin}/state (répond vite, comme les autres GET)
-                        device = db.query(Device).filter(Device.raspberry_pi_id == rpi.id).first()
-                        path = f"/api/devices/{device.gpio_pin}/state" if device else "/"
-                        url = (base.format(ip=rpi.ip_address)) + path
+                        url = f"{settings.raspberry_pi_protocol}://{rpi.ip_address}:{settings.raspberry_pi_port}/"
                         try:
                             async with httpx.AsyncClient(timeout=timeout) as client:
                                 r = await client.get(url, headers=headers or None)
                                 r.raise_for_status()
+                            # RPi présente et répond → en ligne
                             if not rpi.is_online:
                                 rpi.is_online = True
                                 db.commit()
                                 db.refresh(rpi)
-                                logger.debug(f"Heartbeat: {rpi.name} is now online")
+                                logger.info(f"Raspberry Pi {rpi.name} is now online (GET / OK)")
                         except Exception as e:
+                            # Pas de réponse ou erreur HTTP → hors ligne
                             if rpi.is_online:
                                 rpi.is_online = False
                                 db.commit()
                                 db.refresh(rpi)
-                                logger.debug(f"Heartbeat: {rpi.name} offline ({e})")
+                                logger.debug(f"Raspberry Pi {rpi.name} offline: {e}")
                 finally:
                     db.close()
                 await asyncio.sleep(interval)

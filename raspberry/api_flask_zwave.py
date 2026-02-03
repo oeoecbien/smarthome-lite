@@ -26,7 +26,16 @@ except ImportError:
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from config import ZWAVE_JS_UI_URL, ZWAVE_JS_WS_URL, API_HOST, API_PORT, API_KEY, DEBUG
+from config import (
+    ZWAVE_JS_UI_URL,
+    ZWAVE_JS_WS_URL,
+    API_HOST,
+    API_PORT,
+    API_KEY,
+    DEBUG,
+    BACKEND_URL,
+    BACKEND_HEARTBEAT_INTERVAL,
+)
 from zwave_client import ZWaveClient
 
 # URL WebSocket Socket.IO (celle utilisée par le client Z-Wave, ex. ws://localhost:8091/socket.io/)
@@ -278,7 +287,34 @@ def interview_node(node_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _backend_heartbeat_loop():
+    """Appelle périodiquement le backend pour signaler que le RPi est en ligne (is_online = True)."""
+    import time
+    import urllib.request
+    import urllib.error
+    if not BACKEND_URL or not API_KEY:
+        logger.debug("Backend heartbeat désactivé (BACKEND_URL ou RASPBERRY_API_KEY manquant)")
+        return
+    url = f"{BACKEND_URL}/api/raspberry-pis/heartbeat"
+    interval = max(15, BACKEND_HEARTBEAT_INTERVAL)
+    while True:
+        time.sleep(interval)
+        try:
+            req = urllib.request.Request(url, method="GET", headers={"X-API-Key": API_KEY})
+            urllib.request.urlopen(req, timeout=5)
+            logger.debug("Backend heartbeat OK")
+        except urllib.error.HTTPError as e:
+            logger.debug("Backend heartbeat HTTP %s: %s", e.code, e.reason)
+        except Exception as e:
+            logger.debug("Backend heartbeat: %s", e)
+
+
 if __name__ == "__main__":
+    import threading
+    if BACKEND_URL and API_KEY:
+        _heartbeat = threading.Thread(target=_backend_heartbeat_loop, daemon=True)
+        _heartbeat.start()
+        logger.info("Heartbeat backend démarré (GET %s toutes les %ss)", f"{BACKEND_URL}/api/raspberry-pis/heartbeat", BACKEND_HEARTBEAT_INTERVAL)
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)

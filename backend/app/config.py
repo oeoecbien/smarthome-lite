@@ -1,22 +1,30 @@
 """
-Configuration centralisée de l'application SmartHome Lite.
+Configuration centralisée de l'application SmartHome Lite (Backend).
+Charge le .env à la racine du projet (sae_s5/.env) si présent, sinon backend/.env.
+Variables utilisées : API_HOST, API_PORT (serveur), DATABASE_*, RASPBERRY_PI_*, etc.
 """
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, field_validator
+from pathlib import Path
 from typing import Optional, List
 import secrets
 
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Fichier .env : priorité à la racine du projet (sae_s5/.env) pour partage avec le RPi
+_env_root = Path(__file__).resolve().parent.parent.parent / ".env"
+_env_file = str(_env_root) if _env_root.exists() else ".env"
+
 
 class Settings(BaseSettings):
-    """Configuration de l'application."""
-    
+    """Configuration du backend (serveur FastAPI)."""
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_env_file,
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
     )
-    
+
     # Base de données
     database_url: str = Field(
         default="postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome"
@@ -37,9 +45,9 @@ class Settings(BaseSettings):
     algorithm: str = Field(default="HS256")
     access_token_expire_minutes: int = Field(default=1440)
     
-    # Serveur
-    api_host: str = Field(default="0.0.0.0")
-    api_port: int = Field(default=8000)
+    # Serveur (bind FastAPI) — .env : API_HOST, API_PORT (pas ZWAVE_* qui est pour le RPi)
+    api_host: str = Field(default="0.0.0.0", description="Interface d'écoute du backend (0.0.0.0 = toutes)")
+    api_port: int = Field(default=8000, description="Port du backend (ex: 8000)")
     debug: bool = Field(default=True)
     environment: str = Field(default="development")
     

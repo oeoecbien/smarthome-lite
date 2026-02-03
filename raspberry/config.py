@@ -1,7 +1,10 @@
 """
-Configuration de l'API Raspberry Z-Wave.
-Lit les variables depuis os.environ (chargé depuis sae_s5/.env à la racine du projet).
-Noms préfixés ZWAVE_* pour ne pas conflit avec le backend (API_PORT, etc.).
+Configuration de l'API Raspberry Z-Wave (serveur Flask sur le RPi).
+
+Lit les variables depuis os.environ (chargé depuis sae_s5/.env à la racine).
+Ne pas utiliser API_HOST / API_PORT du .env : ce sont les variables du backend (FastAPI).
+Sur le RPi on utilise uniquement : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_*,
+BACKEND_URL, RASPBERRY_API_KEY, BACKEND_HEARTBEAT_INTERVAL, ZWAVE_DEBUG.
 """
 import os
 
@@ -25,12 +28,17 @@ ZWAVE_JS_WS_URL = os.environ.get("ZWAVE_JS_WS_URL", "").strip() or _default_ws_u
 ZWAVE_API_HOST = os.environ.get("ZWAVE_API_HOST", "0.0.0.0")
 ZWAVE_API_PORT = int(os.environ.get("ZWAVE_API_PORT", "5000"))
 
-# Alias pour compatibilité (config utilisée par api_flask_zwave)
+# Alias utilisés par api_flask_zwave.py : app.run(host=API_HOST, port=API_PORT)
 API_HOST = ZWAVE_API_HOST
 API_PORT = ZWAVE_API_PORT
 
 # Optionnel : clé API pour /api/devices/* (header X-API-Key)
 API_KEY = os.environ.get("RASPBERRY_API_KEY") or None
+
+# Backend SmartHome Lite : URL pour le heartbeat (RPi s'annonce en ligne). Ex: http://10.109.150.75:8000
+BACKEND_URL = (os.environ.get("BACKEND_URL") or os.environ.get("SMARTHOME_BACKEND_URL") or "").rstrip("/")
+# Intervalle en secondes entre chaque appel GET /api/raspberry-pis/heartbeat
+BACKEND_HEARTBEAT_INTERVAL = int(os.environ.get("BACKEND_HEARTBEAT_INTERVAL", "30"))
 
 # Debug (évite conflit avec DEBUG du backend)
 DEBUG = os.environ.get("ZWAVE_DEBUG", os.environ.get("FLASK_DEBUG", "true")).lower() in ("1", "true", "yes")

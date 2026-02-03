@@ -14,10 +14,22 @@ from app.schemas.raspberry_pi import (
     RaspberryPiUpdate,
     RaspberryPiResponse
 )
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_user, require_admin, verify_raspberry_pi
 from app.utils.auth import generate_api_key, hash_api_key
 
 router = APIRouter()
+
+
+@router.get("/heartbeat", status_code=204)
+async def raspberry_pi_heartbeat(
+    rpi: RaspberryPi = Depends(verify_raspberry_pi),
+):
+    """
+    Appelé périodiquement par le RPi (avec X-API-Key) pour signaler qu'il est en ligne.
+    Met à jour is_online = True pour ce RPi. Retourne 204 No Content.
+    """
+    # verify_raspberry_pi a déjà mis à jour rpi.is_online = True et commit
+    return None
 
 
 @router.get("/available", response_model=List[dict])

@@ -387,7 +387,7 @@ Le endpoint `/health` vous indiquera l'état de la connexion à la base de donn�
 
 ### Variables d'Environnement
 
-Fichier `.env` (voir `.env.example` pour la liste complète) :
+Fichier `.env` : le backend charge en priorité le fichier à la racine du projet (`sae_s5/.env`), sinon `backend/.env`. Ce fichier peut être partagé avec le module RPi (raspberry). **Distinction serveurs** : `API_HOST` / `API_PORT` = bind du backend FastAPI (ex. 0.0.0.0:8000) ; le RPi utilise `ZWAVE_API_HOST` / `ZWAVE_API_PORT` pour son serveur Flask (ex. 0.0.0.0:5000).
 
 ```env
 # Base de données
