@@ -51,12 +51,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smarthome.ui.theme.SmartHomeTheme
+import com.example.smarthome.ui.theme.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
@@ -65,39 +68,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.view.WindowCompat
 
 
-val backgroundColor = Color(0xFF0E1624)
-val cardColor = Color(0xFF1B2433)
-val accentBlue = Color(0xFF2F80FF)
-
-val colorWhite = Color(0xFFFFFFF)
-
-val DarkBackground = Color(0xFF10111A)
-val CardBackground = Color(0xFF1E1F2B)
-val PrimaryBlue = Color(0xFF2D60FF)
-val AccentOrange = Color(0xFFFF8B3E)
-val TextWhite = Color(0xFFFFFFFF)
-val TextGray = Color(0xFF88889D)
-
-
-
-val AccentPurple = Color(0xFF9747FF) // Pour l'icône API
-val DangerRed = Color(0xFFFF4C4C)    // Pour le logout
-
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            SmartHomeTheme {
+            var isDarkTheme by rememberSaveable { mutableStateOf(false) }
+
+            SmartHomeTheme(darkTheme = isDarkTheme, dynamicColor = false) {
                 // On instancie le ViewModel au niveau le plus haut
                 val viewModel: SmartHomeViewModel = viewModel()
 
                 // ROUTAGE PRINCIPAL
                 if (viewModel.isLoggedIn) {
                     // Si connecté -> Affiche l'application complète
-                    SmartHomeApp(viewModel)
+                    SmartHomeApp(viewModel, isDarkTheme, onThemeChange = { isDarkTheme = it })
                 } else {
                     // Sinon -> Affiche l'écran de Login
                     LoginScreen(viewModel)
@@ -109,14 +95,19 @@ class MainActivity : ComponentActivity() {
 
 
 // Modifie SmartHomeApp pour accepter le viewModel déjà créé
+
 @Composable
-fun SmartHomeApp(viewModel: SmartHomeViewModel) {
+fun SmartHomeApp(
+    viewModel: SmartHomeViewModel,
+    isDarkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit
+) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
 
     NavigationSuiteScaffold(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor),
+            .background(MaterialTheme.colorScheme.background),
         navigationSuiteItems = {
             AppDestinations.entries.forEach {
                 item(
@@ -142,11 +133,12 @@ fun SmartHomeApp(viewModel: SmartHomeViewModel) {
                     // On passe le viewModel à HomeScreen pour qu'il affiche les données chargées
                     AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
                     AppDestinations.FAVORITES -> FavoritesScreen()
-                    AppDestinations.PROFILE -> ProfileScreen(name = viewModel.currentUsername,
-                        viewModel.currentEmail,
-                        onLogoutClick = {
-                            viewModel.logout()
-                        }
+                    AppDestinations.PROFILE -> ProfileScreen(
+                        name = viewModel.currentUsername,
+                        email = viewModel.currentEmail,
+                        onLogoutClick = { viewModel.logout() },
+                        isDarkTheme = isDarkTheme,
+                        onThemeChange = onThemeChange
                     )
                 }
             }
@@ -532,13 +524,16 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
             Button(
                 onClick = { /* TODO */ },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
+                    containerColor = Color.Transparent,
+
+
                 )
 
             ) {
                 Text(
                     text = "Mot de passe oublié ?",
                     fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
@@ -551,17 +546,20 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
 @Composable
 fun ProfileScreen(
     name: String,
-    email: String, // Valeur par défaut ou passée par le VM
+    email: String,
     onLogoutClick: () -> Unit,
+    isDarkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // ... (Header and Avatar sections remain unchanged) ...
         // --- 1. Header ---
         Text(
             text = "Profil",
@@ -575,17 +573,15 @@ fun ProfileScreen(
         Box(
             contentAlignment = Alignment.BottomEnd,
             modifier = Modifier.size(120.dp)
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            // Image de profil (Cercle principal)
-            // Note: Remplace Icons.Default.Person par une vraie image avec painterResource(R.drawable.avatar)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape)
-                    .background(Color(0xFFE0E0E0)), // Fond gris clair si pas d'image
+                    .background(Color(0xFFE0E0E0)),
                 contentAlignment = Alignment.Center
             ) {
-                // Utilise une image ici si tu as l'asset, sinon icône
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
@@ -594,13 +590,12 @@ fun ProfileScreen(
                 )
             }
 
-            // Badge Appareil Photo (Petit rond bleu)
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
                     .background(PrimaryBlue)
-                    .border(3.dp, DarkBackground, CircleShape) // Bordure pour séparer de l'avatar
+                    .border(3.dp, DarkBackgroundColor, CircleShape)
                     .clickable { /* Action changer photo */ },
                 contentAlignment = Alignment.Center
             ) {
@@ -642,6 +637,26 @@ fun ProfileScreen(
 
         // --- 4. Settings Menu ---
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // Theme Switcher
+            ProfileMenuItem(
+                icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                title = "Thème de l'application",
+                subtitle = if (isDarkTheme) "Mode Sombre" else "Mode Clair",
+                iconBgColor = if (isDarkTheme) Color(0xFF1E1F2B) else Color(0xFFF5F5F5), // Adjust colors as needed
+                iconColor = if (isDarkTheme) Color.White else Color.Black,
+                trailingContent = {
+                    Switch(
+                        checked = isDarkTheme,
+                        onCheckedChange = onThemeChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = PrimaryBlue,
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color.LightGray
+                        )
+                    )
+                }
+            )
 
             ProfileMenuItem(
                 icon = Icons.Default.Lock,
@@ -650,6 +665,7 @@ fun ProfileScreen(
                 iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
                 iconColor = PrimaryBlue
             )
+
 
             ProfileMenuItem(
                 icon = Icons.Default.Notifications,
@@ -708,7 +724,8 @@ fun ProfileMenuItem(
     title: String,
     subtitle: String,
     iconBgColor: Color,
-    iconColor: Color
+    iconColor: Color,
+    trailingContent: @Composable (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -752,12 +769,16 @@ fun ProfileMenuItem(
             )
         }
 
-        // Arrow
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = TextGray
-        )
+        // Action or Arrow
+        if (trailingContent != null) {
+            trailingContent()
+        } else {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextGray
+            )
+        }
     }
 }
 
@@ -794,7 +815,7 @@ fun HomeScreen(
             Column(
                 modifier = modifier
                     .fillMaxSize()
-                    .background(DarkBackground) // Fond sombre global
+                    .background(DarkBackgroundColor) // Fond sombre global
                     .padding(horizontal = 20.dp)
             ) {
                 // 1. En-tête (Profil + Notif)
@@ -1059,7 +1080,7 @@ fun DeviceCard(
                     checkedThumbColor = TextWhite,
                     checkedTrackColor = PrimaryBlue,
                     uncheckedThumbColor = TextGray,
-                    uncheckedTrackColor = DarkBackground
+                    uncheckedTrackColor = DarkBackgroundColor
                 ),
                 modifier = Modifier.scale(0.8f) // Un peu plus petit
             )
