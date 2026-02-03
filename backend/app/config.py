@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     environment: str = Field(default="development")
     
     # CORS : en .env chaîne séparée par des virgules (pas de JSON). Exposé en liste via property.
-    _cors_origins: str = Field(
+    cors_origins_str: str = Field(
         default="http://localhost:3000,http://localhost:5173,http://10.109.150.75:3000",
         alias="cors_origins",
     )
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> List[str]:
         """Liste des origines CORS (chaîne .env découpée sur les virgules)."""
-        return [x.strip() for x in self._cors_origins.split(",") if x.strip()]
+        return [x.strip() for x in self.cors_origins_str.split(",") if x.strip()]
 
     # Raspberry Pi
     raspberry_pi_protocol: str = Field(default="http")
