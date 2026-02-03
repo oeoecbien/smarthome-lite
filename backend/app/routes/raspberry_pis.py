@@ -223,6 +223,8 @@ async def update_raspberry_pi(
         rpi.ip_address = rpi_data.ip_address
     if rpi_data.is_online is not None:
         rpi.is_online = rpi_data.is_online
+    if rpi_data.api_key is not None and rpi_data.api_key.strip():
+        rpi.api_key_hash = hash_api_key(rpi_data.api_key.strip())
     
     db.commit()
     db.refresh(rpi)
