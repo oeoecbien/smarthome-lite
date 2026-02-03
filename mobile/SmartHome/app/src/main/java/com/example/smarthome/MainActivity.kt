@@ -838,6 +838,8 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 ScenesRow()
 
+
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 4. Section Devices (Grille)
