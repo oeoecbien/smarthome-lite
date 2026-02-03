@@ -1,35 +1,52 @@
 """
-API Flask locale pour exposer les commandes Z-Wave
-À déployer sur le RPi 10.109.150.133 (Z-Wave JS UI sur le même RPi).
-Compatible avec le backend (10.109.150.75:8000) qui appelle /api/devices/{gpio_pin}/state et /brightness.
+API Flask locale pour exposer les commandes Z-Wave au backend SmartHome Lite.
+À déployer sur le RPi qui héberge Z-Wave JS UI (voir zwave-js/docker-compose.yml).
+
+Contrat backend (app/services/device_service.py) :
+  - GET/POST http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/state
+  - POST     http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/brightness
+Sur un RPi Z-Wave, gpio_pin = node_id Z-Wave (ex: 3 pour l'ampoule ABUS).
+
+Configuration : variables dans sae_s5/.env (pas de .env dans raspberry/).
 """
+
+import asyncio
+import logging
+from pathlib import Path
+from functools import wraps
+
+# Charger le .env à la racine du projet (sae_s5/.env) avant tout import de config
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_env_path)
+except ImportError:
+    pass
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import asyncio
-import logging
+
+from config import ZWAVE_JS_UI_URL, ZWAVE_JS_WS_URL, API_HOST, API_PORT, API_KEY, DEBUG
 from zwave_client import ZWaveClient
 
+# URL WebSocket Socket.IO (celle utilisée par le client Z-Wave, ex. ws://localhost:8091/socket.io/)
+ZWAVE_JS_UI_WS_URL = ZWAVE_JS_UI_URL.replace("http://", "ws://", 1).replace("https://", "wss://", 1) + "/socket.io/"
+
 app = Flask(__name__)
-CORS(app)  # Autoriser les requêtes depuis le backend
+app.config["DEBUG"] = DEBUG
+CORS(app)
 
-# Configuration
-ZWAVE_JS_UI_URL = "http://localhost:8091"  # Z-Wave JS UI sur le même RPi
-API_KEY = None  # Optionnel : ajouter authentification si nécessaire
+# Client Z-Wave : WebSocket (port 3000) en priorité, puis Socket.IO (8091)
+zwave_client = ZWaveClient(base_url=ZWAVE_JS_UI_URL, ws_url=ZWAVE_JS_WS_URL)
 
-# Initialiser le client Z-Wave
-zwave_client = ZWaveClient(base_url=ZWAVE_JS_UI_URL)
-
-# Configuration du logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def run_async(coro):
     """
-    Exécute une coroutine asynchrone dans une nouvelle boucle d'événements.
-    Déconnecte le client Z-Wave après chaque requête pour éviter "Event loop is closed"
-    quand une requête suivante réutilise une connexion liée à une boucle déjà fermée.
+    Exécute une coroutine dans une nouvelle boucle d'événements.
+    Déconnecte le client Z-Wave après chaque requête pour éviter "Event loop is closed".
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -43,235 +60,225 @@ def run_async(coro):
         loop.close()
 
 
-@app.route('/health', methods=['GET'])
-def health():
-    """Vérifier l'état de l'API"""
+def require_api_key(f):
+    """Si RASPBERRY_API_KEY est défini, exige le header X-API-Key."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not API_KEY:
+            return f(*args, **kwargs)
+        key = request.headers.get("X-API-Key") or request.args.get("api_key")
+        if key != API_KEY:
+            return jsonify({"success": False, "error": "Invalid or missing API key"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ---------- Racine et santé ----------
+
+@app.route("/", methods=["GET"])
+def root():
+    """Point d'entrée racine (évite 404 sur GET /)."""
     return jsonify({
-        "status": "ok",
-        "zwave_js_ui_url": ZWAVE_JS_UI_URL
+        "message": "API Flask Z-Wave (SmartHome Lite)",
+        "status": "running",
+        "health": "/health",
+        "api_devices": "/api/devices/<node_id>/state|brightness",
+        "api_nodes": "/api/nodes",
+        "zwave_js_ui_url": ZWAVE_JS_UI_URL,
+        "zwave_js_ui_ws_url": ZWAVE_JS_UI_WS_URL,
+        "zwave_js_ws_url": ZWAVE_JS_WS_URL,
     })
 
 
-# ========== Routes compatibles Backend (device_service) ==========
-# Le backend appelle http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/...
-# Sur le RPi Z-Wave, gpio_pin est utilisé comme node_id Z-Wave (ex: 2 pour l'ampoule ABUS).
+@app.route("/health", methods=["GET"])
+def health():
+    """Santé de l’API (backend peut l’utiliser pour heartbeat)."""
+    return jsonify({
+        "status": "ok",
+        "zwave_js_ui_url": ZWAVE_JS_UI_URL,
+        "zwave_js_ui_ws_url": ZWAVE_JS_UI_WS_URL,
+        "zwave_js_ws_url": ZWAVE_JS_WS_URL,
+    })
 
-@app.route('/api/devices/<int:device_id>/state', methods=['GET', 'POST'])
+
+# ---------- Routes compatibles backend (device_service) ----------
+# device_id dans l’URL = gpio_pin côté backend = node_id Z-Wave sur ce RPi
+
+@app.route("/api/devices/<int:device_id>/state", methods=["GET", "POST"])
+@require_api_key
 def set_device_state(device_id):
     """
-    GET : retourne l'état actuel (state, brightness).
-    POST : change l'état ON/OFF. Corps: { "state": true|false }
+    GET : état actuel (state, brightness).
+    POST : ON/OFF. Corps: { "state": true|false }
     """
-    node_id = device_id  # gpio_pin du backend = node_id Z-Wave
+    node_id = device_id
 
-    if request.method == 'GET':
+    if request.method == "GET":
         try:
-            state = run_async(zwave_client.get_state(node_id))
-            brightness = run_async(zwave_client.get_brightness(node_id))
+            state, brightness, from_cache = run_async(
+                zwave_client.get_state_and_brightness(node_id)
+            )
             return jsonify({
                 "success": True,
                 "node_id": node_id,
                 "state": state,
-                "brightness": brightness
+                "brightness": brightness,
+                **({"cached": True} if from_cache else {}),
             })
         except Exception as e:
-            logger.error(f"Erreur get_device_state node {device_id}: {e}")
+            logger.error("get_device_state node %s: %s", device_id, e)
             return jsonify({"success": False, "error": str(e)}), 500
 
-    # POST
     try:
         data = request.get_json() or {}
-        state = data.get('state', False)
-
+        state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
         else:
             result = run_async(zwave_client.turn_off(node_id))
-
         return jsonify({
             "success": True,
             "node_id": node_id,
             "state": state,
-            "result": result
+            "result": result,
         })
     except Exception as e:
-        logger.error(f"Erreur set_device_state node {device_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("set_device_state node %s: %s", device_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/devices/<int:device_id>/brightness', methods=['POST'])
+@app.route("/api/devices/<int:device_id>/brightness", methods=["POST"])
+@require_api_key
 def set_device_brightness(device_id):
     """
-    Changer l'intensité d'un appareil (node_id Z-Wave = device_id).
-    Corps: { "brightness": 0-100, "transition": "immediate"|"fade" (optionnel) }
+    Intensité. Corps: { "brightness": 0-100, "transition": "immediate"|"fade" (optionnel) }
     """
     try:
         data = request.get_json() or {}
-        brightness = data.get('brightness', 0)
-        transition = data.get('transition', 'immediate')
+        brightness = data.get("brightness", 0)
+        transition = data.get("transition", "immediate")
         node_id = device_id
 
         if not 0 <= brightness <= 100:
             return jsonify({
                 "success": False,
-                "error": "Brightness must be between 0 and 100"
+                "error": "Brightness must be between 0 and 100",
             }), 400
 
-        duration = None
-        if transition == 'fade':
-            duration = '5s'
-
-        result = run_async(zwave_client.set_brightness(node_id, brightness, transition_duration=duration))
-
+        duration = "5s" if transition == "fade" else None
+        result = run_async(
+            zwave_client.set_brightness(node_id, brightness, transition_duration=duration)
+        )
         return jsonify({
             "success": True,
             "node_id": node_id,
             "brightness": brightness,
-            "result": result
+            "result": result,
         })
     except Exception as e:
-        err_msg = str(e) or f"{type(e).__name__}"
-        logger.error(f"Erreur set_device_brightness node {device_id}: {e}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "error": err_msg
-        }), 500
+        logger.error("set_device_brightness node %s: %s", device_id, e, exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-# ========== Routes API Z-Wave (nœuds par node_id) ==========
+# ---------- API Z-Wave (nœuds par node_id) ----------
 
-@app.route('/api/nodes', methods=['GET'])
+@app.route("/api/nodes", methods=["GET"])
 def get_nodes():
-    """Récupérer la liste des nœuds Z-Wave"""
+    """Liste des nœuds Z-Wave."""
     try:
         nodes = run_async(zwave_client.get_nodes())
-        return jsonify({
-            "success": True,
-            "nodes": nodes
-        })
+        return jsonify({"success": True, "nodes": nodes})
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération des nœuds: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("get_nodes: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nodes/<int:node_id>', methods=['GET'])
+@app.route("/api/nodes/<int:node_id>", methods=["GET"])
 def get_node(node_id):
-    """Récupérer les informations d'un nœud"""
+    """Détail d’un nœud."""
     try:
         node = run_async(zwave_client.get_node(node_id))
-        return jsonify({
-            "success": True,
-            "node": node
-        })
+        return jsonify({"success": True, "node": node})
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération du nœud {node_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("get_node %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nodes/<int:node_id>/state', methods=['POST'])
+@app.route("/api/nodes/<int:node_id>/state", methods=["POST"])
 def set_node_state(node_id):
-    """Changer l'état ON/OFF d'un nœud"""
+    """ON/OFF d’un nœud."""
     try:
-        data = request.get_json()
-        state = data.get('state', False)
-
+        data = request.get_json() or {}
+        state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
         else:
             result = run_async(zwave_client.turn_off(node_id))
-
         return jsonify({
             "success": True,
             "node_id": node_id,
             "state": state,
-            "result": result
+            "result": result,
         })
     except Exception as e:
-        logger.error(f"Erreur lors du changement d'état du nœud {node_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("set_node_state %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nodes/<int:node_id>/brightness', methods=['POST'])
+@app.route("/api/nodes/<int:node_id>/brightness", methods=["POST"])
 def set_node_brightness(node_id):
-    """Changer l'intensité d'un nœud"""
+    """Intensité d’un nœud."""
     try:
-        data = request.get_json()
-        brightness = data.get('brightness', 0)
-
+        data = request.get_json() or {}
+        brightness = data.get("brightness", 0)
         if not 0 <= brightness <= 100:
             return jsonify({
                 "success": False,
-                "error": "Brightness must be between 0 and 100"
+                "error": "Brightness must be between 0 and 100",
             }), 400
-
         result = run_async(zwave_client.set_brightness(node_id, brightness))
-
         return jsonify({
             "success": True,
             "node_id": node_id,
             "brightness": brightness,
-            "result": result
+            "result": result,
         })
     except Exception as e:
-        logger.error(f"Erreur lors du changement d'intensité du nœud {node_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("set_node_brightness %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nodes/<int:node_id>/current', methods=['GET'])
+@app.route("/api/nodes/<int:node_id>/current", methods=["GET"])
 def get_node_current(node_id):
-    """Récupérer l'état actuel d'un nœud"""
+    """État et intensité actuels (une seule lecture)."""
     try:
-        state = run_async(zwave_client.get_state(node_id))
-        brightness = run_async(zwave_client.get_brightness(node_id))
-
+        state, brightness, from_cache = run_async(
+            zwave_client.get_state_and_brightness(node_id)
+        )
         return jsonify({
             "success": True,
             "node_id": node_id,
             "state": state,
-            "brightness": brightness
+            "brightness": brightness,
+            **({"cached": True} if from_cache else {}),
         })
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération de l'état du nœud {node_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("get_node_current %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/api/nodes/<int:node_id>/interview', methods=['POST'])
+@app.route("/api/nodes/<int:node_id>/interview", methods=["POST"])
 def interview_node(node_id):
-    """Forcer l'interview d'un nœud"""
+    """Forcer l’interview d’un nœud."""
     try:
         result = run_async(zwave_client.interview_node(node_id))
-        return jsonify({
-            "success": True,
-            "node_id": node_id,
-            "result": result
-        })
+        return jsonify({"success": True, "node_id": node_id, "result": result})
     except Exception as e:
-        logger.error(f"Erreur lors de l'interview du nœud {node_id}: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error("interview_node %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
-if __name__ == '__main__':
-    logger.info("Démarrage de l'API Flask Z-Wave sur le port 5000")
-    logger.info(f"Z-Wave JS UI URL: {ZWAVE_JS_UI_URL}")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
+    logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
+    app.run(host=API_HOST, port=API_PORT, debug=DEBUG)
