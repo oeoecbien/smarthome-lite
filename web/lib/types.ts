@@ -16,9 +16,14 @@ export interface Device {
   type: "light" | "dimmer" | "socket"
   raspberry_pi_id: number
   gpio_pin: number
-  state: "ON" | "OFF"
+  /** État ON/OFF (backend renvoie booléen) */
+  state: boolean | "ON" | "OFF"
   brightness: number | null
   location?: string
+  /** Nom du RPi (liste appareils) */
+  raspberry_pi_name?: string
+  /** RPi en ligne = commandes envoyées au vrai hardware */
+  raspberry_pi_online?: boolean
 }
 
 export interface Rule {

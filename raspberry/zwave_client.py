@@ -1,11 +1,17 @@
 """
-Client Z-Wave pour communiquer avec Z-Wave JS UI via Socket.IO.
-Utilise l'API exposée par Z-Wave JS UI (port 8091 par défaut).
+Client Z-Wave : WebSocket (zwave-js-server, port 3000) en priorité, puis Socket.IO (Z-Wave JS UI, 8091).
+
+- Port 3000 (docker-compose) : protocole zwave-js-server (WebSocket brut), commande node.set_value.
+  Voir https://github.com/zwave-js/zwave-js-server
+- Port 8091 : Socket.IO (interface web Z-Wave JS UI), fallback si WebSocket indisponible.
+
+Compatibilité lampe ABUS (node 3) : CC 38, currentValue/targetValue 0-99.
 """
 
 import asyncio
+import json
 import logging
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import socketio
 
@@ -13,21 +19,31 @@ logger = logging.getLogger(__name__)
 
 # Command Class 38 = Multilevel Switch (dimmer / ampoule)
 CC_MULTILEVEL_SWITCH = 38
-# Propriétés pour CC 38
+# Propriétés pour CC 38 (alignées sur Z-Wave JS UI, ex. lampe ABUS node 3)
 PROP_CURRENT_VALUE = "currentValue"
 PROP_TARGET_VALUE = "targetValue"
+
+# Niveau "ON" : 99 pour compatibilité appareils 0-99 uniquement (ex. ABUS SHLM10010)
+# Certains dimmers acceptent 255 (dernier niveau), d'autres uniquement 0-99
+ON_LEVEL_FULL = 99
 
 
 class ZWaveClient:
     """
-    Client asynchrone pour Z-Wave JS UI.
-    Se connecte au serveur Socket.IO (même URL que l'interface web, ex: http://localhost:8091).
+    Client Z-Wave : tente d'abord le WebSocket (zwave-js-server, port 3000), puis Socket.IO (8091).
     """
 
-    def __init__(self, base_url: str = "http://localhost:8091", timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8091",
+        ws_url: Optional[str] = None,
+        timeout: float = 30.0,
+    ):
         self.base_url = base_url.rstrip("/")
+        self.ws_url = (ws_url or "").strip() or None  # ex. ws://localhost:3000
         self.timeout = timeout
         self._sio: Optional[socketio.AsyncClient] = None
+        self._cache_current_value: Dict[int, int] = {}
 
     async def _ensure_connected(self) -> socketio.AsyncClient:
         """Connexion Socket.IO si nécessaire."""
@@ -86,6 +102,104 @@ class ZWaveClient:
             "property": property_name,
         }
 
+    def _value_id_str(self, node_id: int, property_name: str = PROP_TARGET_VALUE) -> str:
+        """Format string du valueId (ex. 3-38-0-targetValue) utilisé par Z-Wave JS UI."""
+        return f"{node_id}-{CC_MULTILEVEL_SWITCH}-0-{property_name}"
+
+    async def _set_value_via_ws(
+        self,
+        node_id: int,
+        value: int,
+        transition_duration: Optional[str] = None,
+    ) -> Optional[dict]:
+        """
+        setValue via WebSocket (zwave-js-server, port 3000). Protocole documenté sur
+        https://github.com/zwave-js/zwave-js-server (command node.set_value).
+        """
+        if not self.ws_url:
+            return None
+        try:
+            import aiohttp
+        except ImportError:
+            return None
+        try:
+            timeout = aiohttp.ClientTimeout(total=min(15, self.timeout + 5))
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.ws_connect(self.ws_url) as ws:
+                    # 1) Recevoir version
+                    msg = await ws.receive()
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return None
+                    data = json.loads(msg.data)
+                    if data.get("type") != "version":
+                        logger.debug("WS: attendu type=version, reçu %s", data.get("type"))
+                        return None
+                    schema = data.get("maxSchemaVersion", 0)
+                    # 2) initialize
+                    await ws.send_str(json.dumps({
+                        "messageId": "init",
+                        "command": "initialize",
+                        "schemaVersion": min(schema, 31),
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=5)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "init":
+                            if not data.get("success", True):
+                                raise RuntimeError("initialize failed")
+                            break
+                    # 3) start_listening
+                    await ws.send_str(json.dumps({
+                        "messageId": "listen",
+                        "command": "start_listening",
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=10)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "listen":
+                            if not data.get("success", True):
+                                raise RuntimeError("start_listening failed")
+                            break
+                    # 4) node.set_value (valueId sans nodeId, cf. zwave-js-server API)
+                    value_id = {
+                        "commandClass": CC_MULTILEVEL_SWITCH,
+                        "endpoint": 0,
+                        "property": PROP_TARGET_VALUE,
+                    }
+                    payload = {
+                        "messageId": f"set-{node_id}-{value}",
+                        "command": "node.set_value",
+                        "nodeId": node_id,
+                        "valueId": value_id,
+                        "value": value,
+                    }
+                    if transition_duration:
+                        payload["options"] = {"transitionDuration": transition_duration}
+                    await ws.send_str(json.dumps(payload))
+                    # 5) Attendre résultat
+                    set_msg_id = payload["messageId"]
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=15)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("messageId") == set_msg_id and data.get("type") == "result":
+                            if data.get("success"):
+                                self._cache_current_value[node_id] = value
+                                return {"success": True, "nodeId": node_id, "value": value}
+                            err = data.get("errorCode") or data.get("zwaveErrorMessage") or "unknown"
+                            raise RuntimeError(f"node.set_value failed: {err}")
+        except asyncio.TimeoutError:
+            logger.warning("WebSocket setValue node %s timeout", node_id)
+            return None
+        except Exception as e:
+            logger.debug("_set_value_via_ws node %s: %s", node_id, e)
+            return None
+
     async def _set_value(
         self,
         node_id: int,
@@ -94,24 +208,42 @@ class ZWaveClient:
         transition_duration: Optional[str] = None,
     ) -> Any:
         """
-        Définit une valeur sur un nœud (Multilevel Switch CC 38).
-        value: 0 = OFF, 1-99 = niveau, 255 = ON (full).
-        Utilise emit (fire-and-forget) au lieu de call() pour éviter les timeouts :
-        Z-Wave JS UI peut attendre l'acquittement du périphérique avant de rappeler.
+        Définit targetValue (CC 38). Priorité : WebSocket (port 3000, zwave-js-server),
+        puis Socket.IO (port 8091).
         """
-        vid = value_id or self._value_id(node_id)
-        options = {}
-        if transition_duration:
-            options["transitionDuration"] = transition_duration
+        result = await self._set_value_via_ws(node_id, value, transition_duration)
+        if result is not None:
+            return result
+        logger.debug("WebSocket indisponible, fallback Socket.IO pour node %s", node_id)
+        vid = value_id or self._value_id(node_id, PROP_TARGET_VALUE)
         args = [vid, value]
-        if options:
-            args.append(options)
-        payload = {"method": "setValue", "args": args}
-        sio = await self._ensure_connected()
-        await sio.emit("api", payload)
-        # Laisser le temps à la commande d'être envoyée (pas d'attente du callback)
-        await asyncio.sleep(0.3)
-        return {"success": True, "nodeId": node_id, "value": value}
+        if transition_duration:
+            args.append({"transitionDuration": transition_duration})
+        timeout_sec = min(15, self.timeout + 5)
+        try:
+            result = await asyncio.wait_for(
+                self._call_api("setValue", *args),
+                timeout=timeout_sec,
+            )
+            self._cache_current_value[node_id] = value
+            return result if result is not None else {"success": True, "nodeId": node_id, "value": value}
+        except asyncio.TimeoutError:
+            logger.warning("setValue node %s timeout (commande peut avoir été envoyée)", node_id)
+            self._cache_current_value[node_id] = value
+            return {"success": True, "nodeId": node_id, "value": value, "timeout": True}
+        except Exception as e:
+            logger.debug("setValue (object valueId) node %s: %s, try string valueId", node_id, e)
+            try:
+                vid_str = self._value_id_str(node_id, PROP_TARGET_VALUE)
+                result = await asyncio.wait_for(
+                    self._call_api("setValue", vid_str, value),
+                    timeout=timeout_sec,
+                )
+                self._cache_current_value[node_id] = value
+                return result if result is not None else {"success": True, "nodeId": node_id, "value": value}
+            except Exception as e2:
+                logger.error("setValue node %s: %s", node_id, e2)
+                raise
 
     async def get_nodes(self) -> list:
         """Liste des nœuds Z-Wave (sans le contrôleur 1)."""
@@ -146,8 +278,8 @@ class ZWaveClient:
             return None
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:
-        """Allume le nœud (Multilevel Switch à 255 ou currentValue > 0)."""
-        return await self._set_value(node_id, 255, transition_duration=transition_duration)
+        """Allume le nœud (targetValue = ON_LEVEL_FULL). Compatible 0-99 (ex. ABUS node 3)."""
+        return await self._set_value(node_id, ON_LEVEL_FULL, transition_duration=transition_duration)
 
     async def turn_off(self, node_id: int) -> Any:
         """Éteint le nœud (Multilevel Switch à 0)."""
@@ -160,8 +292,8 @@ class ZWaveClient:
         transition_duration: Optional[str] = None,
     ) -> Any:
         """
-        Règle l'intensité 0-100.
-        Z-Wave Multilevel Switch utilise 0-99 ou 255 (ON); on mappe 100 -> 99.
+        Règle l'intensité 0-100. Mappe vers targetValue 0-99 (CC 38).
+        Compatible lampe ABUS (currentValue/targetValue min 0, max 99).
         """
         if brightness <= 0:
             return await self.turn_off(node_id)
@@ -170,35 +302,179 @@ class ZWaveClient:
             node_id, level, transition_duration=transition_duration
         )
 
+    def _current_value_from_node(self, node: Optional[dict]) -> Optional[int]:
+        """Extrait currentValue (CC 38) depuis l'objet node (values[] ou values{})."""
+        if not node:
+            return None
+        values = node.get("values")
+        if isinstance(values, list):
+            for v in values:
+                if isinstance(v, dict) and v.get("commandClass") == CC_MULTILEVEL_SWITCH and v.get("property") == PROP_CURRENT_VALUE:
+                    val = v.get("value") if "value" in v else v.get("newValue")
+                    if val is not None:
+                        return int(val)
+        elif isinstance(values, dict):
+            for k, v in values.items():
+                if "currentValue" in str(k) and isinstance(v, dict):
+                    val = v.get("value") if "value" in v else v.get("newValue")
+                    if val is not None:
+                        return int(val)
+        return None
+
+    async def _get_current_value_via_ws(self, node_id: int) -> Optional[int]:
+        """
+        Lit currentValue via WebSocket (zwave-js-server). Après start_listening,
+        le résultat contient result.state.nodes ; on en extrait la valeur du nœud.
+        """
+        if not self.ws_url:
+            return None
+        try:
+            import aiohttp
+        except ImportError:
+            return None
+        try:
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.ws_connect(self.ws_url) as ws:
+                    msg = await ws.receive()
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return None
+                    data = json.loads(msg.data)
+                    if data.get("type") != "version":
+                        return None
+                    schema = data.get("maxSchemaVersion", 0)
+                    await ws.send_str(json.dumps({
+                        "messageId": "init",
+                        "command": "initialize",
+                        "schemaVersion": min(schema, 31),
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=5)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "init":
+                            break
+                    await ws.send_str(json.dumps({
+                        "messageId": "listen",
+                        "command": "start_listening",
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=15)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "listen":
+                            result = data.get("result") or {}
+                            state = result.get("state") or {}
+                            nodes = state.get("nodes") or state.get("controller", {}).get("nodes") or []
+                            if not nodes and isinstance(state.get("driver"), dict):
+                                nodes = state.get("driver", {}).get("nodes") or []
+                            for n in nodes:
+                                if not isinstance(n, dict):
+                                    continue
+                                nid = n.get("nodeId") or n.get("id")
+                                if nid == node_id:
+                                    val = self._current_value_from_node(n)
+                                    if val is not None:
+                                        self._cache_current_value[node_id] = val
+                                        return val
+                            break
+        except Exception as e:
+            logger.debug("_get_current_value_via_ws node %s: %s", node_id, e)
+        return None
+
+    async def _get_node_via_http(self, node_id: int) -> Optional[dict]:
+        """Tente de récupérer le nœud via API HTTP (évite les timeouts Socket.IO)."""
+        try:
+            import aiohttp
+        except ImportError:
+            return None
+        for path in (f"/api/nodes/{node_id}", f"/nodes/{node_id}"):
+            try:
+                url = self.base_url.rstrip("/") + path
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                        if resp.status != 200:
+                            continue
+                        data = await resp.json()
+                        if isinstance(data, dict) and (data.get("values") is not None or "nodeId" in str(data)):
+                            return data
+                        if isinstance(data, list):
+                            for n in data:
+                                if isinstance(n, dict) and (n.get("id") == node_id or n.get("nodeId") == node_id):
+                                    return n
+                            continue
+                        if isinstance(data, dict) and data.get("nodes"):
+                            for n in data["nodes"]:
+                                if isinstance(n, dict) and (n.get("id") == node_id or n.get("nodeId") == node_id):
+                                    return n
+                            continue
+                        return data if isinstance(data, dict) else None
+            except Exception as e:
+                logger.debug("_get_node_via_http %s %s: %s", path, node_id, e)
+        return None
+
+    async def _get_current_value(self, node_id: int) -> Tuple[Optional[int], bool]:
+        """Lit currentValue (CC 38). Ordre : WebSocket → HTTP → Socket.IO getValue/getNode → cache."""
+        # 1) WebSocket (même canal que setValue, fiable)
+        val = await self._get_current_value_via_ws(node_id)
+        if val is not None:
+            return (val, False)
+        # 2) API HTTP si disponible
+        node = await self._get_node_via_http(node_id)
+        if node:
+            val = self._current_value_from_node(node)
+            if val is not None:
+                self._cache_current_value[node_id] = val
+                return (val, False)
+        # 3) Socket getValue (timeout court)
+        value_id = self._value_id(node_id, PROP_CURRENT_VALUE)
+        try:
+            val = await asyncio.wait_for(
+                self._call_api("getValue", value_id),
+                timeout=min(5, self.timeout),
+            )
+            if val is not None:
+                v = int(val["value"]) if isinstance(val, dict) and "value" in val else int(val)
+                self._cache_current_value[node_id] = v
+                return (v, False)
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.debug("getValue timeout/error for node %s: %s", node_id, e)
+        # 4) Socket getNode
+        try:
+            node = await self._call_api("getNode", node_id)
+            val = self._current_value_from_node(node)
+            if val is not None:
+                self._cache_current_value[node_id] = val
+                return (val, False)
+        except Exception as e2:
+            logger.debug("getNode for node %s: %s", node_id, e2)
+        # 5) Cache (dernier état écrit)
+        cached = self._cache_current_value.get(node_id)
+        return (cached, cached is not None)
+
+    async def get_state_and_brightness(self, node_id: int) -> Tuple[bool, int, bool]:
+        """Retourne (state, brightness 0-100, from_cache). Une seule lecture pour les deux."""
+        val, from_cache = await self._get_current_value(node_id)
+        if val is None:
+            return (False, 0, False)
+        brightness = 100 if val == 255 else min(100, max(0, val))
+        return (val > 0, brightness, from_cache)
+
     async def get_state(self, node_id: int) -> bool:
         """État ON/OFF (currentValue > 0)."""
-        try:
-            val = await self._call_api("getValue", node_id, CC_MULTILEVEL_SWITCH, 0, PROP_CURRENT_VALUE)
-            if val is None:
-                return False
-            if isinstance(val, dict) and "value" in val:
-                return int(val.get("value", 0)) > 0
-            return int(val) > 0
-        except Exception as e:
-            logger.debug(f"get_state {node_id}: {e}")
-            return False
+        val, _ = await self._get_current_value(node_id)
+        return (val or 0) > 0
 
     async def get_brightness(self, node_id: int) -> int:
-        """Valeur currentValue 0-99 (ou 255 pour ON)."""
-        try:
-            val = await self._call_api("getValue", node_id, CC_MULTILEVEL_SWITCH, 0, PROP_CURRENT_VALUE)
-            if val is None:
-                return 0
-            if isinstance(val, dict) and "value" in val:
-                v = int(val["value"])
-            else:
-                v = int(val)
-            if v == 255:
-                return 100
-            return min(100, max(0, v))
-        except Exception as e:
-            logger.debug(f"get_brightness {node_id}: {e}")
+        """Valeur currentValue en 0-100."""
+        val, _ = await self._get_current_value(node_id)
+        if val is None:
             return 0
+        if val == 255:
+            return 100
+        return min(100, max(0, val))
 
     async def interview_node(self, node_id: int) -> Any:
         """Lance l'interview d'un nœud."""

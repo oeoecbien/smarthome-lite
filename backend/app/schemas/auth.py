@@ -51,9 +51,9 @@ class UserCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "john_doe",
-                "email": "john@example.com",
-                "password": "SecurePass123"
+                "username": "jean",
+                "email": "jean.dupont@example.com",
+                "password": "Password123"
             }
         }
 
@@ -68,8 +68,8 @@ class UserLogin(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "john_doe",
-                "password": "SecurePass123"
+                "username": "jean",
+                "password": "Password123"
             }
         }
 
@@ -108,7 +108,7 @@ class ForgotPasswordRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username_or_email": "john_doe"
+                "username_or_email": "jean"
             }
         }
 
@@ -167,8 +167,8 @@ class UserResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "id": 1,
-                "username": "john_doe",
-                "email": "john@example.com",
+                "username": "jean",
+                "email": "jean.dupont@example.com",
                 "role": "user",
                 "created_at": "2025-01-15T10:30:00Z"
             }

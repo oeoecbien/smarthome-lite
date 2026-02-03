@@ -1,15 +1,13 @@
 # Dépendances pour le client Z-Wave et l'API Flask
+# Aligné avec backend (sae_s5/backend) et zwave-js (docker-compose)
 
-# Client Socket.IO (Z-Wave JS UI sur port 8091)
+# Client Socket.IO (Z-Wave JS UI, port 8091 dans zwave-js/docker-compose.yml)
 python-socketio[asyncio_client]>=5.10.0
-aiohttp>=3.9.0  # requis par le client Socket.IO asynchrone
-
-# Client HTTP asynchrone (optionnel)
-httpx>=0.24.0
+aiohttp>=3.9.0
 
 # Framework web Flask
 flask>=2.3.0
 flask-cors>=4.0.0
 
-# Logging (inclus dans Python standard, mais utile pour la configuration)
-# Pas besoin d'installation
+# Config optionnelle depuis .env
+python-dotenv>=1.0.0

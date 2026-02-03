@@ -1,6 +1,14 @@
 import { api } from "@/lib/api"
 import type { Device } from "@/lib/types"
 
+/** Réponse état d’un appareil (backend ou après sync RPi) */
+export interface DeviceStateResponse {
+  id: number
+  name: string
+  state: boolean
+  brightness: number
+}
+
 export const deviceService = {
   async getDevices(location?: string, type?: string): Promise<Device[]> {
     return api.get<Device[]>("/api/devices", { location, type })
@@ -10,16 +18,24 @@ export const deviceService = {
     return api.get<Device>(`/api/devices/${id}`)
   },
 
+  /**
+   * État actuel (state, brightness).
+   * @param sync - si true, le backend interroge le RPi pour l’état réel de la lampe
+   */
+  async getDeviceState(id: number, sync = false): Promise<DeviceStateResponse> {
+    return api.get<DeviceStateResponse>(`/api/devices/${id}/state`, { sync: sync ? "true" : undefined })
+  },
+
   async createDevice(data: Omit<Device, "id" | "state" | "brightness">): Promise<Device> {
     return api.post<Device>("/api/devices", data)
   },
 
-  async updateState(id: number, state: "ON" | "OFF"): Promise<Device> {
-    return api.put<Device>(`/api/devices/${id}/state`, { state })
+  async updateState(id: number, state: boolean): Promise<DeviceStateResponse> {
+    return api.put<DeviceStateResponse>(`/api/devices/${id}/state`, { state })
   },
 
-  async updateBrightness(id: number, brightness: number): Promise<Device> {
-    return api.put<Device>(`/api/devices/${id}/brightness`, { brightness })
+  async updateBrightness(id: number, brightness: number, transition?: "immediate" | "fade"): Promise<DeviceStateResponse> {
+    return api.put<DeviceStateResponse>(`/api/devices/${id}/brightness`, { brightness, transition })
   },
 
   async deleteDevice(id: number): Promise<void> {

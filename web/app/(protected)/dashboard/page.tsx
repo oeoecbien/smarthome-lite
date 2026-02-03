@@ -95,7 +95,7 @@ export default function DashboardPage() {
   }
 
   const activeRules = data.rules.filter((r) => r.enabled).length
-  const onlineDevices = data.devices.filter((d) => d.state === "ON").length
+  const onlineDevices = data.devices.filter((d) => d.state === true || d.state === "ON").length
 
   return (
     <div className="space-y-6">
@@ -205,7 +205,7 @@ export default function DashboardPage() {
                       <div
                         className={cn(
                           "p-2 rounded-full",
-                          device.state === "ON" ? "bg-secondary/20 text-secondary" : "bg-muted-foreground/20",
+                          (device.state === true || device.state === "ON") ? "bg-secondary/20 text-secondary" : "bg-muted-foreground/20",
                         )}
                       >
                         <Power className="h-4 w-4" />
@@ -222,7 +222,7 @@ export default function DashboardPage() {
                       <span
                         className={cn(
                           "px-2 py-0.5 rounded-full text-xs font-medium",
-                          device.state === "ON"
+                          (device.state === true || device.state === "ON")
                             ? "bg-secondary/20 text-secondary"
                             : "bg-muted-foreground/20 text-muted-foreground",
                         )}
