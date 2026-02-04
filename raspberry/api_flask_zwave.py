@@ -35,6 +35,7 @@ from config import (
     DEBUG,
     BACKEND_URL,
     BACKEND_HEARTBEAT_INTERVAL,
+    MULTISENSOR7_NODE_ID,
 )
 from zwave_client import ZWaveClient
 
@@ -312,12 +313,53 @@ def _backend_heartbeat_loop():
             logger.debug("Backend heartbeat: %s", e)
 
 
+def _motion_to_backend_loop():
+    """Poll MultiSensor7 et envoie POST /api/presence au backend à chaque détection de mouvement (front montant)."""
+    import time
+    import urllib.request
+    import urllib.error
+    import json
+    if not BACKEND_URL or not API_KEY or not MULTISENSOR7_NODE_ID:
+        logger.debug("Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant)")
+        return
+    url = f"{BACKEND_URL}/api/presence"
+    interval = 5  # secondes entre deux lectures
+    last_motion = False
+    while True:
+        time.sleep(interval)
+        try:
+            motion = run_async(zwave_client.get_motion_state(MULTISENSOR7_NODE_ID))
+            if motion and not last_motion:
+                # Front montant : envoi au backend
+                data = json.dumps({"sensor_node_id": MULTISENSOR7_NODE_ID}).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=data,
+                    method="POST",
+                    headers={
+                        "X-API-Key": API_KEY,
+                        "Content-Type": "application/json",
+                    },
+                )
+                urllib.request.urlopen(req, timeout=10)
+                logger.info("Mouvement MultiSensor7 (node %s) envoyé au backend", MULTISENSOR7_NODE_ID)
+            last_motion = motion
+        except urllib.error.HTTPError as e:
+            logger.debug("Motion→backend HTTP %s: %s", e.code, e.reason)
+        except Exception as e:
+            logger.debug("Motion→backend: %s", e)
+
+
 if __name__ == "__main__":
     import threading
     if BACKEND_URL and API_KEY:
         _heartbeat = threading.Thread(target=_backend_heartbeat_loop, daemon=True)
         _heartbeat.start()
         logger.info("Heartbeat backend démarré (GET %s toutes les %ss)", f"{BACKEND_URL}/api/raspberry-pis/heartbeat", BACKEND_HEARTBEAT_INTERVAL)
+    if BACKEND_URL and API_KEY and MULTISENSOR7_NODE_ID:
+        _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
+        _motion.start()
+        logger.info("Motion MultiSensor7 (node %s) → backend démarré", MULTISENSOR7_NODE_ID)
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)

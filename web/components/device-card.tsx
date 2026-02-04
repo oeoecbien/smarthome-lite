@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -11,10 +11,15 @@ import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, Refres
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
+/** Patch renvoyé après mise à jour état/brillance pour mise à jour immédiate de la liste */
+export type DeviceStatePatch = { state?: boolean; brightness?: number }
+
 interface DeviceCardProps {
   device: Device
   onUpdate: () => void
   onDelete: (id: number) => void
+  /** Mise à jour immédiate de l'appareil dans la liste (évite d'attendre le refetch) */
+  onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
 }
 
 const deviceIcons = {
@@ -23,11 +28,17 @@ const deviceIcons = {
   socket: Plug,
 }
 
-export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
+export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: DeviceCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Synchroniser la brillance locale quand le device change (refetch ou callback)
+  useEffect(() => {
+    const b = device.brightness ?? 99
+    if (!isDragging) setLocalBrightness(b)
+  }, [device.brightness, isDragging])
 
   const Icon = deviceIcons[device.type] || Lightbulb
   const isOn = device.state === true || device.state === "ON"
@@ -35,12 +46,12 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
   const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
-    // Ne pas permettre le changement si déjà en cours de mise à jour
     if (isUpdating) return
     
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, checked)
+      const res = await deviceService.updateState(device.id, checked)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Appareil mis à jour",
@@ -99,7 +110,8 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
 
     setIsUpdating(true)
     try {
-      await deviceService.updateBrightness(device.id, value[0])
+      const res = await deviceService.updateBrightness(device.id, value[0])
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Intensité mise à jour",

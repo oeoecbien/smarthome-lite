@@ -58,7 +58,7 @@ export const SCENARIO_LABELS: Record<ScenarioType, string> = {
   3: "Evening",
 }
 
-/** Contexte du scénario actuel (présence BLE, utilisateurs détectés). */
+/** Contexte du scénario actuel (mouvement MultiSensor7, lampes). */
 export interface CurrentScenarioContext {
   hour: number
   day_of_week: number
@@ -138,9 +138,7 @@ export interface PresenceRecord {
   raspberry_pi_name?: string
   location?: string
   detected_at: string
-  device_mac_address?: string
-  signal_strength?: number
-  user_id?: number
+  sensor_node_id?: number
 }
 
 export interface LightReading {

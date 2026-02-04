@@ -26,7 +26,8 @@ export const deviceService = {
     return api.get<DeviceStateResponse>(`/api/devices/${id}/state`, { sync: sync ? "true" : undefined })
   },
 
-  async createDevice(data: Omit<Device, "id" | "state" | "brightness">): Promise<Device> {
+  /** Le backend assigne user_id depuis le JWT, inutile de l’envoyer */
+  async createDevice(data: Omit<Device, "id" | "state" | "brightness" | "user_id">): Promise<Device> {
     return api.post<Device>("/api/devices", data)
   },
 

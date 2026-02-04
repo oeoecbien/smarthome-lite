@@ -45,7 +45,7 @@ class ClassifyRequest(BaseModel):
 
 
 class CurrentScenarioContext(BaseModel):
-    """Contexte utilisé pour la classification (présence BLE, lampes, utilisateurs détectés)."""
+    """Contexte utilisé pour la classification (mouvement MultiSensor7, lampes)."""
     hour: int
     day_of_week: int
     presence_detected: bool
@@ -74,10 +74,8 @@ async def get_current_scenario(
     """
     Obtient le scénario actuel classifié par l'IA.
 
-    Utilise la présence Bluetooth (table presence + bluetooth_devices) : si une MAC
-    est associée à un utilisateur (ex. jean), presence_detected=true et
-    detected_usernames contient cet utilisateur. Le scénario (Day / Evening / Away / Night)
-    en dépend.
+    Utilise la détection de mouvement (MultiSensor7 Z-Wave, table presence) :
+    presence_detected=true si un mouvement a été détecté dans les 5 dernières minutes.
     """
     ai_service = get_ai_service()
     result = ai_service.get_current_scenario(db, raspberry_pi_id=raspberry_pi_id)

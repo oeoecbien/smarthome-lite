@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Command Class 38 = Multilevel Switch (dimmer / ampoule)
 CC_MULTILEVEL_SWITCH = 38
+# Command Class 48 = Binary Sensor (mouvement MultiSensor7)
+CC_BINARY_SENSOR = 48
 # Propriétés pour CC 38 (alignées sur Z-Wave JS UI, ex. lampe ABUS node 3)
 PROP_CURRENT_VALUE = "currentValue"
 PROP_TARGET_VALUE = "targetValue"
@@ -276,6 +278,33 @@ class ZWaveClient:
         except Exception as e:
             logger.error(f"get_node {node_id}: {e}")
             return None
+
+    def _motion_from_node(self, node: Optional[dict]) -> bool:
+        """Extrait l'état mouvement (CC 48 Binary Sensor) depuis l'objet node. MultiSensor7."""
+        if not node:
+            return False
+        values = node.get("values") or {}
+        if isinstance(values, list):
+            for v in values:
+                if isinstance(v, dict) and v.get("commandClass") == CC_BINARY_SENSOR:
+                    val = v.get("value") if "value" in v else v.get("newValue")
+                    if val is not None:
+                        return bool(val)
+            return False
+        # format dict: "48-0-currentValue" ou équivalent
+        for k, v in values.items():
+            if not isinstance(v, dict):
+                continue
+            if str(v.get("commandClass")) == str(CC_BINARY_SENSOR) or (isinstance(k, str) and k.startswith("48-")):
+                val = v.get("value") if "value" in v else v.get("newValue")
+                if val is not None:
+                    return bool(val)
+        return False
+
+    async def get_motion_state(self, node_id: int) -> bool:
+        """Lit l'état mouvement du nœud (MultiSensor7, CC 48 Binary Sensor)."""
+        node = await self.get_node(node_id)
+        return self._motion_from_node(node)
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:
         """Allume le nœud (targetValue = ON_LEVEL_FULL). Compatible 0-99 (ex. ABUS node 3)."""

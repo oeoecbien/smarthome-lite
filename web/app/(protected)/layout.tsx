@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X, Shield, Bluetooth, Smartphone } from "lucide-react"
+import { Home, Lightbulb, Settings2, Brain, SunDim, Sun, Calendar, LogOut, Menu, X, Shield, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
@@ -18,13 +18,11 @@ const navItems = [
   { href: "/ai", label: "Intelligence IA", icon: Brain },
   { href: "/smart-dimming", label: "Smart Dimming", icon: SunDim },
   { href: "/events", label: "Événements", icon: Calendar },
-  { href: "/my-bluetooth-devices", label: "Mon appareil BT", icon: Smartphone },
 ]
 
 const adminNavItems = [
   { href: "/admin", label: "Administration", icon: Shield },
-  { href: "/admin/presence", label: "Présence Bluetooth", icon: Bluetooth },
-  { href: "/admin/bluetooth-devices", label: "Appareils BT (MAC → user)", icon: Smartphone },
+  { href: "/admin/presence", label: "Présence (mouvement)", icon: Activity },
   { href: "/admin/light-readings", label: "Luminosité", icon: Sun },
 ]
 

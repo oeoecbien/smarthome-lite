@@ -164,6 +164,13 @@ function DevicesContent() {
     }
   }
 
+  /** Mise à jour immédiate d'un appareil dans la liste (état/brillance) pour que l'UI réagisse sans attendre le refetch */
+  const handleDeviceUpdated = (deviceId: number, patch: { state?: boolean; brightness?: number }) => {
+    setDevices((prev) =>
+      prev.map((d) => (d.id === deviceId ? { ...d, ...patch } : d))
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -374,9 +381,20 @@ function DevicesContent() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDevices.map((device) =>
             isAdmin ? (
-              <DeviceCard key={device.id} device={device} onUpdate={fetchDevices} onDelete={handleDelete} />
+              <DeviceCard
+                key={device.id}
+                device={device}
+                onUpdate={fetchDevices}
+                onDelete={handleDelete}
+                onDeviceUpdated={handleDeviceUpdated}
+              />
             ) : (
-              <DeviceCardUser key={device.id} device={device} onUpdate={fetchDevices} />
+              <DeviceCardUser
+                key={device.id}
+                device={device}
+                onUpdate={fetchDevices}
+                onDeviceUpdated={handleDeviceUpdated}
+              />
             ),
           )}
         </div>

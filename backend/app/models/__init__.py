@@ -12,7 +12,6 @@ from app.models.rule import Rule
 from app.models.training_data import TrainingData
 from app.models.smart_dimming_adjustment import SmartDimmingAdjustment
 from app.models.user_preference import UserPreference
-from app.models.bluetooth_device import BluetoothDevice
 from app.models.audit_log import AuditLog
 
 __all__ = [
@@ -26,6 +25,5 @@ __all__ = [
     "TrainingData",
     "SmartDimmingAdjustment",
     "UserPreference",
-    "BluetoothDevice",
     "AuditLog"
 ]

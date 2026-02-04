@@ -40,3 +40,6 @@ BACKEND_HEARTBEAT_INTERVAL = int(os.environ.get("BACKEND_HEARTBEAT_INTERVAL", "3
 
 # Debug (évite conflit avec DEBUG du backend)
 DEBUG = os.environ.get("ZWAVE_DEBUG", os.environ.get("FLASK_DEBUG", "true")).lower() in ("1", "true", "yes")
+
+# MultiSensor7 (Z-Wave) : node_id du capteur de mouvement. 0 = désactivé.
+MULTISENSOR7_NODE_ID = int(os.environ.get("MULTISENSOR7_NODE_ID", "0"))

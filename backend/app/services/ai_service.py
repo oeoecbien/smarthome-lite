@@ -18,7 +18,7 @@ import joblib
 import numpy as np
 
 from app.config import settings
-from app.models import Device, Presence, TrainingData, User
+from app.models import Device, Presence, TrainingData
 
 logger = logging.getLogger(__name__)
 
@@ -200,27 +200,15 @@ class AIService:
         hour = now.hour
         day_of_week = now.weekday()  # 0=Lundi, 6=Dimanche
         
-        # Vérifier la présence dans les 5 dernières minutes (via Bluetooth)
+        # Vérifier la présence dans les 5 dernières minutes (mouvement MultiSensor7)
         from datetime import timedelta
         five_minutes_ago = now - timedelta(minutes=5)
-        
-        presence_query = db.query(Presence).filter(
-            Presence.detected_at >= five_minutes_ago
-        )
+        presence_query = db.query(Presence).filter(Presence.detected_at >= five_minutes_ago)
         if raspberry_pi_id:
-            presence_query = presence_query.filter(
-                Presence.raspberry_pi_id == raspberry_pi_id
-            )
+            presence_query = presence_query.filter(Presence.raspberry_pi_id == raspberry_pi_id)
         presence_rows = presence_query.all()
         presence_detected = len(presence_rows) > 0
 
-        # Utilisateurs détectés (user_id) et leurs noms (jean, mehdi…)
-        detected_user_ids = list({p.user_id for p in presence_rows if p.user_id})
-        detected_usernames = []
-        if detected_user_ids:
-            users = db.query(User).filter(User.id.in_(detected_user_ids)).all()
-            detected_usernames = [u.username for u in users]
-        
         # Vérifier si au moins une lampe est allumée
         device_query = db.query(Device).filter(
             Device.type.in_(["light", "dimmer"]),
@@ -236,16 +224,16 @@ class AIService:
         # Classification
         result = self.classify(hour, day_of_week, presence_detected, light_on)
         
-        # Ajouter le contexte (présence BLE → bluetooth_devices → user_id → username)
+        # Contexte (présence = mouvement MultiSensor7)
         result["context"] = {
             "hour": hour,
             "day_of_week": day_of_week,
             "presence_detected": presence_detected,
             "light_on": light_on,
             "raspberry_pi_id": raspberry_pi_id,
-            "detected_users": detected_user_ids,
-            "detected_usernames": detected_usernames,
-            "user_count": len(detected_user_ids),
+            "detected_users": [],
+            "detected_usernames": [],
+            "user_count": 0,
         }
         
         return result
