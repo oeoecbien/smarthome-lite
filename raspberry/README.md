@@ -168,7 +168,7 @@ pip install -r raspberry/requirements.txt   # inclut bleak, requests
 python raspberry/bt_presence_scan.py
 ```
 
-Variables optionnelles : `BT_PRESENCE_SCAN_INTERVAL` (défaut 45 s), `BT_PRESENCE_SCAN_TIMEOUT` (défaut 10 s).  
+**Mode de scan** : `BT_PRESENCE_MODE=callback` (défaut, scan continu réactif) ou `discover` (legacy). Variables optionnelles : `BT_PRESENCE_SCAN_INTERVAL` (45 s), `BT_PRESENCE_SCAN_TIMEOUT` (10 s, mode discover). Options : `BT_PRESENCE_RSSI_MIN` (-85), `BT_PRESENCE_DEBOUNCE_SEC` (30), `BT_PRESENCE_KNOWN_MACS_REFRESH_SEC` (300).  
 `PRESENCE_ONLY_KNOWN_MACS=1` (défaut) : le script n’envoie que les MAC enregistrées en Admin → Appareils BT (liste récupérée via `GET /api/presence/known-macs`). Sinon toutes les MAC sont envoyées et le backend n’enregistre que les connues.
 
 En production : lancer en arrière-plan (`nohup`, `screen`) ou via un service systemd. Seules les MAC connues sont enregistrées en BDD ; les autres reçoivent 200 sans écriture (moins de bruit en logs).
