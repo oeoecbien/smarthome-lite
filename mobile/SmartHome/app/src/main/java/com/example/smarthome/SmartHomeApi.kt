@@ -17,6 +17,11 @@ data class UserResponse(
     val email: String?,     // Peut être null selon l'API
     val full_name: String?  // Peut être null selon l'API
 )
+
+data class DeviceStateRequest(
+    val state: Boolean,
+    val brightness: Int // L'API attend un entier (ex: 33) et pas un float (0.33)
+)
 interface SmartHomeApi {
     // Attention: Je suppose que le endpoint de login est "/token" (standard FastAPI)
     // Si c'est autre chose (ex: /auth/login), change-le ici.
@@ -33,6 +38,13 @@ interface SmartHomeApi {
         @Path("device_id") deviceId: Int,
         @Query("intensity") intensity: Float // On envoie la valeur (0.0 à 1.0)
     )
+
+    @PUT("api/devices/{device_id}/state")
+    suspend fun updateState(
+        @Header("Authorization") token: String,
+        @Path("device_id") deviceId: Int,
+        @Body request: DeviceStateRequest // <-- On envoie l'objet JSON complet ici
+    ): ApiDevice
 
     @GET("api/auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserResponse

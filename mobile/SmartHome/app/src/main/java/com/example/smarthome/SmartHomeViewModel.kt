@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.time.delay
+import kotlinx.coroutines.isActive
 
 
 class SmartHomeViewModel : ViewModel() {
@@ -40,90 +41,68 @@ class SmartHomeViewModel : ViewModel() {
     var currentEmail by mutableStateOf("")
         private set
 
-
-    fun loadData(username: String, password: String) {
-        viewModelScope.launch {
-            try {
-                errorMessage.value = null
-
-                val tokenResponse = RetrofitInstance.api.login(LoginRequest(username, password))
-
-                val bearerToken = "Bearer ${tokenResponse.access_token}"
-
-                val apiDevices = RetrofitInstance.api.getDevices(bearerToken)
-
-                lamps.value = apiDevices.map { device ->
-                    SmartLamp(
-                        id = device.id,
-                        name = device.name,
-                        isOn = device.is_active,
-                        brightness = device.intensity ?: 0.5f
-                    )
-                }
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                errorMessage.value = "Erreur: ${e.message}"
-            }
-
-
-        }
-    }
+    // Ajoute une variable pour contrôler le polling si besoin
+    private var refreshJob: Job? = null
 
     // Fonction fictive pour simuler l'update (à connecter à l'API plus tard)
     fun updateLamp(lamp: SmartLamp) {
-        // 1. Optimiste UI Update
+        // 1. Mise à jour immédiate de l'écran (pour que ce soit fluide visuellement)
         val currentList = lamps.value.toMutableList()
         val index = currentList.indexOfFirst { it.id == lamp.id }
 
         if (index == -1) return
 
+        // On sauvegarde l'ancienne version pour pouvoir annuler en cas d'erreur
         val oldLamp = currentList[index]
+
+        // On applique la nouvelle valeur
         currentList[index] = lamp
         lamps.value = currentList
 
-
-        // 2. Logique Debounce
-        if (oldLamp.isOn != lamp.isOn) {
-            sendUpdateToApi(lamp, oldLamp)
-            return
-        }
-
-        if (oldLamp.brightness != lamp.brightness) {
-            debounceJob?.cancel()
-            debounceJob = viewModelScope.launch {
-                delay(500)
-                sendUpdateToApi(lamp, oldLamp)
-            }
-        }
+        // 2. Appel API DIRECT (Sans attente, sans délai)
+        sendUpdateToApi(lamp, oldLamp)
     }
 
-    // --- 3. FONCTION PRIVÉE POUR L'APPEL API ---
-    // J'ai isolé l'appel API pour ne pas dupliquer le code
     private fun sendUpdateToApi(newLamp: SmartLamp, oldLamp: SmartLamp) {
         viewModelScope.launch {
             try {
-                // Vérification que le token existe
                 if (token == null) return@launch
 
-                // Appel API
-                // Ici token!! fonctionne car on a vérifié qu'il n'est pas null juste avant
-                RetrofitInstance.api.updateBrightness(
-                    token = token!!,
-                    deviceId = newLamp.id,
-                    intensity = newLamp.brightness
-                )
+                // CAS 1 : C'est l'interrupteur (ON/OFF) qui a changé
+                if (newLamp.isOn != oldLamp.isOn) {
+                    val brightnessInt = (newLamp.brightness * 100).toInt()
+                    val requestBody = DeviceStateRequest(
+                        state = newLamp.isOn,
+                        brightness = brightnessInt
+                    )
+
+                    RetrofitInstance.api.updateState(
+                        token = token!!,
+                        deviceId = newLamp.id,
+                        request = requestBody
+                    )
+                }
+
+                // CAS 2 : C'est la luminosité qui a changé
+                // On vérifie juste si la valeur est différente et si la lampe est allumée
+                if (newLamp.brightness != oldLamp.brightness && newLamp.isOn) {
+                    RetrofitInstance.api.updateBrightness(
+                        token = token!!,
+                        deviceId = newLamp.id,
+                        intensity = newLamp.brightness * 100
+                    )
+                }
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Rollback en cas d'erreur
+                // ROLLBACK : En cas d'erreur, on remet l'ancienne valeur
                 val currentList = lamps.value.toMutableList()
                 val idx = currentList.indexOfFirst { it.id == newLamp.id }
                 if (idx != -1) {
                     currentList[idx] = oldLamp
                     lamps.value = currentList
                 }
-                errorMessage.value = "Erreur synchro : ${e.localizedMessage}"
+                errorMessage.value = "Erreur : ${e.localizedMessage}"
             }
         }
     }
@@ -132,43 +111,26 @@ class SmartHomeViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 isLoading.value = true
-                errorMessage.value = null
 
-                // 1. Connexion (POST /api/auth/login)
-                val tokenResponse = RetrofitInstance.api.login(
-                    LoginRequest(username, password)
-                )
-
-                // Sauvegarde du token
+                // 1. Login & Token
+                val tokenResponse = RetrofitInstance.api.login(LoginRequest(username, password))
                 token = "Bearer ${tokenResponse.access_token}"
 
-                // 2. Récupération des infos utilisateur (GET /api/auth/me)
-                // C'est ici que la magie opère !
+                // 2. Info User
                 val userInfo = RetrofitInstance.api.getUserInfo(token!!)
-
-                // Mise à jour des variables d'état
                 currentUsername = userInfo.username
-                currentEmail = userInfo.email ?: "Pas d'email" // Gère le null
 
+                // 3. Premier chargement des lampes
+                fetchDevices()
 
-                // 3. Récupération des lampes (GET /api/devices)
-                val apiDevices = RetrofitInstance.api.getDevices(token!!)
-
-                lamps.value = apiDevices.map { device ->
-                    SmartLamp(
-                        id = device.id,
-                        name = device.name,
-                        isOn = device.is_active,
-                        brightness = device.intensity ?: 0.5f
-                    )
-                }
-
-                // Tout est chargé, on ouvre l'app
                 isLoggedIn = true
+
+                // --- NOUVEAU : On lance l'actualisation automatique ---
+                startAutoRefresh()
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                errorMessage.value = "Erreur : ${e.localizedMessage}"
+                errorMessage.value = "Erreur connexion : ${e.localizedMessage}"
                 isLoggedIn = false
             } finally {
                 isLoading.value = false
@@ -176,8 +138,54 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    // J'ai extrait la logique de récupération pour éviter de dupliquer le code
+    private suspend fun fetchDevices() {
+        if (token == null) return
+
+        val apiDevices = RetrofitInstance.api.getDevices(token!!)
+
+        // On met à jour la liste
+        lamps.value = apiDevices.map { device ->
+            SmartLamp(
+                id = device.id,
+                name = device.name,
+                isOn = device.state, // Utilise bien .state (ton fix précédent)
+                brightness = (device.brightness ?: 0) / 100f // Utilise bien le /100f
+            )
+        }
+    }
+
+    private fun startAutoRefresh() {
+        // On annule une éventuelle boucle existante pour éviter les doublons
+        refreshJob?.cancel()
+
+        refreshJob = viewModelScope.launch {
+            // La boucle tourne tant que le ViewModel est actif et qu'on est connecté
+            while (isActive && isLoggedIn) {
+                delay(3000) // On attend 3 secondes (3000ms)
+
+                // Si l'utilisateur est en train de bouger le slider (debounce actif),
+                // on évite de rafraîchir pour ne pas faire "sauter" le slider sous son doigt.
+                if (debounceJob?.isActive == true) {
+                    continue
+                }
+
+                try {
+                    if (token != null) {
+                        fetchDevices() // On recharge les données
+                    }
+                } catch (e: Exception) {
+                    // En cas d'erreur (ex: coupure réseau temporaire),
+                    // on ne fait rien, on réessaiera au prochain tour.
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
     fun logout() {
         debounceJob?.cancel()
+        refreshJob?.cancel()
 
         // Nettoyage complet
         token = null
@@ -188,4 +196,5 @@ class SmartHomeViewModel : ViewModel() {
 
         isLoggedIn = false
     }
+
 }

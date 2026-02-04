@@ -1,14 +1,17 @@
 package com.example.smarthome
 
+import android.R
 import androidx.compose.animation.Crossfade
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -58,15 +61,22 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.core.view.WindowCompat
+import androidx.compose.ui.input.pointer.pointerInput
 
+import androidx.compose.ui.tooling.preview.Preview
+
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.SolidColor
 
 
 class MainActivity : ComponentActivity() {
@@ -121,12 +131,12 @@ fun SmartHomeApp(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = backgroundColor
+            containerColor = MaterialTheme.colorScheme.background
         ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(backgroundColor)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 when (currentDestination) {
@@ -294,79 +304,266 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
 }
 
 @Composable
-fun LampControlScreen(lamp: SmartLamp, onBack: () -> Unit, onUpdate: (SmartLamp) -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        // Barre supérieure avec bouton retour
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+fun LampControlScreen(
+    lamp: SmartLamp,
+    onBack: () -> Unit,
+    onUpdate: (SmartLamp) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // 1. HEADER (Titre + Status)
+        LampHeader(name = lamp.name, onBack = onBack)
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // 2. POWER CARD (L'interrupteur)
+        PowerControlCard(
+            isOn = lamp.isOn,
+            onToggle = { isChecked ->
+                onUpdate(lamp.copy(isOn = isChecked))
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "Contrôle", style = MaterialTheme.typography.titleLarge)
+        )
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        // 3. POURCENTAGE TEXTE
+        Text(
+            text = "${(lamp.brightness * 100).toInt()}%",
+            color = Color.White,
+            fontSize = 48.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 4. ICONE SOLEIL
+        Icon(
+            imageVector = Icons.Outlined.WbSunny,
+            contentDescription = "Brightness",
+            tint = Color.Gray,
+            modifier = Modifier.size(28.dp)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 5. SLIDER VERTICAL PERSONNALISÉ (Le gros morceau)
+        // On ne l'affiche que si la lampe est allumée pour l'effet visuel,
+        // ou on le grise si éteint.
+        VerticalNeonSlider(
+            brightness = lamp.brightness,
+            isEnabled = lamp.isOn,
+            onBrightnessChange = { newBrightness ->
+                // On met à jour la lampe (note: onUpdate gère déjà le debounce grâce au ViewModel)
+                onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
+            }
+        )
+    }
+}
+
+// --- SOUS-COMPOSANTS ---
+
+@Composable
+fun LampHeader(name: String, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Bouton Retour
+        IconButton(onClick = onBack) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
         }
 
-        // Contenu des contrôles
-        Column(
-            modifier = Modifier
-                .padding(24.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Icône géante représentant la lampe
-            Icon(
-                imageVector = Icons.Filled.Lightbulb,
-                contentDescription = null,
-                modifier = Modifier.size(100.dp),
-                tint = if (lamp.isOn) Color(0xFFFFC107) else Color.Gray // Jaune si allumé
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
+        // Titre et Status
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = lamp.name,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                text = name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
             )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            // Switch ON/OFF
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("État", style = MaterialTheme.typography.titleMedium)
-                Switch(
-                    checked = lamp.isOn,
-                    onCheckedChange = { isChecked ->
-                        onUpdate(lamp.copy(isOn = isChecked))
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Petit point vert
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(TextGreen)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Online",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextGreen
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
+        // Bouton Settings
+        IconButton(onClick = { /* Todo: Settings */ }) {
+            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
 
-            // Slider Luminosité
-            Text(
-                text = "Luminosité ${(lamp.brightness * 100).toInt()}%",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.Start)
-            )
-            Slider(
-                value = lamp.brightness,
-                onValueChange = { newBrightness ->
-                    onUpdate(lamp.copy(brightness = newBrightness, isOn = true)) // Allume auto si on touche au slider
-                },
-                valueRange = 0f..1f
+@Composable
+fun PowerControlCard(isOn: Boolean, onToggle: (Boolean) -> Unit) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary),
+        modifier = Modifier.fillMaxWidth().height(80.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Icone Ampoule dans un cercle
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (isOn) NeonBlue.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lightbulb,
+                        contentDescription = null,
+                        tint = if (isOn) NeonBlue else Color.Gray
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Textes
+                Column {
+                    Text(
+                        text = "Power",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = if (isOn) "Allumer" else "Eteint",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+
+            // Switch personnalisé
+            Switch(
+                checked = isOn,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = NeonBlue,
+                    uncheckedThumbColor = Color.Gray,
+                    uncheckedTrackColor = DarkSurface
+                )
             )
         }
     }
 }
 
+@Composable
+fun VerticalNeonSlider(
+    brightness: Float,
+    isEnabled: Boolean,
+    onBrightnessChange: (Float) -> Unit
+) {
+    // Hauteur totale du slider
+    val barHeight = 300.dp
+    val barWidth = 60.dp
+
+    // Pour gérer le Drag (glissement) manuellement
+    // BoxWithConstraints nous permet de connaître la hauteur en pixels pour les calculs
+    BoxWithConstraints(
+        modifier = Modifier
+            .height(barHeight)
+            .width(barWidth),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        val maxHeightPx = constraints.maxHeight.toFloat()
+
+        // --- 1. LE FOND (Track sombre) ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(40.dp))
+                .background(CardSurface)
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(40.dp))
+        )
+
+        // --- 2. LA BARRE REMPLIE (Bleu Néon) ---
+        // On calcule la hauteur de la barre bleue en fonction de la luminosité
+        val fillHeight = maxHeightPx * brightness
+
+        // Dégradé pour l'effet "Glow"
+        val neonBrush = Brush.verticalGradient(
+            colors = listOf(NeonBlueGlow, NeonBlue)
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Conversion de la hauteur calculée (pixels) en DP
+                .height(with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() })
+                .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp, topStart = 10.dp, topEnd = 10.dp))
+                // CORRECTION ICI :
+                .background(
+                    if (isEnabled) neonBrush else SolidColor(Color.Gray)
+                )
+        )
+
+        // --- 3. LE ROND (Thumb) ---
+        // On le positionne dynamiquement
+        Box(
+            modifier = Modifier
+                .offset(y = -with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() - (barWidth/2) }) // Centrer le rond sur le haut de la barre
+                .size(barWidth - 10.dp) // Un peu plus petit que la largeur totale
+                .clip(CircleShape)
+                .background(Color.White)
+                .shadow(10.dp, CircleShape, spotColor = NeonBlue) // L'ombre bleue
+        ) {
+            // Petit point au centre du rond blanc (optionnel, pour le style)
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(Color.LightGray)
+                    .align(Alignment.Center)
+            )
+        }
+
+        // --- 4. GESTION DU TOUCHER (Invisible, par dessus tout) ---
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(40.dp))
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { offset ->
+                            // Gère le clic initial (saut direct à la position)
+                            val newBrightness = ((maxHeightPx - offset.y) / maxHeightPx).coerceIn(0f, 1f)
+                            if (isEnabled) onBrightnessChange(newBrightness)
+                        },
+                        onVerticalDrag = { change, _ -> // CORRECTION : "onVerticalDrag" au lieu de "onDrag"
+                            change.consume() // Important : on consomme l'événement
+
+                            // Gère le glissement
+                            val newBrightness = ((maxHeightPx - change.position.y) / maxHeightPx).coerceIn(0f, 1f)
+                            if (isEnabled) onBrightnessChange(newBrightness)
+                        }
+                    )
+                }
+        )
+    }
+}
 
 
 @Composable
@@ -380,8 +577,8 @@ fun FavoritesScreen(modifier: Modifier = Modifier) {
 @Composable
 fun LoginScreen(viewModel: SmartHomeViewModel) {
     // Variables locales pour les champs de texte
-    var username by remember { mutableStateOf("jean") } // Pré-rempli pour tester vite
-    var password by remember { mutableStateOf("Password123") }
+    var username by remember { mutableStateOf("admin") } // Pré-rempli pour tester vite
+    var password by remember { mutableStateOf("admin123") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val isLoading by viewModel.isLoading
@@ -533,7 +730,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                 Text(
                     text = "Mot de passe oublié ?",
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = TextWhite
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
@@ -552,169 +749,174 @@ fun ProfileScreen(
     onThemeChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(MaterialTheme.colorScheme.background),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        contentPadding = PaddingValues(24.dp)
     ) {
-        // ... (Header and Avatar sections remain unchanged) ...
+
         // --- 1. Header ---
-        Text(
-            text = "Profil",
-            style = MaterialTheme.typography.titleLarge,
-            color = TextWhite,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 32.dp)
-        )
+        item {
+            Text(
+                text = "Profil",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
+        }
 
         // --- 2. Avatar Section ---
-        Box(
-            contentAlignment = Alignment.BottomEnd,
-            modifier = Modifier.size(120.dp)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+        item {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(Color(0xFFE0E0E0)),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.BottomEnd,
+                modifier = Modifier.size(120.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.Gray
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(PrimaryBlue)
-                    .border(3.dp, DarkBackgroundColor, CircleShape)
-                    .clickable { /* Action changer photo */ },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = "Change photo",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // --- 3. User Info ---
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = name.ifEmpty { "Utilisateur" },
-                style = MaterialTheme.typography.headlineSmall,
-                color = TextWhite,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Default.Edit,
-                contentDescription = "Edit name",
-                tint = PrimaryBlue,
-                modifier = Modifier.size(20.dp).clickable { }
-            )
-        }
-
-        Text(
-            text = email,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextGray
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // --- 4. Settings Menu ---
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Theme Switcher
-            ProfileMenuItem(
-                icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
-                title = "Thème de l'application",
-                subtitle = if (isDarkTheme) "Mode Sombre" else "Mode Clair",
-                iconBgColor = if (isDarkTheme) Color(0xFF1E1F2B) else Color(0xFFF5F5F5), // Adjust colors as needed
-                iconColor = if (isDarkTheme) Color.White else Color.Black,
-                trailingContent = {
-                    Switch(
-                        checked = isDarkTheme,
-                        onCheckedChange = onThemeChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = PrimaryBlue,
-                            uncheckedThumbColor = Color.Gray,
-                            uncheckedTrackColor = Color.LightGray
-                        )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(Color(0xFFE0E0E0)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Gray
                     )
                 }
-            )
 
-            ProfileMenuItem(
-                icon = Icons.Default.Lock,
-                title = "Account Security",
-                subtitle = "Password, 2FA",
-                iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
-                iconColor = PrimaryBlue
-            )
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(PrimaryBlue)
+                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        .clickable { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Change photo",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
 
+        item { Spacer(modifier = Modifier.height(16.dp)) }
 
-            ProfileMenuItem(
-                icon = Icons.Default.Notifications,
-                title = "Notification Preferences",
-                subtitle = "Push, Email, SMS",
-                iconBgColor = AccentOrange.copy(alpha = 0.1f),
-                iconColor = AccentOrange
-            )
+        // --- 3. User Info ---
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name.ifEmpty { "Utilisateur" },
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit name",
+                    tint = PrimaryBlue,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { }
+                )
+            }
+        }
 
-            ProfileMenuItem(
-                icon = Icons.Default.Code, // Ou Terminal
-                title = "API Configuration",
-                subtitle = "Keys & Webhooks",
-                iconBgColor = AccentPurple.copy(alpha = 0.1f),
-                iconColor = AccentPurple
+        item {
+            Text(
+                text = email,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f)) // Pousse le bouton vers le bas
+        item { Spacer(modifier = Modifier.height(40.dp)) }
+
+        // --- 4. Settings Menu ---
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+
+                ProfileMenuItem(
+                    icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                    title = "Thème de l'application",
+                    subtitle = if (isDarkTheme) "Mode Sombre" else "Mode Clair",
+                    iconBgColor = if (isDarkTheme) Color(0xFF1E1F2B) else Color(0xFFF5F5F5),
+                    iconColor = if (isDarkTheme) Color.White else Color.Black,
+                    trailingContent = {
+                        Switch(
+                            checked = isDarkTheme,
+                            onCheckedChange = onThemeChange
+                        )
+                    }
+                )
+
+                ProfileMenuItem(
+                    icon = Icons.Default.Lock,
+                    title = "Account Security",
+                    subtitle = "Password, 2FA",
+                    iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
+                    iconColor = PrimaryBlue
+                )
+
+                ProfileMenuItem(
+                    icon = Icons.Default.Notifications,
+                    title = "Notification Preferences",
+                    subtitle = "Push, Email, SMS",
+                    iconBgColor = AccentOrange.copy(alpha = 0.1f),
+                    iconColor = AccentOrange
+                )
+
+                ProfileMenuItem(
+                    icon = Icons.Default.Code,
+                    title = "API Configuration",
+                    subtitle = "Keys & Webhooks",
+                    iconBgColor = AccentPurple.copy(alpha = 0.1f),
+                    iconColor = AccentPurple
+                )
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(32.dp)) }
 
         // --- 5. Logout Button ---
-        Button(
-            onClick = onLogoutClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = CardBackground, // Fond sombre
-                contentColor = DangerRed       // Texte rouge
-            ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.ExitToApp,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "Log Out",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+        item {
+            Button(
+                onClick = onLogoutClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = DangerRed
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ExitToApp,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Log Out",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
 
-        // Espace pour la barre de navigation du bas
-        Spacer(modifier = Modifier.height(20.dp))
+        item { Spacer(modifier = Modifier.height(20.dp)) }
     }
+
 }
 
 // --- Composant réutilisable pour les lignes de menu ---
@@ -732,7 +934,7 @@ fun ProfileMenuItem(
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.tertiary)
             .clickable { }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -758,13 +960,13 @@ fun ProfileMenuItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = TextWhite,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp
             )
             Text(
                 text = subtitle,
-                color = TextGray,
+                color = MaterialTheme.colorScheme.secondary,
                 fontSize = 12.sp
             )
         }
@@ -776,11 +978,12 @@ fun ProfileMenuItem(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = TextGray
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
+
 
 @Composable
 fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
@@ -796,7 +999,6 @@ fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTrailingIconColor = Color(0xFF9AA4B2),
     unfocusedTrailingIconColor = Color(0xFF9AA4B2)
 )
-
 
 
 @Composable
@@ -815,38 +1017,42 @@ fun HomeScreen(
             Column(
                 modifier = modifier
                     .fillMaxSize()
-                    .background(DarkBackgroundColor) // Fond sombre global
+                    .background(MaterialTheme.colorScheme.background) // Fond sombre global
                     .padding(horizontal = 20.dp)
             ) {
                 // 1. En-tête (Profil + Notif)
                 HeaderSection(name = "${viewModel.currentUsername},")
 
+                /*
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // 2. Status Chips (3 Lights On, Temp, etc.)
                 StatusChipsSection()
 
+                 */
+
                 Spacer(modifier = Modifier.height(24.dp))
 
+                /*
                 // 3. Section Scènes
                 Text(
-                    text = "Scenes",
+                    text = "Mes scènes",
                     style = MaterialTheme.typography.titleLarge,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
                 ScenesRow()
 
-
-
                 Spacer(modifier = Modifier.height(24.dp))
+                 */
 
                 // 4. Section Devices (Grille)
                 Text(
-                    text = "My Devices",
+                    text = "Mes appareils",
                     style = MaterialTheme.typography.titleLarge,
-                    color = TextWhite,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -898,8 +1104,8 @@ fun HeaderSection(name: String) {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text("Bonjour", color = TextGray, fontSize = 14.sp)
-                Text(name, color = TextWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Bonjour", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp)
+                Text(name, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }
         // Cloche Notification
@@ -967,8 +1173,8 @@ fun ScenesRow() {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         SceneCard("Home", Icons.Default.Home, PrimaryBlue)
-        SceneCard("Away", Icons.Default.ExitToApp, CardBackground)
-        SceneCard("Movie", Icons.Default.PlayArrow, CardBackground)
+        SceneCard("Away", Icons.Default.ExitToApp, MaterialTheme.colorScheme.tertiary)
+        SceneCard("Movie", Icons.Default.PlayArrow, MaterialTheme.colorScheme.tertiary)
     }
 }
 
@@ -984,9 +1190,9 @@ fun SceneCard(name: String, icon: ImageVector, backgroundColor: Color) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, contentDescription = name, tint = TextWhite, modifier = Modifier.size(32.dp))
+        Icon(icon, contentDescription = name, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
         Spacer(modifier = Modifier.height(8.dp))
-        Text(name, color = TextWhite, fontWeight = FontWeight.Medium)
+        Text(name, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -1032,8 +1238,6 @@ fun DeviceCard(
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit
 ) {
-    val background = if (isOn) PrimaryBlue.copy(alpha = 0.2f) else CardBackground
-    val iconTint = if (isOn) PrimaryBlue else TextWhite
 
     // Dégradé bleu subtil si actif
     val modifierBackground = if (isOn) {
@@ -1043,7 +1247,7 @@ fun DeviceCard(
             )
         )
     } else {
-        Modifier.background(CardBackground)
+        Modifier.background(MaterialTheme.colorScheme.tertiary)
     }
 
     Column(
@@ -1066,12 +1270,12 @@ fun DeviceCard(
                     .clip(CircleShape)
                     .background(
                         if(isOn)
-                            TextWhite
+                            MaterialTheme.colorScheme.primary
                         else
-                            Color.White.copy(alpha = 0.1f)),
+                            MaterialTheme.colorScheme.secondary),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = null, tint = if(isOn) PrimaryBlue else TextWhite)
+                Icon(icon, contentDescription = null, tint = if(isOn) PrimaryBlue else MaterialTheme.colorScheme.primary)
             }
 
             // Switch personnalisé
@@ -1081,20 +1285,21 @@ fun DeviceCard(
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = TextWhite,
                     checkedTrackColor = PrimaryBlue,
-                    uncheckedThumbColor = TextGray,
-                    uncheckedTrackColor = DarkBackgroundColor
+                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.background
                 ),
                 modifier = Modifier.scale(0.8f) // Un peu plus petit
             )
         }
 
         Column {
-            Text(name, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            Text(status, color = if(isOn) PrimaryBlue else TextGray, fontSize = 12.sp)
+            Text(name, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text(status, color = if(isOn) PrimaryBlue else MaterialTheme.colorScheme.primary, fontSize = 12.sp)
         }
     }
 }
 
+@Preview(showBackground = true)
 @Composable
 fun ThermostatCard() {
     Row(
@@ -1102,7 +1307,7 @@ fun ThermostatCard() {
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(CardBackground)
+            .background(MaterialTheme.colorScheme.tertiary)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1119,15 +1324,15 @@ fun ThermostatCard() {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text("Thermostat", color = TextWhite, fontWeight = FontWeight.Bold)
-                Text("Heating to 23°C", color = TextGray, fontSize = 12.sp)
+                Text("Thermostat", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("Heating to 23°C", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
             }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = {}) { Icon(Icons.Default.Remove, null, tint = TextGray) } // Utilise une icône '-'
-            Text("21°", color = TextWhite, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = {}) { Icon(Icons.Default.Add, null, tint = TextWhite) }
+            IconButton(onClick = {}) { Icon(Icons.Default.Remove, null, tint = MaterialTheme.colorScheme.primary) } // Utilise une icône '-'
+            Text("21°", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = {}) { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) }
         }
     }
 }
