@@ -191,9 +191,18 @@ export default function MyBluetoothDevicesPage() {
               <Radio className="h-5 w-5" />
               Appareils détectés à l&apos;instant
             </CardTitle>
-            <CardDescription>
-              Appareils vus par le RPi dans les 2 dernières minutes. Cliquez sur &quot;Lier à mon compte&quot; pour
-              associer l&apos;un d&apos;eux à votre compte (pas besoin de saisir la MAC).
+            <CardDescription className="space-y-2">
+              <span className="block">
+                Appareils vus par le RPi dans les 2 dernières minutes. Cliquez sur &quot;Lier à mon compte&quot; pour
+                associer l&apos;un d&apos;eux à votre compte.
+              </span>
+              <span className="block mt-2 rounded-md bg-muted/80 p-2 text-xs">
+                <strong>Votre téléphone n&apos;apparaît pas avec l&apos;adresse des Réglages (ex. 94:7B:E7:A1:E7:A0) ?</strong>
+                {" "}Sous Android (Samsung, etc.), le Bluetooth utilise souvent une <strong>adresse aléatoire</strong> en BLE :
+                le RPi voit donc une autre MAC. Pour trouver votre J7 : éteignez le Bluetooth du téléphone → Rafraîchir →
+                une adresse disparaît ; rallumez le Bluetooth et liez cette adresse. Sinon, utilisez &quot;Ajouter mon appareil&quot; et
+                saisissez 94:7B:E7:A1:E7:A0 (ça fonctionnera si le téléphone l&apos;annonce un jour).
+              </span>
             </CardDescription>
           </div>
           <Button variant="outline" size="sm" onClick={fetchRecentDetections} disabled={loadingRecent}>
