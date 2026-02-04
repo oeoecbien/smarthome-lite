@@ -11,7 +11,6 @@ import os
 # Z-Wave JS UI (zwave-js/docker-compose.yml : SOCKET_PORT=8091, interface web Socket.IO)
 ZWAVE_JS_UI_URL = os.environ.get("ZWAVE_JS_UI_URL", "http://localhost:8091").rstrip("/")
 
-
 def _default_ws_url(http_url: str) -> str:
     """Dérive ws://host:3000 depuis http://host:8091 (même host, port 3000)."""
     from urllib.parse import urlparse
@@ -19,7 +18,6 @@ def _default_ws_url(http_url: str) -> str:
     host = p.hostname or "localhost"
     scheme = "wss" if p.scheme == "https" else "ws"
     return f"{scheme}://{host}:3000"
-
 
 # Z-Wave JS Server WebSocket (port 3000, protocole zwave-js-server) — prioritaire pour setValue
 ZWAVE_JS_WS_URL = os.environ.get("ZWAVE_JS_WS_URL", "").strip() or _default_ws_url(ZWAVE_JS_UI_URL)

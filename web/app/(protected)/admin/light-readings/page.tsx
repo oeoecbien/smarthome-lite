@@ -1,10 +1,8 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,26 +13,13 @@ import { lightReadingService } from "@/lib/services/light-reading-service"
 import { formatRelativeTime, formatDate, formatNumber } from "@/lib/formatters"
 import type { LightReading } from "@/lib/types"
 import { Sun, RefreshCw, AlertCircle, Filter, Gauge } from "lucide-react"
-import { useIsAdmin } from "@/hooks/use-is-admin"
 
 export default function LightReadingsPage() {
   const isAdmin = useIsAdmin()
   const router = useRouter()
-
-  useEffect(() => {
-    if (!isAdmin) {
-      router.push("/dashboard")
-    }
-  }, [isAdmin, router])
-
-  if (!isAdmin) {
-    return null
-  }
   const [readings, setReadings] = useState<LightReading[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Filters
   const [filterRpiId, setFilterRpiId] = useState<string>("")
   const [filterLimit, setFilterLimit] = useState<number>(100)
 
@@ -54,10 +39,21 @@ export default function LightReadingsPage() {
   }, [filterRpiId, filterLimit])
 
   useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  useEffect(() => {
+    if (!isAdmin) return
     fetchData()
     const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
-  }, [fetchData])
+  }, [isAdmin, fetchData])
+
+  if (!isAdmin) {
+    return null
+  }
 
   if (isLoading) {
     return (

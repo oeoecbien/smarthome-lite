@@ -150,6 +150,27 @@ Appareil testé : **ABUS Security Center Bulb** (SHLM10010), node_id **3**.
 
 Cette lampe n’utilise **que la plage 0–99** (pas de valeur 255 pour « ON »). Le client Z-Wave (`zwave_client.py`) envoie donc **99** pour « allumer à fond » et mappe 0–100 % du backend vers 0–99 pour `targetValue`. Les réponses `currentValue` (0–99) sont converties en 0–100 pour l’API.
 
+## Détection de présence Bluetooth (RPi capteur)
+
+Sur le **RPi capteur** (ex. 10.109.150.133), un script scanne les appareils BLE à portée et envoie chaque MAC détectée au backend. Le backend enregistre la présence en BDD et associe l’utilisateur si la MAC est liée dans **Admin → Appareils BT**.
+
+### Prérequis
+
+- **Admin** : dans l’interface web, **Administration → Appareils BT (MAC → user)** : associer les adresses MAC (téléphones, ex. Galaxy J7) aux utilisateurs (jean, mehdi…).
+- **Backend** : `BACKEND_URL` et `RASPBERRY_API_KEY` dans `sae_s5/.env` (même clé que pour le heartbeat du RPi).
+
+### Lancer le scan BT sur le RPi
+
+```bash
+cd sae_s5
+pip install -r raspberry/requirements.txt   # inclut bleak, requests
+python raspberry/bt_presence_scan.py
+```
+
+Variables optionnelles : `BT_PRESENCE_SCAN_INTERVAL` (défaut 45 s), `BT_PRESENCE_SCAN_TIMEOUT` (défaut 10 s).
+
+En production : lancer en arrière-plan (`nohup`, `screen`) ou via un service systemd. À chaque cycle, le script envoie `POST {BACKEND_URL}/api/presence` avec chaque MAC détectée ; le backend enregistre la présence et l’IA utilise `presence_detected` pour le scénario (Day / Evening / Away…).
+
 ## Fichiers
 
 | Fichier | Rôle |
@@ -157,7 +178,8 @@ Cette lampe n’utilise **que la plage 0–99** (pas de valeur 255 pour « ON »
 | `api_flask_zwave.py` | Serveur Flask, routes `/api/devices/...` et `/api/nodes/...` |
 | `config.py` | Lecture des variables (depuis `sae_s5/.env`), alignée zwave-js et backend |
 | `zwave_client.py` | Client Socket.IO vers Z-Wave JS UI (port 8091) |
-| `requirements.txt` | Dépendances Python |
+| `bt_presence_scan.py` | Scan BLE et envoi des MAC au backend (présence → IA) |
+| `requirements.txt` | Dépendances Python (Flask, bleak, requests, …) |
 
 ## Dépannage
 
