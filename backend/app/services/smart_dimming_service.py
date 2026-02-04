@@ -179,7 +179,12 @@ class SmartDimmingService:
                         reason = f"ML prediction (confidence: {regression_result['confidence']:.2f})"
                         transition = "fade"  # Transition douce pour prédiction ML
                         use_ml_prediction = True
-                        
+                        calc_result = {
+                            "enabled": True,
+                            "target_brightness": target_brightness,
+                            "reason": reason,
+                            "transition": transition,
+                        }
                         logger.debug(
                             f"Utilisation prédiction ML: {target_brightness}% "
                             f"(confiance: {regression_result['confidence']:.2f})"
@@ -212,27 +217,12 @@ class SmartDimmingService:
                 reason = calc_result["reason"]
                 transition = calc_result.get("transition", "immediate")
             
-            # Vérifier si ajustement nécessaire (seuil de 10%)
-            brightness_diff = abs(device.brightness - target_brightness)
-            
-            if brightness_diff < settings.smart_dimming_threshold:
-                logger.debug(
-                    f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
-                )
-                continue
-            
-            previous_brightness = device.brightness
-            
+            # Vérifier si le scénario autorise le smart dimming (ex. Away = désactivé)
             if not calc_result.get("enabled", True):
                 continue
             
-            target_brightness = calc_result["target_brightness"]
-            reason = calc_result["reason"]
-            transition = calc_result.get("transition", "immediate")
-            
-            # Vérifier si ajustement nécessaire (seuil de 10%)
+            # Vérifier si ajustement nécessaire (seuil configurable)
             brightness_diff = abs(device.brightness - target_brightness)
-            
             if brightness_diff < settings.smart_dimming_threshold:
                 logger.debug(
                     f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
