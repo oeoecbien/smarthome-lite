@@ -2,13 +2,17 @@
 Routes pour l'Intelligence Artificielle - Classification de scénarios.
 """
 
+import json
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
+import numpy as np
 
 from app.database import get_db
 from app.dependencies import get_current_user, User
+from app.models import TrainingData
 from app.services.ai_service import get_ai_service
 from app.services.regression_service import get_regression_service
 from app.services.ollama_service import OllamaService
@@ -149,20 +153,30 @@ async def get_model_metrics(
     method = "ml" if model_loaded else "fallback"
     
     if model_loaded:
-        # Pour obtenir l'accuracy, il faudrait réentraîner ou charger depuis un fichier de métriques
-        # Pour l'instant, on retourne None et on indique que le modèle est chargé
         try:
-            # Essayer de charger les métriques depuis un fichier (si disponible)
-            import os
-            import json
-            metrics_file = os.path.join(os.path.dirname(model_path), "metrics.json")
+            model_dir = os.path.dirname(os.path.abspath(model_path))
+            metrics_file = os.path.join(model_dir, "metrics.json")
             if os.path.exists(metrics_file):
-                with open(metrics_file, "r") as f:
+                with open(metrics_file, "r", encoding="utf-8") as f:
                     metrics = json.load(f)
                     accuracy = metrics.get("accuracy")
+            if accuracy is None:
+                # Fallback : calculer l'accuracy sur les données d'entraînement en base
+                rows = db.query(TrainingData).limit(2000).all()
+                if len(rows) >= 20:
+                    X = np.array([
+                        [r.hour, r.day_of_week, 1 if r.presence_detected else 0, 1 if r.light_on else 0]
+                        for r in rows
+                    ])
+                    y = np.array([r.scenario for r in rows])
+                    pred = ai_service.model.predict(X)
+                    accuracy = float(np.mean(pred == y))
+                    os.makedirs(model_dir, exist_ok=True)
+                    with open(metrics_file, "w", encoding="utf-8") as f:
+                        json.dump({"accuracy": accuracy}, f, indent=2)
         except Exception:
             pass
-    
+
     return {
         "model_loaded": model_loaded,
         "model_path": model_path,

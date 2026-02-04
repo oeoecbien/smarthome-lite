@@ -121,19 +121,27 @@ def evaluate_model(model, X_test, y_test):
     return accuracy
 
 
-def save_model(model, filepath: str):
+def save_model(model, filepath: str, accuracy: float = None):
     """
-    Sauvegarde le modèle au format pickle.
+    Sauvegarde le modèle au format pickle et les métriques en JSON.
     
     Args:
         model: Modèle à sauvegarder
         filepath: Chemin du fichier de sauvegarde
+        accuracy: Précision sur le jeu de test (optionnel, pour metrics.json)
     """
-    # Créer le répertoire s'il n'existe pas
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    import json
+    model_dir = os.path.dirname(filepath)
+    os.makedirs(model_dir, exist_ok=True)
     
     joblib.dump(model, filepath)
     print(f"[OK] Modèle sauvegardé: {filepath}")
+    
+    if accuracy is not None:
+        metrics_file = os.path.join(model_dir, "metrics.json")
+        with open(metrics_file, "w") as f:
+            json.dump({"accuracy": accuracy}, f, indent=2)
+        print(f"[OK] Métriques sauvegardées: {metrics_file}")
 
 
 def main():
@@ -206,9 +214,9 @@ def main():
         # Évaluation
         accuracy = evaluate_model(model, X_test, y_test)
         
-        # Sauvegarde
+        # Sauvegarde (modèle + métriques pour l'API / frontend)
         output_path = args.output or settings.ml_model_path
-        save_model(model, output_path)
+        save_model(model, output_path, accuracy=accuracy)
         
         # Vérification de l'accuracy minimale
         if accuracy < 0.70:

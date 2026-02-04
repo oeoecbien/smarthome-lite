@@ -85,8 +85,6 @@ export interface ClassifyRequest {
   day_of_week: number
   presence_detected: boolean
   light_on: boolean
-  ambient_light_level: number
-  temperature?: number
 }
 
 export interface ClassifyResponse {
@@ -95,17 +93,17 @@ export interface ClassifyResponse {
 }
 
 export interface PredictIntensityRequest {
-  ambient_light_lux: number
   hour: number
   day_of_week: number
-  user_preference_avg: number
-  room_type: string
+  lux_value: number
+  presence_detected: boolean
   scenario: ScenarioType
 }
 
 export interface PredictIntensityResponse {
-  predicted_brightness: number
+  intensity: number
   confidence?: number
+  method?: string
 }
 
 export interface ModelMetrics {
