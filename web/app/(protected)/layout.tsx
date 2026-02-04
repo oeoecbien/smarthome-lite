@@ -18,6 +18,7 @@ const navItems = [
   { href: "/ai", label: "Intelligence IA", icon: Brain },
   { href: "/smart-dimming", label: "Smart Dimming", icon: SunDim },
   { href: "/events", label: "Événements", icon: Calendar },
+  { href: "/my-bluetooth-devices", label: "Mon appareil BT", icon: Smartphone },
 ]
 
 const adminNavItems = [

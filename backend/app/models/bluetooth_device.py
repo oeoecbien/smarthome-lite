@@ -33,7 +33,7 @@ class BluetoothDevice(Base):
     
     # ========== Colonnes ==========
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     mac_address = Column(String(17), unique=True, nullable=False, index=True)
     device_name = Column(String(100), nullable=True)
     device_type = Column(String(50), nullable=True)  # 'phone', 'watch', 'headphones', etc.

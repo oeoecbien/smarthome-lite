@@ -40,6 +40,7 @@ class Presence(Base):
     
     # Colonnes Bluetooth
     device_mac_address = Column(String(17), nullable=True, index=True)  # Format: "AA:BB:CC:DD:EE:FF"
+    device_name = Column(String(100), nullable=True)  # Nom BLE annoncé par l'appareil (ex: "Galaxy A52")
     signal_strength = Column(Integer, nullable=True)  # RSSI en dBm
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     

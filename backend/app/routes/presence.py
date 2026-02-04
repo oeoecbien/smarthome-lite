@@ -4,6 +4,7 @@ Routes pour la détection de présence (utilisées par Raspberry Pi).
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
@@ -40,7 +41,8 @@ async def get_known_macs(
 
 class PresenceCreate(BaseModel):
     """Schéma pour création d'une détection de présence."""
-    device_mac_address: Optional[str] = None  # Adresse MAC du device Bluetooth
+    device_mac_address: Optional[str] = None  # Adresse MAC du device Bluetooth (ou identifiant BLE)
+    device_name: Optional[str] = None  # Nom BLE annoncé par l'appareil (ex: Galaxy A52)
     signal_strength: Optional[int] = None  # RSSI en dBm
 
 
@@ -82,7 +84,8 @@ async def create_presence(
     
     # Si une MAC est fournie, filtrer aussi par MAC
     if request.device_mac_address:
-        query = query.filter(Presence.device_mac_address == request.device_mac_address.upper())
+        _mac_norm = request.device_mac_address.strip().replace("-", ":").upper()
+        query = query.filter(Presence.device_mac_address == _mac_norm)
     
     recent_presence = query.first()
     
@@ -100,44 +103,43 @@ async def create_presence(
             "recorded": True,
         }
     
-    # N'enregistrer que les MAC connues (bluetooth_devices) pour éviter de remplir la BDD
-    # avec des dizaines d'appareils inconnus (voisins, etc.). presence_detected = utilisateur connu.
+    # Toujours enregistrer la présence. Si la MAC n'est pas dans bluetooth_devices, l'ajouter
+    # automatiquement (user_id=None) pour que "tous les devices détectés" soient dans la liste.
+    # Format canonique MAC (AA:BB:CC:DD:EE:FF) pour matcher même si la BDD a été remplie avec des tirets
+    mac_upper = (request.device_mac_address.strip().replace("-", ":").replace(" ", "").upper()) if request.device_mac_address else None
+    if mac_upper and len(mac_upper) == 12 and mac_upper.isalnum():
+        mac_upper = ":".join(mac_upper[i : i + 2] for i in range(0, 12, 2))
     user_id = None
-    mac_known = False
-    if request.device_mac_address:
+    if mac_upper:
         try:
             from app.models import BluetoothDevice
+            # Retrouver l'appareil qu'il soit stocké avec : ou - (admin peut avoir saisi 94-7B-E7-...)
             bluetooth_device = db.query(BluetoothDevice).filter(
-                BluetoothDevice.mac_address == request.device_mac_address.upper(),
+                func.replace(BluetoothDevice.mac_address, "-", ":") == mac_upper,
                 BluetoothDevice.is_active == True,
             ).first()
             if bluetooth_device:
                 user_id = bluetooth_device.user_id
-                mac_known = True
+            else:
+                # Auto-ajout : tout device détecté est ajouté à bluetooth_devices (user_id=None)
+                new_device = BluetoothDevice(
+                    mac_address=mac_upper,
+                    user_id=None,
+                    device_name="Auto-détecté",
+                    device_type=None,
+                    is_active=True,
+                )
+                db.add(new_device)
+                db.commit()
         except Exception:
+            db.rollback()
             pass
 
-    if not mac_known and request.device_mac_address:
-        # MAC inconnue : ne pas insérer (éviter bruit). 200 = accepté mais non enregistré.
-        return JSONResponse(
-            status_code=200,
-            content={
-                "id": 0,
-                "raspberry_pi_id": rpi.id,
-                "raspberry_pi_name": rpi.name,
-                "location": rpi.location,
-                "detected_at": datetime.now().isoformat(),
-                "device_mac_address": request.device_mac_address.upper(),
-                "signal_strength": request.signal_strength,
-                "user_id": None,
-                "recorded": False,
-            },
-        )
-
-    # Créer la détection (MAC connue → user_id rempli)
+    # Créer la détection (MAC connue ou venant d'être auto-ajoutée)
     presence = Presence(
         raspberry_pi_id=rpi.id,
-        device_mac_address=request.device_mac_address.upper() if request.device_mac_address else None,
+        device_mac_address=mac_upper,
+        device_name=(request.device_name or "").strip() or None,
         signal_strength=request.signal_strength,
         user_id=user_id
     )
@@ -181,6 +183,59 @@ async def create_presence(
         "user_id": presence.user_id,
         "recorded": True,
     }
+
+
+class RecentDetectionItem(BaseModel):
+    """Une détection récente pour affichage « Lier à mon compte »."""
+    device_mac_address: str
+    device_name: Optional[str] = None
+    signal_strength: Optional[int] = None
+    detected_at: datetime
+    raspberry_pi_name: str
+    location: str
+
+
+@router.get("/recent", response_model=List[RecentDetectionItem])
+async def get_recent_detections(
+    minutes: int = 2,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Liste les appareils détectés récemment (dernières N minutes).
+    Permet à l'utilisateur de lier un appareil à son compte sans saisir la MAC :
+    « Ces appareils viennent d'être détectés → cliquez pour lier à mon compte ».
+    """
+    from datetime import timedelta
+    since = datetime.now() - timedelta(minutes=min(minutes, 60))
+    rows = (
+        db.query(Presence, RaspberryPi)
+        .join(RaspberryPi, Presence.raspberry_pi_id == RaspberryPi.id)
+        .filter(
+            Presence.detected_at >= since,
+            Presence.device_mac_address.isnot(None),
+            Presence.device_mac_address != "",
+        )
+        .order_by(Presence.detected_at.desc())
+        .limit(100)
+        .all()
+    )
+    seen_macs: set[str] = set()
+    result = []
+    for presence, rpi in rows:
+        mac = (presence.device_mac_address or "").strip()
+        if not mac or mac in seen_macs:
+            continue
+        seen_macs.add(mac)
+        result.append({
+            "device_mac_address": mac,
+            "device_name": (presence.device_name or "").strip() or None,
+            "signal_strength": presence.signal_strength,
+            "detected_at": presence.detected_at,
+            "raspberry_pi_name": rpi.name,
+            "location": rpi.location or "",
+        })
+    return result
 
 
 @router.get("/", response_model=List[PresenceResponse])

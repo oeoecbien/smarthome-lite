@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS presence (
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE RESTRICT,
     detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     device_mac_address VARCHAR(17),
+    device_name VARCHAR(100),
     signal_strength INTEGER,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT check_mac_format CHECK (
@@ -165,6 +166,7 @@ CREATE INDEX IF NOT EXISTS idx_presence_mac_time ON presence(device_mac_address,
 
 COMMENT ON TABLE presence IS 'Journal des détections Bluetooth';
 COMMENT ON COLUMN presence.device_mac_address IS 'Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF)';
+COMMENT ON COLUMN presence.device_name IS 'Nom BLE annoncé par l''appareil (ex: Galaxy A52, iPhone)';
 COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche, -100 à 0)';
 COMMENT ON COLUMN presence.user_id IS 'ID de l''utilisateur associé (si MAC mappée dans bluetooth_devices)';
 
@@ -313,12 +315,13 @@ COMMENT ON COLUMN user_preferences.manual_brightness IS 'Intensité choisie par 
 
 -- ----------------------------------------------------------------------------
 -- Table: bluetooth_devices
--- Description: Association entre adresses MAC Bluetooth et utilisateurs
+-- Description: Association entre adresses MAC Bluetooth et utilisateurs.
+-- user_id NULL = appareil auto-détecté par le RPi, pas encore assigné à un utilisateur.
 -- SÉCURITÉ: Validation format MAC
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS bluetooth_devices (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     mac_address VARCHAR(17) NOT NULL UNIQUE,
     device_name VARCHAR(100),
     device_type VARCHAR(50),
@@ -335,7 +338,8 @@ CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_user ON bluetooth_devices(user_
 CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_mac ON bluetooth_devices(mac_address);
 CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_active ON bluetooth_devices(is_active);
 
-COMMENT ON TABLE bluetooth_devices IS 'Association entre adresses MAC Bluetooth et utilisateurs';
+COMMENT ON TABLE bluetooth_devices IS 'Association entre adresses MAC Bluetooth et utilisateurs (user_id NULL = auto-détecté non assigné)';
+COMMENT ON COLUMN bluetooth_devices.user_id IS 'Utilisateur associé ; NULL si appareil auto-détecté par le RPi, pas encore assigné';
 COMMENT ON COLUMN bluetooth_devices.mac_address IS 'Adresse MAC du device (format: AA:BB:CC:DD:EE:FF)';
 COMMENT ON COLUMN bluetooth_devices.device_name IS 'Nom du device (ex: iPhone de Jean, Montre de Marie)';
 COMMENT ON COLUMN bluetooth_devices.device_type IS 'Type de device (phone, watch, headphones, etc.)';
@@ -561,6 +565,7 @@ SELECT
     r.name AS raspberry_pi_name,
     r.location,
     p.device_mac_address,
+    p.device_name,
     p.signal_strength,
     p.user_id,
     u.username AS user_name

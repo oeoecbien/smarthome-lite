@@ -367,3 +367,4 @@ app.include_router(light_readings.router, prefix="/api/light-readings", tags=["L
 app.include_router(presence.router, prefix="/api/presence", tags=["Presence"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(bluetooth_devices.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(bluetooth_devices.router_me, prefix="/api")
