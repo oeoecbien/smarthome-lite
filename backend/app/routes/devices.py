@@ -18,6 +18,7 @@ from app.schemas.device import (
 )
 from app.services.device_service import DeviceService
 from app.dependencies import get_current_user
+from app.config import BRIGHTNESS_MAX
 
 router = APIRouter()
 
@@ -58,7 +59,10 @@ async def get_device(
     - Utilisateurs normaux: uniquement leurs appareils
     - Admins: tous les appareils
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
     
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -96,10 +100,11 @@ async def create_device(
             detail=f"Raspberry Pi avec l'ID {device_data.raspberry_pi_id} introuvable"
         )
     
-    # Vérifier GPIO unique par RPi
+    # Vérifier GPIO unique par RPi (uniquement parmi les appareils non supprimés)
     existing = db.query(Device).filter(
         Device.raspberry_pi_id == device_data.raspberry_pi_id,
-        Device.gpio_pin == device_data.gpio_pin
+        Device.gpio_pin == device_data.gpio_pin,
+        Device.deleted_at.is_(None),
     ).first()
     
     if existing:
@@ -112,7 +117,7 @@ async def create_device(
         **device_data.dict(),
         user_id=current_user.id,  # Assigner automatiquement à l'utilisateur connecté
         state=False,
-        brightness=0 if device_data.type == "dimmer" else 100
+        brightness=0 if device_data.type == "dimmer" else BRIGHTNESS_MAX
     )
     
     db.add(device)
@@ -134,7 +139,10 @@ async def get_device_state(
     - Avec ?sync=true : lecture depuis le RPi puis mise à jour en base (état réel de la lampe).
     Utilisable par le front mobile pour afficher l'état à jour.
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
     if current_user.role != "admin" and device.user_id != current_user.id:
@@ -149,7 +157,7 @@ async def get_device_state(
         "id": device.id,
         "name": device.name,
         "state": device.state,
-        "brightness": device.brightness,
+        "brightness": min(BRIGHTNESS_MAX, device.brightness),
     }
 
 
@@ -165,7 +173,10 @@ async def set_device_state(
     - Utilisateurs normaux: uniquement leurs appareils
     - Admins: tous les appareils
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
     
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -183,14 +194,20 @@ async def set_device_state(
             source="manual"
         )
         
+        # À l'allumage (light/dimmer) : appliquer la luminosité envoyée par le client,
+        # ou reprendre celle stockée en base (comme quand on avait éteint)
         if (
             state_data.state
-            and state_data.brightness is not None
             and device.type in ["light", "dimmer"]
         ):
+            brightness_to_apply = (
+                state_data.brightness
+                if state_data.brightness is not None
+                else device.brightness
+            )
             device = await device_service.set_device_brightness(
                 device_id,
-                state_data.brightness,
+                brightness_to_apply,
                 source="manual"
             )
         
@@ -210,14 +227,14 @@ async def set_device_state(
 async def set_device_brightness(
     device_id: int,
     brightness_data: Optional[DeviceBrightness] = Body(None),
-    intensity: Optional[float] = Query(None, ge=0, le=100, description="Intensité 0-100 ou 0-1 (sera converti)"),
+    intensity: Optional[float] = Query(None, ge=0, le=99, description="Intensité 0-99 ou 0-1 (sera converti)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Change l'intensité d'un appareil dimmable.
     Accepte soit un body JSON { "brightness": 0-100, "transition"?: number }
-    soit un paramètre de requête intensity (0-100 ou 0-1).
+    soit un paramètre de requête intensity (0-99 ou 0-1).
     - Utilisateurs normaux: uniquement leurs appareils
     - Admins: tous les appareils
     """
@@ -225,17 +242,20 @@ async def set_device_brightness(
         brightness = brightness_data.brightness
         transition = brightness_data.transition
     elif intensity is not None:
-        # Accepter 0-1 (ex: 0.5) ou 0-100
-        brightness = int(round(intensity * 100)) if intensity <= 1 else int(round(intensity))
-        brightness = max(0, min(100, brightness))
+        # Accepter 0-1 (ex: 0.5) ou 0-99
+        brightness = int(round(intensity * BRIGHTNESS_MAX)) if intensity <= 1 else int(round(intensity))
+        brightness = max(0, min(BRIGHTNESS_MAX, brightness))
         transition = None
     else:
         raise HTTPException(
             status_code=422,
-            detail="Fournir soit un body avec 'brightness' (0-100), soit le paramètre de requête 'intensity'."
+            detail="Fournir soit un body avec 'brightness' (0-99), soit le paramètre de requête 'intensity'."
         )
 
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
     
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")
@@ -277,7 +297,10 @@ async def delete_device(
     - Utilisateurs normaux: uniquement leurs appareils
     - Admins: tous les appareils
     """
-    device = db.query(Device).filter(Device.id == device_id).first()
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
     
     if not device:
         raise HTTPException(status_code=404, detail="Device not found")

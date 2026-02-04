@@ -15,6 +15,10 @@ _env_root = Path(__file__).resolve().parent.parent.parent / ".env"
 _env_file = str(_env_root) if _env_root.exists() else ".env"
 
 
+# Luminosité max des lampes (jamais 100 pour éviter usure / contraintes matérielles)
+BRIGHTNESS_MAX = 99
+
+
 class Settings(BaseSettings):
     """Configuration du backend (serveur FastAPI)."""
 

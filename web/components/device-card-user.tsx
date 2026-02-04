@@ -25,7 +25,7 @@ const deviceIcons = {
 export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 100)
+  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
   const [isDragging, setIsDragging] = useState(false)
 
   const Icon = deviceIcons[device.type] || Lightbulb
@@ -111,7 +111,7 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
         friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
       }
       
-      setLocalBrightness(device.brightness ?? 100)
+      setLocalBrightness(device.brightness ?? 99)
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -201,12 +201,12 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Intensité</span>
-              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 100)}%</span>
+              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 99)}%</span>
             </div>
             <Slider
-              value={[isDragging ? localBrightness : (device.brightness ?? 100)]}
+              value={[isDragging ? localBrightness : (device.brightness ?? 99)]}
               min={0}
-              max={100}
+              max={99}
               step={1}
               onValueChange={handleBrightnessChange}
               onValueCommit={handleBrightnessCommit}

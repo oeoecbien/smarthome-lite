@@ -86,7 +86,7 @@ class SmartDimmingService:
             reason = f"Medium natural light ({lux_value:.0f} lux) - interpolated"
         
         return {
-            "target_brightness": max(0, min(100, target)),
+            "target_brightness": max(0, min(99, target)),
             "reason": reason,
             "transition": transition,
             "enabled": True

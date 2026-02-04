@@ -9,7 +9,7 @@ from typing import Optional, Literal
 from sqlalchemy.orm import Session
 
 from app.models import Device, RaspberryPi, Event
-from app.config import settings
+from app.config import settings, BRIGHTNESS_MAX
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +109,10 @@ class DeviceService:
         try:
             data = await self._request_rpi(rpi, "GET", endpoint)
             if isinstance(data, dict) and "state" in data:
+                raw = int(data.get("brightness", 0))
                 return {
                     "state": bool(data.get("state", False)),
-                    "brightness": int(data.get("brightness", 0)),
+                    "brightness": min(BRIGHTNESS_MAX, max(0, raw)),
                 }
             return None
         except Exception as e:
@@ -121,16 +122,19 @@ class DeviceService:
     async def sync_device_state_from_rpi(self, device_id: int) -> Optional[Device]:
         """
         Met à jour l'appareil en base avec l'état lu depuis le RPi.
-        Retourne le device rafraîchi ou None si la lecture RPi échoue.
+        Retourne le device rafraîchi ou None si la lecture RPi échoue (exclut soft-deleted).
         """
-        device = self.db.query(Device).filter(Device.id == device_id).first()
+        device = self.db.query(Device).filter(
+            Device.id == device_id,
+            Device.deleted_at.is_(None),
+        ).first()
         if not device:
             return None
         state_data = await self.get_state_from_rpi(device)
         if state_data is None:
             return None
         device.state = state_data["state"]
-        device.brightness = state_data["brightness"]
+        device.brightness = min(BRIGHTNESS_MAX, state_data["brightness"])
         self.db.commit()
         self.db.refresh(device)
         return device
@@ -142,9 +146,12 @@ class DeviceService:
         source: str = "manual"
     ) -> Device:
         """
-        Change l'état ON/OFF d'un appareil
+        Change l'état ON/OFF d'un appareil (exclut les appareils soft-deleted).
         """
-        device = self.db.query(Device).filter(Device.id == device_id).first()
+        device = self.db.query(Device).filter(
+            Device.id == device_id,
+            Device.deleted_at.is_(None),
+        ).first()
         if not device:
             raise ValueError(f"Device {device_id} not found")
         
@@ -197,15 +204,19 @@ class DeviceService:
         transition: Literal["immediate", "fade"] = "immediate"
     ) -> Device:
         """
-        Change l'intensité d'un appareil dimmable
+        Change l'intensité d'un appareil dimmable (exclut les appareils soft-deleted).
         """
-        device = self.db.query(Device).filter(Device.id == device_id).first()
+        device = self.db.query(Device).filter(
+            Device.id == device_id,
+            Device.deleted_at.is_(None),
+        ).first()
         if not device:
             raise ValueError(f"Device {device_id} not found")
         
         if device.type not in ["light", "dimmer"]:
             raise ValueError(f"Device {device.name} is not dimmable")
         
+        brightness = min(BRIGHTNESS_MAX, max(0, brightness))
         rpi = device.raspberry_pi
         
         # Envoyer commande au Raspberry Pi
@@ -257,9 +268,12 @@ class DeviceService:
     
     def get_device_with_location(self, device_id: int, user_id: Optional[int] = None) -> dict:
         """
-        Récupère un appareil avec informations de localisation
+        Récupère un appareil avec informations de localisation (exclut les appareils soft-deleted).
         """
-        query = self.db.query(Device).filter(Device.id == device_id)
+        query = self.db.query(Device).filter(
+            Device.id == device_id,
+            Device.deleted_at.is_(None),
+        )
         if user_id:
             query = query.filter(Device.user_id == user_id)
         device = query.first()
@@ -271,7 +285,7 @@ class DeviceService:
             "name": device.name,
             "type": device.type,
             "state": device.state,
-            "brightness": device.brightness,
+            "brightness": min(BRIGHTNESS_MAX, device.brightness),
             "gpio_pin": device.gpio_pin,
             "raspberry_pi_name": device.raspberry_pi.name,
             "location": device.raspberry_pi.location,
@@ -282,9 +296,10 @@ class DeviceService:
     
     def get_all_devices_with_location(self, user_id: Optional[int] = None):
         """
-        Récupère tous les appareils avec localisation (filtrés par user_id si fourni)
+        Récupère tous les appareils avec localisation (filtrés par user_id si fourni).
+        Exclut les appareils soft-deleted (deleted_at).
         """
-        query = self.db.query(Device).join(RaspberryPi)
+        query = self.db.query(Device).join(RaspberryPi).filter(Device.deleted_at.is_(None))
         if user_id:
             query = query.filter(Device.user_id == user_id)
         devices = query.all()
@@ -295,7 +310,7 @@ class DeviceService:
                 "name": d.name,
                 "type": d.type,
                 "state": d.state,
-                "brightness": d.brightness,
+                "brightness": min(BRIGHTNESS_MAX, d.brightness),
                 "raspberry_pi_name": d.raspberry_pi.name,
                 "location": d.raspberry_pi.location,
                 "raspberry_pi_online": d.raspberry_pi.is_online
