@@ -18,7 +18,7 @@ import joblib
 import numpy as np
 
 from app.config import settings
-from app.models import Device, Presence, TrainingData
+from app.models import Device, Presence, TrainingData, User
 
 logger = logging.getLogger(__name__)
 
@@ -211,16 +211,15 @@ class AIService:
             presence_query = presence_query.filter(
                 Presence.raspberry_pi_id == raspberry_pi_id
             )
-        
-        presence_detected = presence_query.first() is not None
-        
-        # Optionnel: obtenir les utilisateurs détectés
-        detected_users = []
-        if presence_detected:
-            user_presence = presence_query.filter(
-                Presence.user_id.isnot(None)
-            ).distinct(Presence.user_id).all()
-            detected_users = [p.user_id for p in user_presence if p.user_id]
+        presence_rows = presence_query.all()
+        presence_detected = len(presence_rows) > 0
+
+        # Utilisateurs détectés (user_id) et leurs noms (jean, mehdi…)
+        detected_user_ids = list({p.user_id for p in presence_rows if p.user_id})
+        detected_usernames = []
+        if detected_user_ids:
+            users = db.query(User).filter(User.id.in_(detected_user_ids)).all()
+            detected_usernames = [u.username for u in users]
         
         # Vérifier si au moins une lampe est allumée
         device_query = db.query(Device).filter(
@@ -237,15 +236,16 @@ class AIService:
         # Classification
         result = self.classify(hour, day_of_week, presence_detected, light_on)
         
-        # Ajouter le contexte
+        # Ajouter le contexte (présence BLE → bluetooth_devices → user_id → username)
         result["context"] = {
             "hour": hour,
             "day_of_week": day_of_week,
             "presence_detected": presence_detected,
             "light_on": light_on,
             "raspberry_pi_id": raspberry_pi_id,
-            "detected_users": detected_users,  # Liste des user_id détectés
-            "user_count": len(detected_users)
+            "detected_users": detected_user_ids,
+            "detected_usernames": detected_usernames,
+            "user_count": len(detected_user_ids),
         }
         
         return result

@@ -156,8 +156,9 @@ Sur le **RPi capteur** (ex. 10.109.150.133), un script scanne les appareils BLE 
 
 ### Prérequis
 
-- **Admin** : dans l’interface web, **Administration → Appareils BT (MAC → user)** : associer les adresses MAC (téléphones, ex. Galaxy J7) aux utilisateurs (jean, mehdi…).
-- **Backend** : `BACKEND_URL` et `RASPBERRY_API_KEY` dans `sae_s5/.env` (même clé que pour le heartbeat du RPi).
+- **Admin** : dans l’interface web, **Administration → Appareils BT** : associer la MAC du téléphone (ex. Galaxy J7 `94:7B:E7:A1:E7:A0`) à l’utilisateur (jean ou mehdi). Le backend remplira alors `user_id` dans la table `presence` grâce à `bluetooth_devices`.
+- **Admin** : le RPi capteur (ex. 10.109.150.133) doit être enregistré dans **Administration → Raspberry Pis** avec la même clé API que `RASPBERRY_API_KEY`, afin que `POST /api/presence` (X-API-Key) soit accepté.
+- **RPi** : dans `sae_s5/.env`, définir `BACKEND_URL=http://10.109.150.75:8000` et `RASPBERRY_API_KEY=smarthome2025` (ou la clé du RPi enregistrée).
 
 ### Lancer le scan BT sur le RPi
 
@@ -167,9 +168,12 @@ pip install -r raspberry/requirements.txt   # inclut bleak, requests
 python raspberry/bt_presence_scan.py
 ```
 
-Variables optionnelles : `BT_PRESENCE_SCAN_INTERVAL` (défaut 45 s), `BT_PRESENCE_SCAN_TIMEOUT` (défaut 10 s).
+Variables optionnelles : `BT_PRESENCE_SCAN_INTERVAL` (défaut 45 s), `BT_PRESENCE_SCAN_TIMEOUT` (défaut 10 s).  
+`PRESENCE_ONLY_KNOWN_MACS=1` (défaut) : le script n’envoie que les MAC enregistrées en Admin → Appareils BT (liste récupérée via `GET /api/presence/known-macs`). Sinon toutes les MAC sont envoyées et le backend n’enregistre que les connues.
 
-En production : lancer en arrière-plan (`nohup`, `screen`) ou via un service systemd. À chaque cycle, le script envoie `POST {BACKEND_URL}/api/presence` avec chaque MAC détectée ; le backend enregistre la présence et l’IA utilise `presence_detected` pour le scénario (Day / Evening / Away…).
+En production : lancer en arrière-plan (`nohup`, `screen`) ou via un service systemd. Seules les MAC connues sont enregistrées en BDD ; les autres reçoivent 200 sans écriture (moins de bruit en logs).
+
+**Note** : Sur Android, le téléphone peut utiliser une **adresse BLE aléatoire** (confidentialité). La MAC affichée dans Réglages Bluetooth (ex. 94:7B:E7:A1:E7:A0) n’est alors pas celle vue en scan BLE. Si la MAC du Galaxy J7 n’apparaît jamais, désactiver « Adresse MAC privée » / « Utiliser une MAC aléatoire » pour le Bluetooth si l’option existe.
 
 ## Fichiers
 
@@ -186,3 +190,4 @@ En production : lancer en arrière-plan (`nohup`, `screen`) ou via un service sy
 - **Timeout / connexion refusée** : Z-Wave JS UI doit écouter sur `http://localhost:8091` sur le même RPi que cette API. Vérifier `docker compose ps` et les ports dans `zwave-js/docker-compose.yml`.
 - **Backend ne reçoit pas de réponse** : API Flask en `0.0.0.0:5000`, pare-feu du RPi autorisant le port 5000 depuis l’IP du backend.
 - **Nœud non reconnu** : Dans Z-Wave JS UI, vérifier que le nœud est interviewé et supporte Multilevel Switch (CC 38) pour dimmers.
+- **« Raspberry Pi RPI Salon not responding » (500 sur PUT /api/devices/7/state)** : Le backend appelle l’API Flask du RPi à l’adresse enregistrée (Admin → Raspberry Pis). Vérifier que **`api_flask_zwave.py` tourne bien sur la machine dont l’IP est enregistrée** (ex. 10.109.150.133). Si vous lancez Flask sur une autre machine (ex. votre PC), soit mettre à jour l’IP du RPi dans l’admin, soit lancer Flask sur le RPi (SSH sur 10.109.150.133 puis `python api_flask_zwave.py`). Vérifier aussi que le port 5000 est accessible depuis le serveur backend (pare-feu, réseau).

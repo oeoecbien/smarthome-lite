@@ -4,7 +4,7 @@ Routes pour l'Intelligence Artificielle - Classification de scénarios.
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -44,13 +44,25 @@ class ClassifyRequest(BaseModel):
     light_on: bool
 
 
+class CurrentScenarioContext(BaseModel):
+    """Contexte utilisé pour la classification (présence BLE, lampes, utilisateurs détectés)."""
+    hour: int
+    day_of_week: int
+    presence_detected: bool
+    light_on: bool
+    raspberry_pi_id: Optional[int] = None
+    detected_users: List[int] = []
+    detected_usernames: List[str] = []
+    user_count: int = 0
+
+
 class ScenarioResponse(BaseModel):
-    """Réponse avec le scénario classifié."""
+    """Réponse avec le scénario classifié (Day / Night / Away / Evening) et le contexte."""
     scenario: int
     scenario_name: str
     confidence: float
     method: str
-    context: dict
+    context: CurrentScenarioContext
 
 
 @router.get("/current-scenario", response_model=ScenarioResponse)
@@ -61,9 +73,11 @@ async def get_current_scenario(
 ):
     """
     Obtient le scénario actuel classifié par l'IA.
-    
-    Args:
-        raspberry_pi_id: ID du Raspberry Pi (optionnel, pour filtrer par localisation)
+
+    Utilise la présence Bluetooth (table presence + bluetooth_devices) : si une MAC
+    est associée à un utilisateur (ex. jean), presence_detected=true et
+    detected_usernames contient cet utilisateur. Le scénario (Day / Evening / Away / Night)
+    en dépend.
     """
     ai_service = get_ai_service()
     result = ai_service.get_current_scenario(db, raspberry_pi_id=raspberry_pi_id)

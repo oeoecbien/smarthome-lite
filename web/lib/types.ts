@@ -58,9 +58,25 @@ export const SCENARIO_LABELS: Record<ScenarioType, string> = {
   3: "Evening",
 }
 
+/** Contexte du scénario actuel (présence BLE, utilisateurs détectés). */
+export interface CurrentScenarioContext {
+  hour: number
+  day_of_week: number
+  presence_detected: boolean
+  light_on: boolean
+  raspberry_pi_id?: number
+  detected_users: number[]
+  detected_usernames: string[]
+  user_count: number
+}
+
 export interface CurrentScenario {
   scenario: ScenarioType
+  scenario_name?: string
   confidence?: number
+  method?: string
+  /** Contexte utilisé pour la classification (présence, lampes, utilisateurs détectés). */
+  context?: CurrentScenarioContext
   features?: Record<string, unknown>
 }
 

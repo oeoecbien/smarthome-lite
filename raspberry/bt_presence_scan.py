@@ -38,6 +38,8 @@ BACKEND_URL = os.environ.get("BACKEND_URL", "").rstrip("/")
 RASPBERRY_API_KEY = os.environ.get("RASPBERRY_API_KEY", "").strip()
 SCAN_INTERVAL_SEC = int(os.environ.get("BT_PRESENCE_SCAN_INTERVAL", "45"))
 SCAN_TIMEOUT_SEC = int(os.environ.get("BT_PRESENCE_SCAN_TIMEOUT", "10"))
+# Si True, n'envoyer que les MAC enregistrées en admin (bluetooth_devices) → moins de bruit
+PRESENCE_ONLY_KNOWN_MACS = os.environ.get("PRESENCE_ONLY_KNOWN_MACS", "1").strip().lower() in ("1", "true", "yes")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,11 +84,31 @@ async def scan_ble() -> list[tuple[str, int]]:
     return result
 
 
-def send_presence(mac: str, signal_strength: int = -70) -> bool:
-    """Envoie une détection de présence au backend. Retourne True si succès."""
+def fetch_known_macs() -> set[str]:
+    """Récupère la liste des MAC enregistrées (Admin → Appareils BT). Vide si désactivé ou erreur."""
+    if not BACKEND_URL or not RASPBERRY_API_KEY:
+        return set()
+    import requests
+    url = f"{BACKEND_URL}/api/presence/known-macs"
+    headers = {"X-API-Key": RASPBERRY_API_KEY}
+    try:
+        r = requests.get(url, headers=headers, timeout=5)
+        if r.status_code == 200:
+            data = r.json()
+            return set(data.get("mac_addresses", []))
+    except Exception as e:
+        logger.debug("known-macs: %s", e)
+    return set()
+
+
+def send_presence(mac: str, signal_strength: int = -70) -> tuple[bool, bool]:
+    """
+    Envoie une détection au backend. Retourne (succès, enregistré).
+    enregistré=False si la MAC n'est pas dans bluetooth_devices (backend ne stocke pas).
+    """
     if not BACKEND_URL or not RASPBERRY_API_KEY:
         logger.error("BACKEND_URL et RASPBERRY_API_KEY doivent être définis")
-        return False
+        return False, False
     import requests
     url = f"{BACKEND_URL}/api/presence"
     headers = {
@@ -97,25 +119,40 @@ def send_presence(mac: str, signal_strength: int = -70) -> bool:
     try:
         r = requests.post(url, json=payload, headers=headers, timeout=5)
         if r.status_code in (200, 201):
-            return True
-        logger.warning("POST %s -> %s %s", url, r.status_code, r.text[:200])
+            data = r.json() if r.text else {}
+            recorded = data.get("recorded", r.status_code == 201)
+            return True, recorded
+        logger.warning("POST %s -> %s %s", url, r.status_code, (r.text or "")[:200])
     except Exception as e:
         logger.warning("POST presence failed: %s", e)
-    return False
+    return False, False
 
 
 async def run_loop():
     if not BACKEND_URL or not RASPBERRY_API_KEY:
         logger.error("Configurez BACKEND_URL et RASPBERRY_API_KEY (fichier .env ou variables d'environnement)")
         sys.exit(1)
-    logger.info("Démarrage scan BT -> %s (intervalle %s s)", BACKEND_URL, SCAN_INTERVAL_SEC)
+    known_macs: set[str] = set()
+    if PRESENCE_ONLY_KNOWN_MACS:
+        known_macs = fetch_known_macs()
+        logger.info(
+            "Démarrage scan BT -> %s (intervalle %s s). MAC connues uniquement: %s",
+            BACKEND_URL, SCAN_INTERVAL_SEC, list(known_macs) or "(aucune, ajoutez en Admin → Appareils BT)"
+        )
+    else:
+        logger.info("Démarrage scan BT -> %s (intervalle %s s). Toutes les MAC envoyées (backend filtre)", BACKEND_URL, SCAN_INTERVAL_SEC)
     while True:
         try:
             seen = await scan_ble()
+            if PRESENCE_ONLY_KNOWN_MACS and known_macs:
+                seen = [(mac, rssi) for mac, rssi in seen if mac in known_macs]
             for mac, rssi in seen:
-                if send_presence(mac, rssi):
-                    logger.info("Présence envoyée: %s (RSSI %s)", mac, rssi)
-            if not seen:
+                ok, recorded = send_presence(mac, rssi)
+                if ok and recorded:
+                    logger.info("Présence enregistrée: %s (RSSI %s)", mac, rssi)
+                elif ok and not recorded:
+                    logger.debug("MAC inconnue (non enregistrée): %s", mac)
+            if not seen and not PRESENCE_ONLY_KNOWN_MACS:
                 logger.debug("Aucun appareil BLE détecté")
         except Exception as e:
             logger.exception("Erreur scan: %s", e)
