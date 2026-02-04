@@ -183,8 +183,11 @@ async def set_device_state(
             source="manual"
         )
         
-        # Si brightness fournie et device dimmable
-        if state_data.brightness is not None and device.type in ["light", "dimmer"]:
+        if (
+            state_data.state
+            and state_data.brightness is not None
+            and device.type in ["light", "dimmer"]
+        ):
             device = await device_service.set_device_brightness(
                 device_id,
                 state_data.brightness,
