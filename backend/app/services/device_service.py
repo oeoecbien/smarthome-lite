@@ -330,7 +330,7 @@ class DeviceService:
         }
         if device.controlled_by_sensor_id is not None:
             out["controlled_by_sensor_id"] = device.controlled_by_sensor_id
-            out["sensor_rules"] = device.sensor_rules
+            out["sensor_rules"] = self._parse_sensor_rules(device.sensor_rules)
             sensor_dev = self.db.query(Device).filter(
                 Device.id == device.controlled_by_sensor_id,
                 Device.deleted_at.is_(None),
@@ -360,13 +360,14 @@ class DeviceService:
                 "type": d.type,
                 "state": d.state,
                 "brightness": min(100, max(0, d.brightness)),
+                "gpio_pin": d.gpio_pin,
                 "raspberry_pi_name": d.raspberry_pi.name,
                 "location": d.raspberry_pi.location,
                 "raspberry_pi_online": d.raspberry_pi.is_online,
             }
             if d.controlled_by_sensor_id is not None:
                 row["controlled_by_sensor_id"] = d.controlled_by_sensor_id
-                row["sensor_rules"] = d.sensor_rules
+                row["sensor_rules"] = self._parse_sensor_rules(d.sensor_rules)
                 sensor_dev = next((x for x in devices if x.id == d.controlled_by_sensor_id), None)
                 row["controlled_by_sensor_name"] = sensor_dev.name if sensor_dev else None
             result.append(row)

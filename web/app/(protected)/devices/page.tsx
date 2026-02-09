@@ -180,7 +180,7 @@ function DevicesContent() {
     setEditForm({
       name: device.name,
       type: device.type,
-      gpio_pin: device.gpio_pin,
+      gpio_pin: device.gpio_pin ?? undefined,
       controlled_by_sensor_id: device.controlled_by_sensor_id ?? undefined,
       sensor_rules: device.sensor_rules ?? undefined,
     })
@@ -190,13 +190,24 @@ function DevicesContent() {
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingDevice) return
+    const maxPin = editForm.type === "sensor" ? 255 : 40
+    const rawPin = editForm.gpio_pin ?? editingDevice.gpio_pin
+    const gpioPin = typeof rawPin === "number" && rawPin >= 1 && rawPin <= maxPin ? rawPin : editingDevice.gpio_pin
+    if (gpioPin == null || gpioPin < 1 || gpioPin > maxPin) {
+      setEditError(
+        editForm.type === "sensor"
+          ? "Node ID invalide. Saisir un nombre entre 1 et 255 (node Z-Wave)."
+          : "Broche invalide. Saisir un nombre entre 1 et 40."
+      )
+      return
+    }
     setIsSavingEdit(true)
     setEditError(null)
     try {
       const updated = await deviceService.updateDevice(editingDevice.id, {
         name: editForm.name,
         type: editForm.type,
-        gpio_pin: editForm.gpio_pin,
+        gpio_pin: gpioPin,
         controlled_by_sensor_id: editForm.controlled_by_sensor_id ?? null,
         sensor_rules: editForm.sensor_rules ?? null,
       })
@@ -411,9 +422,12 @@ function DevicesContent() {
                     type="number"
                     min={1}
                     max={editForm.type === "sensor" ? 255 : 40}
-                    value={editForm.gpio_pin ?? ""}
-                    onChange={(e) => setEditForm((f) => ({ ...f, gpio_pin: Number(e.target.value) || 0 }))}
-                    required
+                    value={editForm.gpio_pin ?? editingDevice?.gpio_pin ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value === "" ? undefined : Number(e.target.value)
+                      setEditForm((f) => ({ ...f, gpio_pin: v }))
+                    }}
+                    placeholder={editForm.type === "sensor" ? "1–255 (node Z-Wave)" : "1–40"}
                   />
                 </div>
                 {(editForm.type === "light" || editForm.type === "dimmer") && (
