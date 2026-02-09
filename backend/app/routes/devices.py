@@ -14,9 +14,9 @@ from app.schemas.device import (
     DeviceUpdate,
     DeviceState,
     DeviceBrightness,
-    DeviceWithLocation
+    DeviceWithLocation,
 )
-from app.services.device_service import DeviceService
+from app.services.device_service import DeviceService, OMIT
 from app.dependencies import get_current_user
 from app.config import BRIGHTNESS_MAX
 
@@ -125,6 +125,55 @@ async def create_device(
     db.refresh(device)
     
     return device
+
+
+@router.patch("/{device_id}", response_model=DeviceWithLocation)
+async def update_device(
+    device_id: int,
+    body: DeviceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Met à jour un appareil (nom, type, gpio_pin, pilotage par capteur).
+    Pour le pilotage par capteur : controlled_by_sensor_id (ID du device type sensor) et sensor_rules (JSON).
+    """
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    data = body.dict(exclude_unset=True)
+    if not data:
+        device_service = DeviceService(db)
+        user_id = current_user.id if current_user.role != "admin" else None
+        return device_service.get_device_with_location(device_id, user_id=user_id)
+
+    if "name" in data and data["name"] is not None:
+        device.name = data["name"]
+    if "type" in data and data["type"] is not None:
+        device.type = data["type"]
+    if "gpio_pin" in data and data["gpio_pin"] is not None:
+        device.gpio_pin = data["gpio_pin"]
+    db.commit()
+
+    if "controlled_by_sensor_id" in data or "sensor_rules" in data:
+        device_service = DeviceService(db)
+        device_service.update_device_sensor_config(
+            device_id,
+            controlled_by_sensor_id=data["controlled_by_sensor_id"] if "controlled_by_sensor_id" in data else OMIT,
+            sensor_rules=data["sensor_rules"] if "sensor_rules" in data else OMIT,
+        )
+
+    db.refresh(device)
+    device_service = DeviceService(db)
+    user_id = None if current_user.role == "admin" else current_user.id
+    return device_service.get_device_with_location(device_id, user_id=user_id)
+
 
 @router.get("/{device_id}/state")
 async def get_device_state(

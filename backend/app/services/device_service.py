@@ -1,17 +1,22 @@
 """
 Service de gestion des appareils.
 Chaîne : Front (web/mobile) → Backend (auth) → RPi (API Flask :5000) → Lampe Z-Wave.
+Pilotage lampes par capteur : mouvement (ON + extinction après X s) et luminosité (seuils lux).
 """
 
+import json
 import logging
-import httpx
-from typing import Optional, Literal
-from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 
-from app.models import Device, RaspberryPi, Event
+import httpx
+from sqlalchemy.orm import Session
+from typing import Any, Dict, Optional, Literal
+
+from app.models import Device, RaspberryPi, Event, SensorControlState
 from app.config import settings, BRIGHTNESS_MAX
 
 logger = logging.getLogger(__name__)
+OMIT = object()  # À passer pour « ne pas modifier » dans update_device_sensor_config
 
 
 def _rpi_base_url(rpi: RaspberryPi) -> str:
@@ -299,7 +304,7 @@ class DeviceService:
         if not device:
             raise ValueError(f"Device {device_id} not found")
         
-        return {
+        out = {
             "id": device.id,
             "name": device.name,
             "type": device.type,
@@ -312,7 +317,16 @@ class DeviceService:
             "created_at": device.created_at,
             "updated_at": device.updated_at
         }
-    
+        if device.controlled_by_sensor_id is not None:
+            out["controlled_by_sensor_id"] = device.controlled_by_sensor_id
+            out["sensor_rules"] = device.sensor_rules
+            sensor_dev = self.db.query(Device).filter(
+                Device.id == device.controlled_by_sensor_id,
+                Device.deleted_at.is_(None),
+            ).first()
+            out["controlled_by_sensor_name"] = sensor_dev.name if sensor_dev else None
+        return out
+
     def get_all_devices_with_location(self, user_id: Optional[int] = None):
         """
         Récupère tous les appareils avec localisation (filtrés par user_id si fourni).
@@ -327,8 +341,9 @@ class DeviceService:
             query = query.filter(Device.user_id == user_id)
         devices = query.order_by(Device.id.asc()).all()
         
-        return [
-            {
+        result = []
+        for d in devices:
+            row = {
                 "id": d.id,
                 "name": d.name,
                 "type": d.type,
@@ -336,7 +351,127 @@ class DeviceService:
                 "brightness": min(100, max(0, d.brightness)),
                 "raspberry_pi_name": d.raspberry_pi.name,
                 "location": d.raspberry_pi.location,
-                "raspberry_pi_online": d.raspberry_pi.is_online
+                "raspberry_pi_online": d.raspberry_pi.is_online,
             }
-            for d in devices
-        ]
+            if d.controlled_by_sensor_id is not None:
+                row["controlled_by_sensor_id"] = d.controlled_by_sensor_id
+                row["sensor_rules"] = d.sensor_rules
+                sensor_dev = next((x for x in devices if x.id == d.controlled_by_sensor_id), None)
+                row["controlled_by_sensor_name"] = sensor_dev.name if sensor_dev else None
+            result.append(row)
+        return result
+
+    def update_device_sensor_config(
+        self,
+        device_id: int,
+        controlled_by_sensor_id: Any = OMIT,
+        sensor_rules: Any = OMIT,
+    ) -> Device:
+        """Met à jour le pilotage par capteur. OMIT = ne pas modifier le champ."""
+        device = self.db.query(Device).filter(
+            Device.id == device_id,
+            Device.deleted_at.is_(None),
+        ).first()
+        if not device:
+            raise ValueError(f"Device {device_id} not found")
+        if device.type not in ("light", "dimmer"):
+            raise ValueError("Seules les lampes (light/dimmer) peuvent être pilotées par un capteur")
+        if controlled_by_sensor_id is not OMIT:
+            if controlled_by_sensor_id is not None:
+                sensor_dev = self.db.query(Device).filter(
+                    Device.id == int(controlled_by_sensor_id),
+                    Device.type == "sensor",
+                    Device.deleted_at.is_(None),
+                ).first()
+                if not sensor_dev:
+                    raise ValueError(f"Capteur (device {controlled_by_sensor_id}) introuvable ou pas de type sensor")
+                device.controlled_by_sensor_id = int(controlled_by_sensor_id)
+            else:
+                device.controlled_by_sensor_id = None
+        if sensor_rules is not OMIT:
+            device.sensor_rules = json.dumps(sensor_rules) if sensor_rules else None
+        self.db.commit()
+        self.db.refresh(device)
+        return device
+
+    def _parse_sensor_rules(self, raw: Optional[str]) -> Optional[Dict[str, Any]]:
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except (TypeError, json.JSONDecodeError):
+            return None
+
+    async def evaluate_sensor_rules(self, sensor_device_id: int, sensor_data: Dict[str, Any]) -> None:
+        """
+        Applique les règles capteur → lampe pour toutes les lampes pilotées par ce capteur.
+        sensor_data: motion (bool), illuminance_lux (int|None), temperature_c, humidity, etc.
+        Règles: motion { on_brightness, off_after_seconds }, illuminance { below_lux, brightness, above_lux, action: "off" }.
+        """
+        lamps = self.db.query(Device).filter(
+            Device.controlled_by_sensor_id == sensor_device_id,
+            Device.deleted_at.is_(None),
+            Device.type.in_(["light", "dimmer"]),
+        ).all()
+        if not lamps:
+            return
+        motion = sensor_data.get("motion") is True
+        illuminance_lux = sensor_data.get("illuminance_lux")
+        now = datetime.now(timezone.utc)
+
+        for lamp in lamps:
+            rules = self._parse_sensor_rules(lamp.sensor_rules)
+            if not rules:
+                continue
+            try:
+                # État mouvement pour timer extinction
+                state_row = self.db.query(SensorControlState).filter(
+                    SensorControlState.sensor_device_id == sensor_device_id,
+                    SensorControlState.target_device_id == lamp.id,
+                ).first()
+                if not state_row:
+                    state_row = SensorControlState(
+                        sensor_device_id=sensor_device_id,
+                        target_device_id=lamp.id,
+                    )
+                    self.db.add(state_row)
+                    self.db.flush()
+
+                motion_rule = rules.get("motion") or {}
+                on_brightness = max(0, min(100, int(motion_rule.get("on_brightness", 80))))
+                off_after_seconds = max(0, int(motion_rule.get("off_after_seconds", 300)))
+                illum_rule = rules.get("illuminance") or {}
+                below_lux = int(illum_rule.get("below_lux", 100))
+                above_lux = int(illum_rule.get("above_lux", 2000))
+                illum_brightness = max(0, min(100, int(illum_rule.get("brightness", 60))))
+
+                if motion:
+                    state_row.last_motion_at = now
+                    state_row.last_motion_off_at = None
+                    self.db.commit()
+                    if not lamp.state or lamp.brightness != on_brightness:
+                        await self.set_device_brightness(lamp.id, on_brightness, source="automatic")
+                    continue
+
+                # Pas de mouvement
+                state_row.last_motion_off_at = state_row.last_motion_off_at or now
+                self.db.commit()
+                elapsed = (now - state_row.last_motion_off_at).total_seconds()
+
+                # Luminosité : si trop de lumière → éteindre ; si pas assez → allumer
+                if illuminance_lux is not None:
+                    if illuminance_lux > above_lux:
+                        if lamp.state:
+                            await self.set_device_state(lamp.id, False, source="automatic")
+                        continue
+                    if illuminance_lux < below_lux:
+                        if not lamp.state or lamp.brightness != illum_brightness:
+                            await self.set_device_brightness(lamp.id, illum_brightness, source="automatic")
+                            await self.set_device_state(lamp.id, True, source="automatic")
+                        continue
+
+                # Extinction après X s sans mouvement
+                if off_after_seconds > 0 and elapsed >= off_after_seconds and lamp.state:
+                    await self.set_device_state(lamp.id, False, source="automatic")
+            except Exception as e:
+                logger.warning("evaluate_sensor_rules lamp %s: %s", lamp.id, e)

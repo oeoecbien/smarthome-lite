@@ -2,7 +2,7 @@
 Modèle ORM pour la table 'devices'.
 Représente les appareils connectés (lampes, prises, capteurs).
 """
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, CheckConstraint, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, TIMESTAMP, CheckConstraint, UniqueConstraint, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -47,7 +47,15 @@ class Device(Base):
     gpio_pin = Column(Integer, nullable=False)
     state = Column(Boolean, default=False, nullable=False)
     brightness = Column(Integer, default=0, nullable=False)
-    
+    # Pilotage par capteur (lampes uniquement) : device id du capteur + règles JSON
+    controlled_by_sensor_id = Column(
+        Integer,
+        ForeignKey("devices.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    sensor_rules = Column(Text, nullable=True)  # JSON: motion { on_brightness, off_after_seconds }, illuminance { below_lux, brightness, above_lux }
+
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -77,6 +85,12 @@ class Device(Base):
     # ========== Relations ==========
     user = relationship("User", back_populates="devices")
     raspberry_pi = relationship("RaspberryPi", back_populates="devices")
+    controlled_by_sensor = relationship(
+        "Device",
+        remote_side=[id],
+        foreign_keys=[controlled_by_sensor_id],
+        backref="lamps_controlled",
+    )
     
     events = relationship(
         "Event",

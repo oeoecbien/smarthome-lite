@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
-import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw, Pencil, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
@@ -20,15 +20,18 @@ interface DeviceCardProps {
   onDelete: (id: number) => void
   /** Mise à jour immédiate de l'appareil dans la liste (évite d'attendre le refetch) */
   onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
+  /** Édition (nom, type, pilotage par capteur) — affiche le bouton Modifier */
+  onEdit?: (device: Device) => void
 }
 
 const deviceIcons = {
   light: Lightbulb,
   dimmer: SunDim,
   socket: Plug,
+  sensor: Radio,
 }
 
-export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: DeviceCardProps) {
+export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit }: DeviceCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
@@ -43,6 +46,7 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: Devi
   const Icon = deviceIcons[device.type] || Lightbulb
   const isOn = device.state === true || device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
+  const isSensor = device.type === "sensor"
   const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
@@ -189,12 +193,28 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: Devi
                     {device.location}
                   </span>
                 )}
+                {device.controlled_by_sensor_name && (
+                  <span className="text-xs text-muted-foreground">Piloté par {device.controlled_by_sensor_name}</span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Toggle, Sync, Delete */}
+          {/* Toggle, Sync, Delete, Edit */}
           <div className="flex items-center gap-2">
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => onEdit(device)}
+                title="Modifier l'appareil"
+                aria-label="Modifier"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {!isSensor && (
             <Button
               variant="ghost"
               size="icon"
@@ -215,6 +235,7 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: Devi
                 disabled={isUpdating}
                 aria-label={`Toggle ${device.name}`} 
               />
+            )}
             )}
             <Button
               variant="ghost"

@@ -2,7 +2,7 @@
 Schémas Pydantic pour gestion des appareils.
 """
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Any, Dict, Optional, Literal
 from datetime import datetime
 
 
@@ -39,11 +39,20 @@ class DeviceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     type: Optional[Literal["light", "dimmer", "socket", "sensor"]] = None
     gpio_pin: Optional[int] = Field(None, ge=1, le=255)
-    
+    controlled_by_sensor_id: Optional[int] = Field(None, description="ID du capteur qui pilote cette lampe (null = désactivé)")
+    sensor_rules: Optional[Dict[str, Any]] = Field(
+        None,
+        description='Règles: motion { on_brightness, off_after_seconds }, illuminance { below_lux, brightness, above_lux }',
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "Lampe Bureau Modifiée"
+                "name": "Lampe Bureau Modifiée",
+                "sensor_rules": {
+                    "motion": {"on_brightness": 80, "off_after_seconds": 300},
+                    "illuminance": {"below_lux": 100, "brightness": 60, "above_lux": 2000},
+                },
             }
         }
 
@@ -128,6 +137,9 @@ class DeviceWithLocation(BaseModel):
     gpio_pin: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    controlled_by_sensor_id: Optional[int] = None
+    sensor_rules: Optional[Dict[str, Any]] = None
+    controlled_by_sensor_name: Optional[str] = None
     
     class Config:
         from_attributes = True

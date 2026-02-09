@@ -9,11 +9,17 @@ export interface User {
   role?: UserRole
 }
 
+/** Règles pilotage par capteur (mouvement + luminosité) */
+export interface SensorRules {
+  motion?: { on_brightness?: number; off_after_seconds?: number }
+  illuminance?: { below_lux?: number; brightness?: number; above_lux?: number }
+}
+
 export interface Device {
   id: number
   user_id: number
   name: string
-  type: "light" | "dimmer" | "socket"
+  type: "light" | "dimmer" | "socket" | "sensor"
   raspberry_pi_id: number
   gpio_pin: number
   /** État ON/OFF (backend renvoie booléen) */
@@ -24,6 +30,12 @@ export interface Device {
   raspberry_pi_name?: string
   /** RPi en ligne = commandes envoyées au vrai hardware */
   raspberry_pi_online?: boolean
+  /** ID du capteur qui pilote cette lampe (lampes uniquement) */
+  controlled_by_sensor_id?: number | null
+  /** Règles : mouvement (allumer / éteindre après X s) et luminosité (seuils lux) */
+  sensor_rules?: SensorRules | null
+  /** Nom du capteur (affichage) */
+  controlled_by_sensor_name?: string | null
 }
 
 export interface Rule {

@@ -31,6 +31,14 @@ export const deviceService = {
     return api.post<Device>("/api/devices", data)
   },
 
+  /** Mise à jour partielle (nom, type, gpio, pilotage par capteur) */
+  async updateDevice(
+    id: number,
+    data: Partial<Pick<Device, "name" | "type" | "gpio_pin" | "controlled_by_sensor_id" | "sensor_rules">>
+  ): Promise<Device> {
+    return api.patch<Device>(`/api/devices/${id}`, data)
+  },
+
   async updateState(id: number, state: boolean): Promise<DeviceStateResponse> {
     return api.put<DeviceStateResponse>(`/api/devices/${id}/state`, { state })
   },
