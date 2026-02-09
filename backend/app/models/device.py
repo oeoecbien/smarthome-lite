@@ -17,13 +17,14 @@ class Device(Base):
         - 'light': Lampe simple ON/OFF
         - 'dimmer': Lampe dimmable avec contrôle d'intensité (0-100%)
         - 'socket': Prise connectée ON/OFF
+        - 'sensor': Capteur Z-Wave (ex. Aeotec MultiSensor 7) ; gpio_pin = node_id Z-Wave
     
     Attributes:
         id: Identifiant unique
         raspberry_pi_id: Clé étrangère vers le Raspberry Pi contrôleur
         name: Nom descriptif (ex: "Lampe Bureau")
-        type: Type d'appareil ('light', 'dimmer', 'socket')
-        gpio_pin: Numéro du GPIO Raspberry Pi (1-40)
+        type: Type d'appareil ('light', 'dimmer', 'socket', 'sensor')
+        gpio_pin: Numéro GPIO (1-40) ou node_id Z-Wave (1-255) pour type 'sensor'
         state: État actuel (TRUE=ON, FALSE=OFF)
         brightness: Intensité lumineuse (0-100, toujours défini)
         created_at: Date d'ajout
@@ -56,12 +57,12 @@ class Device(Base):
     __table_args__ = (
         # Vérification du type d'appareil
         CheckConstraint(
-            "type IN ('light', 'dimmer', 'socket')",
+            "type IN ('light', 'dimmer', 'socket', 'sensor')",
             name="check_device_type"
         ),
-        # Vérification de la plage de GPIO (Raspberry Pi)
+        # GPIO 1-40 (RPi) ou node_id Z-Wave 1-255 (capteurs)
         CheckConstraint(
-            "gpio_pin >= 1 AND gpio_pin <= 40",
+            "gpio_pin >= 1 AND gpio_pin <= 255",
             name="check_gpio_pin_range"
         ),
         # Vérification de la plage de brightness

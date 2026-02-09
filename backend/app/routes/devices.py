@@ -117,7 +117,7 @@ async def create_device(
         **device_data.dict(),
         user_id=current_user.id,  # Assigner automatiquement à l'utilisateur connecté
         state=False,
-        brightness=0 if device_data.type == "dimmer" else BRIGHTNESS_MAX
+        brightness=BRIGHTNESS_MAX if device_data.type == "dimmer" else 0,
     )
     
     db.add(device)
@@ -159,6 +159,47 @@ async def get_device_state(
         "state": device.state,
         "brightness": min(100, max(0, device.brightness)),
     }
+
+
+@router.get("/{device_id}/sensor")
+async def get_device_sensor(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Données capteur (température, humidité, mouvement, luminosité, UV, batterie).
+    Réservé aux appareils de type « sensor » (ex. Aeotec MultiSensor 7).
+    Lecture en direct depuis le RPi (GET /api/nodes/{node_id}/sensor).
+    """
+    device = db.query(Device).filter(
+        Device.id == device_id,
+        Device.deleted_at.is_(None),
+    ).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    if current_user.role != "admin" and device.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if device.type != "sensor":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Appareil {device_id} n'est pas un capteur (type={device.type}). Utilisez GET /api/devices/{{id}}/state pour les lampes/prises.",
+        )
+    device_service = DeviceService(db)
+    try:
+        data = await device_service.get_sensor_data_from_rpi(
+            device.raspberry_pi,
+            device.gpio_pin,  # node_id Z-Wave pour un device sensor
+        )
+        return {"success": True, "device_id": device_id, **data}
+    except Exception as e:
+        err = str(e).strip()
+        if "not responding" in err or "Timeout" in err.lower():
+            raise HTTPException(
+                status_code=502,
+                detail="Le Raspberry Pi n'a pas répondu à temps (lecture Z-Wave lente). Réessayez.",
+            )
+        raise HTTPException(status_code=502, detail=f"Capteur indisponible : {err}")
 
 
 @router.put("/{device_id}/state")

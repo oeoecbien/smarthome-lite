@@ -145,12 +145,13 @@ async def get_raspberry_pi_node_sensor(
     rpi_id: int,
     node_id: int,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Données capteur d'un nœud Z-Wave sur ce Raspberry Pi.
     Compatible Aeotec MultiSensor 7 (ZWA024) : mouvement, température, humidité,
     luminosité, UV, batterie. Proxy vers le RPi GET /api/nodes/{node_id}/sensor.
+    Accessible à tout utilisateur authentifié.
     """
     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
     if not rpi:

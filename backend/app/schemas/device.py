@@ -11,8 +11,8 @@ class DeviceBase(BaseModel):
     Schéma de base pour un appareil.
     """
     name: str = Field(..., min_length=1, max_length=100, description="Nom de l'appareil")
-    type: Literal["light", "dimmer", "socket"] = Field(..., description="Type d'appareil")
-    gpio_pin: int = Field(..., ge=1, le=40, description="Numéro GPIO (1-40)")
+    type: Literal["light", "dimmer", "socket", "sensor"] = Field(..., description="Type d'appareil")
+    gpio_pin: int = Field(..., ge=1, le=255, description="Numéro GPIO (1-40) ou node_id Z-Wave (1-255) pour sensor")
     raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi contrôleur")
     # Note: user_id est automatiquement défini depuis le token JWT, pas besoin de le passer
 
@@ -37,8 +37,8 @@ class DeviceUpdate(BaseModel):
     Schéma pour mise à jour d'un appareil.
     """
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    type: Optional[Literal["light", "dimmer", "socket"]] = None
-    gpio_pin: Optional[int] = Field(None, ge=1, le=40)
+    type: Optional[Literal["light", "dimmer", "socket", "sensor"]] = None
+    gpio_pin: Optional[int] = Field(None, ge=1, le=255)
     
     class Config:
         json_schema_extra = {

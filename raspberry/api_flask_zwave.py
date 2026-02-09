@@ -94,6 +94,7 @@ def root():
         "health": "/health",
         "api_devices": "/api/devices/<node_id>/state|brightness",
         "api_nodes": "/api/nodes",
+        "api_sensor": "/api/nodes/<node_id>/sensor",
         "zwave_js_ui_url": ZWAVE_JS_UI_URL,
         "zwave_js_ui_ws_url": ZWAVE_JS_UI_WS_URL,
         "zwave_js_ws_url": ZWAVE_JS_WS_URL,
