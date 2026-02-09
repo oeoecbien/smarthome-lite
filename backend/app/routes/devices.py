@@ -195,7 +195,8 @@ async def set_device_state(
         )
         
         # À l'allumage (light/dimmer) : appliquer la luminosité envoyée par le client,
-        # ou reprendre celle stockée en base (comme quand on avait éteint)
+        # ou reprendre celle stockée en base. Si la valeur stockée est 0 (lampe était éteinte),
+        # utiliser une luminosité par défaut pour éviter d'éteindre juste après l'allumage.
         if (
             state_data.state
             and device.type in ["light", "dimmer"]
@@ -203,7 +204,7 @@ async def set_device_state(
             brightness_to_apply = (
                 state_data.brightness
                 if state_data.brightness is not None
-                else device.brightness
+                else (device.brightness if device.brightness > 0 else BRIGHTNESS_MAX)
             )
             device = await device_service.set_device_brightness(
                 device_id,

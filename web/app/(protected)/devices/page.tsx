@@ -68,7 +68,13 @@ function DevicesContent() {
   const fetchDevices = useCallback(async () => {
     try {
       const data = await deviceService.getDevices()
-      setDevices(data)
+      setDevices((prev) => {
+        if (prev.length === 0) return data
+        const byId = new Map(data.map((d) => [d.id, d]))
+        const keptOrder = prev.map((d) => byId.get(d.id) ?? d).filter((d) => byId.has(d.id))
+        const added = data.filter((d) => !prev.some((p) => p.id === d.id))
+        return [...keptOrder, ...added]
+      })
       setError(null)
     } catch {
       setError("Erreur lors du chargement des appareils")

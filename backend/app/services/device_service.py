@@ -39,18 +39,21 @@ class DeviceService:
         rpi: RaspberryPi,
         method: str,
         endpoint: str,
+        timeout_override: Optional[float] = None,
         **kwargs,
     ) -> dict:
         """
         Requête HTTP vers le RPi (GET ou POST). Met à jour is_online selon le résultat.
         Envoie X-API-Key si RASPBERRY_PI_API_KEY est défini (requis si le RPi exige une clé).
+        timeout_override: délai en secondes (ex. 20 pour la lecture capteur Z-Wave, plus lente).
         """
         url = _rpi_base_url(rpi) + endpoint
         headers = {**self._rpi_headers(), **kwargs.pop("headers", {})}
         if headers:
             kwargs["headers"] = headers
+        timeout_sec = timeout_override if timeout_override is not None else settings.raspberry_pi_timeout
         try:
-            async with httpx.AsyncClient(timeout=settings.raspberry_pi_timeout) as client:
+            async with httpx.AsyncClient(timeout=timeout_sec) as client:
                 if method.upper() == "GET":
                     response = await client.get(url, **kwargs)
                 else:
@@ -108,9 +111,10 @@ class DeviceService:
         Récupère les données capteur d'un nœud Z-Wave depuis le RPi.
         Compatible Aeotec MultiSensor 7 (ZWA024) : motion, temperature_c, humidity,
         illuminance_lux, ultraviolet, battery_percent, device_type, etc.
+        Timeout plus long (20 s) car la lecture Z-Wave (get_node + parsing) peut être lente.
         """
         endpoint = f"/api/nodes/{node_id}/sensor"
-        return await self._request_rpi(rpi, "GET", endpoint)
+        return await self._request_rpi(rpi, "GET", endpoint, timeout_override=20.0)
 
     async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
         """
@@ -314,10 +318,14 @@ class DeviceService:
         Récupère tous les appareils avec localisation (filtrés par user_id si fourni).
         Exclut les appareils soft-deleted (deleted_at).
         """
-        query = self.db.query(Device).join(RaspberryPi).filter(Device.deleted_at.is_(None))
+        query = (
+            self.db.query(Device)
+            .join(RaspberryPi)
+            .filter(Device.deleted_at.is_(None))
+        )
         if user_id:
             query = query.filter(Device.user_id == user_id)
-        devices = query.all()
+        devices = query.order_by(Device.id.asc()).all()
         
         return [
             {

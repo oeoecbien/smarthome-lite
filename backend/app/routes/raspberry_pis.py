@@ -162,7 +162,21 @@ async def get_raspberry_pi_node_sensor(
         data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
         return data
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Capteur indisponible : {str(e)}")
+        err = str(e).strip()
+        if "not responding" in err or "Timeout" in err.lower():
+            detail = (
+                f"Le Raspberry Pi « {rpi.name} » n'a pas répondu à temps (lecture Z-Wave lente ou inaccessible). "
+                "Vérifiez que le RPi est allumé, que l'API Flask (port 5000) tourne, que l'IP est correcte "
+                "et que le serveur backend peut joindre le RPi (même réseau ou réseau joignable)."
+            )
+        elif "401" in err or "API key" in err.lower():
+            detail = (
+                "Clé API invalide ou manquante. Configurez RASPBERRY_PI_API_KEY dans le .env du backend "
+                "avec la même valeur que RASPBERRY_API_KEY sur le RPi."
+            )
+        else:
+            detail = f"Capteur indisponible : {err}"
+        raise HTTPException(status_code=502, detail=detail)
 
 
 @router.post("/", response_model=RaspberryPiResponse, status_code=status.HTTP_201_CREATED)
