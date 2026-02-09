@@ -161,7 +161,8 @@ async def update_device(
         device.gpio_pin = data["gpio_pin"]
     db.commit()
 
-    if "controlled_by_sensor_id" in data or "sensor_rules" in data:
+    # Pilotage par capteur : uniquement pour les lampes (light/dimmer), pas pour les capteurs
+    if device.type in ("light", "dimmer") and ("controlled_by_sensor_id" in data or "sensor_rules" in data):
         device_service = DeviceService(db)
         device_service.update_device_sensor_config(
             device_id,
