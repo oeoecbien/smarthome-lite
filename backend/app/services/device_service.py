@@ -6,6 +6,7 @@ Pilotage lampes par capteur : mouvement (ON + extinction après X s) et luminosi
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 
 import httpx
@@ -33,10 +34,11 @@ class DeviceService:
         self.db = db
 
     def _rpi_headers(self) -> dict:
-        """Headers pour les appels au RPi (X-API-Key si configuré)."""
+        """Headers pour les appels au RPi (X-API-Key). Utilise RASPBERRY_PI_API_KEY ou, à défaut, RASPBERRY_API_KEY (même .env racine)."""
         headers = dict()
-        if getattr(settings, "raspberry_pi_api_key", None):
-            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        key = getattr(settings, "raspberry_pi_api_key", None) or os.environ.get("RASPBERRY_API_KEY")
+        if key:
+            headers["X-API-Key"] = key.strip()
         return headers
 
     async def _request_rpi(

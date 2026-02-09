@@ -106,9 +106,11 @@ async def lifespan(app: FastAPI):
 
     async def _rpi_heartbeat_loop():
         """Ping périodique des RPi via GET / : si la RPi répond → is_online = True."""
+        import os
         headers = {}
-        if getattr(settings, "raspberry_pi_api_key", None):
-            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        key = getattr(settings, "raspberry_pi_api_key", None) or os.environ.get("RASPBERRY_API_KEY")
+        if key:
+            headers["X-API-Key"] = key.strip()
         interval = max(15, getattr(settings, "raspberry_pi_heartbeat_interval", 60))
         timeout = getattr(settings, "raspberry_pi_timeout", 5)
         await asyncio.sleep(3)  # Premier ping 3 s après démarrage
