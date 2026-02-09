@@ -64,6 +64,23 @@ export const raspberryPiService = {
       timeout: 50_000,
     })
   },
+
+  /**
+   * Flux temps réel des données capteur (Server-Sent Events).
+   * Retourne une fonction pour fermer la connexion.
+   */
+  subscribeNodeSensorStream(
+    rpiId: number,
+    nodeId: number,
+    onData: (data: ZwaveSensorData & { error?: string }) => void,
+    onError?: (err: Error) => void
+  ): { abort: () => void } {
+    return api.subscribeToStream<ZwaveSensorData & { error?: string }>(
+      `/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor/stream`,
+      onData,
+      onError
+    )
+  },
 }
 
 /** Service admin pour les appareils Z-Wave connus (registre backend). */

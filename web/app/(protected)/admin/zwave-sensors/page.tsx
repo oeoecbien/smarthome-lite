@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useRouter } from "next/navigation"
@@ -18,8 +19,67 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Radio, Thermometer, Droplets, Sun, Gauge, Battery, Activity, RefreshCw, Cpu, AlertCircle } from "lucide-react"
+import {
+  Radio,
+  Thermometer,
+  Droplets,
+  Sun,
+  Gauge,
+  Battery,
+  Activity,
+  RefreshCw,
+  Cpu,
+  AlertCircle,
+  Circle,
+} from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+
+function useSensorStream(
+  enabled: boolean,
+  rpiId: number | null,
+  nodeId: number | null,
+  onData: (data: ZwaveSensorData | null, error: string | null) => void
+) {
+  const abortRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    if (!enabled || !rpiId || nodeId == null || nodeId < 1 || nodeId > 255) {
+      if (abortRef.current) {
+        abortRef.current()
+        abortRef.current = null
+      }
+      return
+    }
+    abortRef.current = raspberryPiService.subscribeNodeSensorStream(
+      rpiId,
+      nodeId,
+      (event) => {
+        if (event.error) {
+          onData(null, event.error)
+        } else {
+          onData(event as ZwaveSensorData, null)
+        }
+      },
+      (err) => {
+        onData(null, err.message)
+      }
+    ).abort
+    return () => {
+      if (abortRef.current) {
+        abortRef.current()
+        abortRef.current = null
+      }
+    }
+  }, [enabled, rpiId, nodeId, onData])
+}
+
+function formatLastUpdate(ms: number | null): string {
+  if (ms == null) return "—"
+  const sec = Math.floor((Date.now() - ms) / 1000)
+  if (sec < 5) return "À l'instant"
+  if (sec < 60) return `Il y a ${sec} s`
+  const min = Math.floor(sec / 60)
+  return `Il y a ${min} min`
+}
 
 export default function AdminZwaveSensorsPage() {
   const isAdmin = useIsAdmin()
@@ -29,10 +89,36 @@ export default function AdminZwaveSensorsPage() {
   const [selectedRpiId, setSelectedRpiId] = useState<string>("")
   const [nodeId, setNodeId] = useState<string>("5")
   const [sensorData, setSensorData] = useState<ZwaveSensorData | null>(null)
+  const [sensorError, setSensorError] = useState<string | null>(null)
+  const [lastUpdateMs, setLastUpdateMs] = useState<number | null>(null)
+  const [liveEnabled, setLiveEnabled] = useState(true)
   const [isLoadingRpis, setIsLoadingRpis] = useState(true)
   const [isLoadingDevices, setIsLoadingDevices] = useState(true)
-  const [isLoadingSensor, setIsLoadingSensor] = useState(false)
-  const [sensorError, setSensorError] = useState<string | null>(null)
+  const [isManualRefresh, setIsManualRefresh] = useState(false)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!lastUpdateMs) return
+    const id = setInterval(() => setTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [lastUpdateMs])
+
+  const handleStreamData = useCallback((data: ZwaveSensorData | null, error: string | null) => {
+    if (error) {
+      setSensorError(error)
+      // Garder les dernières données en cas d'erreur temporaire
+    } else if (data) {
+      setSensorData(data)
+      setSensorError(null)
+      setLastUpdateMs(Date.now())
+    }
+  }, [])
+
+  useSensorStream(
+    liveEnabled,
+    selectedRpiId ? Number(selectedRpiId) : null,
+    nodeId ? Number(nodeId) : null,
+    handleStreamData
+  )
 
   useEffect(() => {
     if (!isAdmin) {
@@ -72,31 +158,43 @@ export default function AdminZwaveSensorsPage() {
     }
   }, [isAdmin, fetchRaspberryPis, fetchKnownDevices])
 
-  const fetchSensorData = async () => {
+  const fetchSensorDataManual = async () => {
     const rpiId = selectedRpiId ? Number(selectedRpiId) : 0
     const nid = nodeId ? Number(nodeId) : 0
     if (!rpiId || nid < 1 || nid > 255) {
-      toast({ variant: "destructive", title: "Paramètres invalides", description: "Sélectionnez un RPi et un node ID entre 1 et 255." })
+      toast({
+        variant: "destructive",
+        title: "Paramètres invalides",
+        description: "Sélectionnez un RPi et un node ID entre 1 et 255.",
+      })
       return
     }
     setSensorError(null)
-    setIsLoadingSensor(true)
+    setIsManualRefresh(true)
     try {
       const data = await raspberryPiService.getNodeSensor(rpiId, nid)
       setSensorData(data)
+      setLastUpdateMs(Date.now())
       toast({ title: "Capteur", description: "Données mises à jour." })
     } catch (err) {
-      setSensorData(null)
       setSensorError(err instanceof Error ? err.message : "Capteur indisponible")
-      toast({ variant: "destructive", title: "Erreur capteur", description: err instanceof Error ? err.message : "Impossible de lire le capteur" })
+      toast({
+        variant: "destructive",
+        title: "Erreur capteur",
+        description: err instanceof Error ? err.message : "Impossible de lire le capteur",
+      })
     } finally {
-      setIsLoadingSensor(false)
+      setIsManualRefresh(false)
     }
   }
 
   if (!isAdmin) {
     return null
   }
+
+  const rpiIdNum = selectedRpiId ? Number(selectedRpiId) : 0
+  const nodeIdNum = nodeId ? Number(nodeId) : 0
+  const canStream = rpiIdNum >= 1 && nodeIdNum >= 1 && nodeIdNum <= 255
 
   return (
     <div className="space-y-6">
@@ -106,17 +204,17 @@ export default function AdminZwaveSensorsPage() {
           Capteurs Z-Wave
         </h1>
         <p className="text-muted-foreground">
-          Consulter les données des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
+          Données en temps réel des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Lecture capteur */}
+        {/* Lecture capteur + flux temps réel */}
         <Card>
           <CardHeader>
-            <CardTitle>Lecture d&apos;un nœud capteur</CardTitle>
+            <CardTitle>Capteur en direct</CardTitle>
             <CardDescription>
-              Choisissez le Raspberry Pi et le node ID Z-Wave (ex. 5 pour MultiSensor 7).
+              Choisissez le Raspberry Pi et le node ID Z-Wave (ex. 5 pour MultiSensor 7). Le flux se met à jour toutes les 5 secondes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -147,13 +245,41 @@ export default function AdminZwaveSensorsPage() {
                 placeholder="5"
               />
             </div>
-            <Button onClick={fetchSensorData} disabled={isLoadingSensor || isLoadingRpis || raspberryPis.length === 0}>
-              {isLoadingSensor ? (
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="live"
+                  checked={liveEnabled}
+                  onCheckedChange={setLiveEnabled}
+                  disabled={!canStream}
+                />
+                <Label htmlFor="live" className="cursor-pointer">
+                  Temps réel (flux 5 s)
+                </Label>
+              </div>
+              {liveEnabled && canStream && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
+                  En direct
+                </span>
+              )}
+              <span className="text-sm text-muted-foreground">
+                Dernière mise à jour : {formatLastUpdate(lastUpdateMs)}
+              </span>
+            </div>
+
+            <Button
+              onClick={fetchSensorDataManual}
+              disabled={isManualRefresh || isLoadingRpis || raspberryPis.length === 0}
+              variant="secondary"
+            >
+              {isManualRefresh ? (
                 <LoadingSpinner size="sm" className="mr-2" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Rafraîchir les données
+              Rafraîchir maintenant
             </Button>
 
             {sensorError && (
@@ -216,6 +342,10 @@ export default function AdminZwaveSensorsPage() {
                 </div>
               </div>
             )}
+
+            {!sensorData && !sensorError && canStream && liveEnabled && (
+              <p className="text-sm text-muted-foreground">Connexion au flux en cours…</p>
+            )}
           </CardContent>
         </Card>
 
@@ -232,7 +362,7 @@ export default function AdminZwaveSensorsPage() {
           </CardHeader>
           <CardContent>
             {isLoadingDevices ? (
-              <div className="flex justify-center py-8">
+              <div className="justify-center py-8 flex">
                 <LoadingSpinner size="md" />
               </div>
             ) : knownDevices.length === 0 ? (
@@ -240,7 +370,10 @@ export default function AdminZwaveSensorsPage() {
             ) : (
               <ul className="space-y-3">
                 {knownDevices.map((dev) => (
-                  <li key={`${dev.manufacturer_id}-${dev.product_type}-${dev.product_id}`} className="rounded-lg border p-3">
+                  <li
+                    key={`${dev.manufacturer_id}-${dev.product_type}-${dev.product_id}`}
+                    className="rounded-lg border p-3"
+                  >
                     <p className="font-medium">{dev.full_name}</p>
                     <p className="text-xs text-muted-foreground">
                       {dev.manufacturer_name} · Type {dev.product_type} / ID {dev.product_id} · {dev.model}

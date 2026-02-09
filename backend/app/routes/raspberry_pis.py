@@ -2,7 +2,12 @@
 Routes pour la gestion des Raspberry Pi.
 """
 
+import asyncio
+import json
+from typing import AsyncGenerator
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import func
@@ -178,6 +183,66 @@ async def get_raspberry_pi_node_sensor(
         else:
             detail = f"Capteur indisponible : {err}"
         raise HTTPException(status_code=502, detail=detail)
+
+
+SENSOR_STREAM_INTERVAL_SEC = 5
+
+
+async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[str, None]:
+    """Génère des événements SSE avec les données capteur toutes les SENSOR_STREAM_INTERVAL_SEC secondes."""
+    from app.database import SessionLocal
+    try:
+        while True:
+            try:
+                db = SessionLocal()
+                try:
+                    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
+                    if not rpi:
+                        yield f"data: {json.dumps({'error': 'Raspberry Pi introuvable'})}\n\n"
+                        return
+                    device_service = DeviceService(db)
+                    data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
+                    payload = {"success": True, **data}
+                    yield f"data: {json.dumps(payload)}\n\n"
+                finally:
+                    db.close()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e), 'success': False})}\n\n"
+            try:
+                await asyncio.sleep(SENSOR_STREAM_INTERVAL_SEC)
+            except asyncio.CancelledError:
+                break
+    except asyncio.CancelledError:
+        pass
+
+
+@router.get("/{rpi_id}/nodes/{node_id}/sensor/stream")
+async def stream_raspberry_pi_node_sensor(
+    rpi_id: int,
+    node_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Flux temps réel des données capteur (Server-Sent Events).
+    Envoie un événement toutes les 5 secondes. Fermez la connexion pour arrêter.
+    """
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+    if node_id < 1 or node_id > 255:
+        raise HTTPException(status_code=400, detail="node_id doit être entre 1 et 255")
+    return StreamingResponse(
+        _sensor_stream_generator(rpi_id, node_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/", response_model=RaspberryPiResponse, status_code=status.HTTP_201_CREATED)
