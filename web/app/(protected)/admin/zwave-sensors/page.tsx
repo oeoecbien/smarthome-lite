@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,8 +11,17 @@ import { LoadingSpinner } from "@/components/loading-spinner"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useRouter } from "next/navigation"
 import { raspberryPiService, zwaveService } from "@/lib/services/raspberry-pi-service"
+import { deviceService } from "@/lib/services/device-service"
 import type { RaspberryPi } from "@/lib/services/raspberry-pi-service"
-import type { ZwaveSensorData, ZwaveKnownDevice } from "@/lib/types"
+import type { Device, ZwaveSensorData, ZwaveKnownDevice } from "@/lib/types"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -31,6 +41,8 @@ import {
   Cpu,
   AlertCircle,
   Circle,
+  Plus,
+  ExternalLink,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
@@ -96,6 +108,12 @@ export default function AdminZwaveSensorsPage() {
   const [isLoadingDevices, setIsLoadingDevices] = useState(true)
   const [isManualRefresh, setIsManualRefresh] = useState(false)
   const [, setTick] = useState(0)
+  const [sensorDevices, setSensorDevices] = useState<Device[]>([])
+  const [isLoadingSensors, setIsLoadingSensors] = useState(true)
+  const [registerDialogOpen, setRegisterDialogOpen] = useState(false)
+  const [registerName, setRegisterName] = useState("")
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [registerError, setRegisterError] = useState<string | null>(null)
   useEffect(() => {
     if (!lastUpdateMs) return
     const id = setInterval(() => setTick((t) => t + 1), 1000)
@@ -151,12 +169,65 @@ export default function AdminZwaveSensorsPage() {
     }
   }, [])
 
+  const fetchSensorDevices = useCallback(async () => {
+    try {
+      const data = await deviceService.getDevices(undefined, "sensor")
+      setSensorDevices(data)
+    } catch {
+      setSensorDevices([])
+    } finally {
+      setIsLoadingSensors(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (isAdmin) {
       fetchRaspberryPis()
       fetchKnownDevices()
+      fetchSensorDevices()
     }
-  }, [isAdmin, fetchRaspberryPis, fetchKnownDevices])
+  }, [isAdmin, fetchRaspberryPis, fetchKnownDevices, fetchSensorDevices])
+
+  const selectedRpi = raspberryPis.find((r) => String(r.id) === selectedRpiId)
+  const existingSensorDevice = sensorDevices.find(
+    (d) => d.raspberry_pi_id === rpiIdNum && d.gpio_pin === nodeIdNum
+  )
+
+  const openRegisterDialog = useCallback(() => {
+    const defaultName =
+      sensorData?.device_name ||
+      (selectedRpi?.location ? `Capteur Z-Wave - ${selectedRpi.location}` : null) ||
+      `Capteur Z-Wave (node ${nodeId})`
+    setRegisterName(defaultName)
+    setRegisterError(null)
+    setRegisterDialogOpen(true)
+  }, [sensorData?.device_name, selectedRpi?.location, nodeId])
+
+  const submitRegisterSensor = async () => {
+    if (!rpiIdNum || nodeIdNum < 1 || nodeIdNum > 255 || !registerName.trim()) {
+      setRegisterError("Nom requis et node ID entre 1 et 255.")
+      return
+    }
+    setRegisterError(null)
+    setIsRegistering(true)
+    try {
+      await deviceService.createDevice({
+        name: registerName.trim(),
+        type: "sensor",
+        raspberry_pi_id: rpiIdNum,
+        gpio_pin: nodeIdNum,
+      })
+      toast({ title: "Capteur enregistré", description: "Le capteur apparaît dans la liste des appareils." })
+      setRegisterDialogOpen(false)
+      fetchSensorDevices()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Impossible d'enregistrer le capteur"
+      setRegisterError(message)
+      toast({ variant: "destructive", title: "Erreur", description: message })
+    } finally {
+      setIsRegistering(false)
+    }
+  }
 
   const fetchSensorDataManual = async () => {
     const rpiId = selectedRpiId ? Number(selectedRpiId) : 0
@@ -346,8 +417,78 @@ export default function AdminZwaveSensorsPage() {
             {!sensorData && !sensorError && canStream && liveEnabled && (
               <p className="text-sm text-muted-foreground">Connexion au flux en cours…</p>
             )}
+
+            {/* Enregistrer ce capteur comme appareil (type sensor) */}
+            {canStream && (
+              <div className="pt-4 border-t border-border space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Appareils</p>
+                {isLoadingSensors ? (
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                ) : existingSensorDevice ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm">
+                      Ce capteur est enregistré : <strong>{existingSensorDevice.name}</strong>
+                    </span>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href="/devices">
+                        Voir les appareils <ExternalLink className="h-3 w-3 ml-1" />
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={openRegisterDialog}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Enregistrer ce capteur dans les appareils
+                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Pour le pilotage des lampes par mouvement / luminosité
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        <Dialog open={registerDialogOpen} onOpenChange={setRegisterDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enregistrer le capteur</DialogTitle>
+              <DialogDescription>
+                Crée un appareil de type « Capteur Z-Wave » dans la liste des appareils. Vous pourrez ensuite
+                associer des lampes à ce capteur (mouvement, luminosité).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="register-name">Nom de l&apos;appareil</Label>
+              <Input
+                id="register-name"
+                value={registerName}
+                onChange={(e) => setRegisterName(e.target.value)}
+                placeholder="ex. MultiSensor 7 Salon"
+                maxLength={100}
+              />
+              {registerError && (
+                <p className="text-sm text-destructive">{registerError}</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRegisterDialogOpen(false)} disabled={isRegistering}>
+                Annuler
+              </Button>
+              <Button onClick={submitRegisterSensor} disabled={isRegistering || !registerName.trim()}>
+                {isRegistering ? <LoadingSpinner size="sm" className="mr-2" /> : null}
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Appareils Z-Wave connus */}
         <Card>

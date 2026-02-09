@@ -87,11 +87,13 @@ CREATE TABLE IF NOT EXISTS devices (
     state BOOLEAN DEFAULT FALSE NOT NULL,
     brightness INTEGER DEFAULT 0 NOT NULL,
     gpio_pin INTEGER NOT NULL,
+    controlled_by_sensor_id INTEGER NULL REFERENCES devices(id) ON DELETE SET NULL,
+    sensor_rules TEXT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket')),
-    CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 40),
+    CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket', 'sensor')),
+    CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 255),
     CONSTRAINT check_brightness_range CHECK (brightness >= 0 AND brightness <= 100),
     CONSTRAINT uq_device_raspberry_pi_gpio UNIQUE(raspberry_pi_id, gpio_pin)
 );
@@ -102,11 +104,14 @@ CREATE INDEX IF NOT EXISTS idx_devices_raspberry_pi ON devices(raspberry_pi_id) 
 CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(type) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_devices_state ON devices(state) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_devices_deleted_at ON devices(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_controlled_by_sensor ON devices(controlled_by_sensor_id) WHERE controlled_by_sensor_id IS NOT NULL;
 
 COMMENT ON TABLE devices IS 'Appareils électriques contrôlables';
 COMMENT ON COLUMN devices.user_id IS 'Propriétaire de l''appareil (relation avec users)';
-COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO physique sur le Raspberry Pi (unique par RPi)';
+COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO (1-40) ou node_id Z-Wave (1-255) pour type sensor';
 COMMENT ON COLUMN devices.brightness IS 'Intensité lumineuse pour les dimmers (0-100)';
+COMMENT ON COLUMN devices.controlled_by_sensor_id IS 'ID du capteur qui pilote cette lampe (null = désactivé)';
+COMMENT ON COLUMN devices.sensor_rules IS 'Règles JSON: motion (on_brightness, off_after_seconds), illuminance (below_lux, brightness, above_lux)';
 COMMENT ON COLUMN devices.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------

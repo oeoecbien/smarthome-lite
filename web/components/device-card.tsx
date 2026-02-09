@@ -215,27 +215,29 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit
               </Button>
             )}
             {!isSensor && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={handleSyncFromRpi}
-              disabled={isSyncing}
-              title="Synchroniser l'état depuis le RPi"
-              aria-label="Synchroniser état RPi"
-            >
-              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            </Button>
-            {isUpdating ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (
-              <Switch 
-                checked={isOn} 
-                onCheckedChange={handleToggle} 
-                disabled={isUpdating}
-                aria-label={`Toggle ${device.name}`} 
-              />
-            )}
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={handleSyncFromRpi}
+                  disabled={isSyncing}
+                  title="Synchroniser l'état depuis le RPi"
+                  aria-label="Synchroniser état RPi"
+                >
+                  {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+                {isUpdating ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <Switch 
+                    checked={isOn} 
+                    onCheckedChange={handleToggle} 
+                    disabled={isUpdating}
+                    aria-label={`Toggle ${device.name}`} 
+                  />
+                )}
+              </>
             )}
             <Button
               variant="ghost"
