@@ -575,6 +575,9 @@ class ZWaveClient:
                     async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
                         if resp.status != 200:
                             continue
+                        content_type = (resp.headers.get("Content-Type") or "").lower()
+                        if "application/json" not in content_type:
+                            continue
                         data = await resp.json()
                         if isinstance(data, dict) and (data.get("values") is not None or "nodeId" in str(data)):
                             return data
