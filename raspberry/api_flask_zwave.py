@@ -112,6 +112,59 @@ def health():
     })
 
 
+@app.route("/docs", methods=["GET"])
+def docs():
+    """Documentation de l'API (liste des endpoints)."""
+    endpoints = [
+        ("GET", "/", "Infos API (status, health, liens)."),
+        ("GET", "/health", "Santé (backend heartbeat)."),
+        ("GET", "/docs", "Cette documentation."),
+        ("GET", "/api/nodes", "Liste des nœuds Z-Wave."),
+        ("GET", "/api/nodes/<node_id>", "Détail d'un nœud."),
+        ("GET", "/api/nodes/<node_id>/sensor", "Valeurs capteur (mouvement, température, humidité, etc.). Requiert X-API-Key si RASPBERRY_API_KEY est défini."),
+        ("GET", "/api/nodes/<node_id>/current", "État et intensité actuels (lampe)."),
+        ("POST", "/api/nodes/<node_id>/state", "ON/OFF. Corps: { \"state\": true|false }."),
+        ("POST", "/api/nodes/<node_id>/brightness", "Intensité. Corps: { \"brightness\": 0-100 }."),
+        ("POST", "/api/nodes/<node_id>/interview", "Forcer l'interview du nœud."),
+        ("GET", "/api/devices/<node_id>/state", "État lampe (state, brightness). Requiert X-API-Key."),
+        ("POST", "/api/devices/<node_id>/state", "ON/OFF. Corps: { \"state\": true|false }. Requiert X-API-Key."),
+        ("POST", "/api/devices/<node_id>/brightness", "Intensité. Corps: { \"brightness\": 0-100 }. Requiert X-API-Key."),
+    ]
+    def _esc(s: str) -> str:
+        """Échappe < et > pour affichage HTML (évite que <node_id> soit interprété comme balise)."""
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    rows = "".join(
+        f'<tr><td><code>{_esc(m)}</code></td><td><code>{_esc(p)}</code></td><td>{_esc(d)}</td></tr>'
+        for m, p, d in endpoints
+    )
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>API Z-Wave – Documentation</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; margin: 2rem; max-width: 800px; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    th, td {{ border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }}
+    th {{ background: #f5f5f5; }}
+    code {{ background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; }}
+    h1 {{ margin-top: 0; }}
+  </style>
+</head>
+<body>
+  <h1>API Flask Z-Wave – Documentation</h1>
+  <p>Base URL : <code>{request.url_root.rstrip("/")}</code></p>
+  <p>Authentification : si <code>RASPBERRY_API_KEY</code> est défini, envoyer le header <code>X-API-Key</code> pour les routes <code>/api/devices/*</code> et <code>/api/nodes/*/sensor</code>.</p>
+  <table>
+    <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th></tr></thead>
+    <tbody>{rows}</tbody>
+  </table>
+</body>
+</html>"""
+    return app.response_class(html, mimetype="text/html; charset=utf-8")
+
+
 # ---------- Routes compatibles backend (device_service) ----------
 # device_id dans l’URL = gpio_pin côté backend = node_id Z-Wave sur ce RPi
 
@@ -126,22 +179,36 @@ def set_device_state(device_id):
 
     if request.method == "GET":
         try:
-            state, brightness, from_cache = run_async(
+            # Détecter si ce nœud est un capteur (MultiSensor, etc.) : pas de state/brightness lampe
+            is_sensor = run_async(zwave_client.is_sensor_node(node_id))
+            if is_sensor:
+                return jsonify({
+                    "success": True,
+                    "node_id": node_id,
+                    "sensor": True,
+                    "state": None,
+                    "brightness": None,
+                })
+            state, brightness, from_cache, unknown = run_async(
                 zwave_client.get_state_and_brightness(node_id)
             )
-            return jsonify({
+            payload = {
                 "success": True,
                 "node_id": node_id,
                 "state": state,
                 "brightness": brightness,
-                **({"cached": True} if from_cache else {}),
-            })
+            }
+            if from_cache:
+                payload["cached"] = True
+            if unknown:
+                payload["unknown"] = True  # Lecture impossible, état réel inconnu (ne pas afficher OFF)
+            return jsonify(payload)
         except Exception as e:
             logger.error("get_device_state node %s: %s", device_id, e)
             return jsonify({"success": False, "error": str(e)}), 500
 
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
@@ -165,7 +232,7 @@ def set_device_brightness(device_id):
     Intensité. Corps: { "brightness": 0-100, "transition": "immediate"|"fade" (optionnel) }
     """
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         brightness = data.get("brightness", 0)
         transition = data.get("transition", "immediate")
         node_id = device_id
@@ -219,7 +286,7 @@ def get_node(node_id):
 def set_node_state(node_id):
     """ON/OFF d’un nœud."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
@@ -240,7 +307,7 @@ def set_node_state(node_id):
 def set_node_brightness(node_id):
     """Intensité d’un nœud."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         brightness = data.get("brightness", 0)
         if not 0 <= brightness <= 100:
             return jsonify({
@@ -263,16 +330,20 @@ def set_node_brightness(node_id):
 def get_node_current(node_id):
     """État et intensité actuels (une seule lecture)."""
     try:
-        state, brightness, from_cache = run_async(
+        state, brightness, from_cache, unknown = run_async(
             zwave_client.get_state_and_brightness(node_id)
         )
-        return jsonify({
+        payload = {
             "success": True,
             "node_id": node_id,
             "state": state,
             "brightness": brightness,
-            **({"cached": True} if from_cache else {}),
-        })
+        }
+        if from_cache:
+            payload["cached"] = True
+        if unknown:
+            payload["unknown"] = True
+        return jsonify(payload)
     except Exception as e:
         logger.error("get_node_current %s: %s", node_id, e)
         return jsonify({"success": False, "error": str(e)}), 500

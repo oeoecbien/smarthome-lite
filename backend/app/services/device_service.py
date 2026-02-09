@@ -126,19 +126,25 @@ class DeviceService:
     async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
         """
         Récupère l'état réel depuis le RPi (GET /api/devices/{gpio_pin}/state).
-        Retourne {"state": bool, "brightness": int} ou None en cas d'erreur.
+        Retourne {"state": bool, "brightness": int} ou None en cas d'erreur / si le nœud est un capteur.
         """
         rpi = device.raspberry_pi
         endpoint = f"/api/devices/{device.gpio_pin}/state"
         try:
             data = await self._request_rpi(rpi, "GET", endpoint)
-            if isinstance(data, dict) and "state" in data:
-                raw = int(data.get("brightness", 0))
-                return {
-                    "state": bool(data.get("state", False)),
-                    "brightness": min(BRIGHTNESS_MAX, max(0, raw)),
-                }
-            return None
+            if not isinstance(data, dict):
+                return None
+            if data.get("sensor") is True:
+                return None  # Nœud capteur : pas de state/brightness
+            if "state" not in data:
+                return None
+            raw = data.get("brightness", 0)
+            if raw is None:
+                raw = 0
+            return {
+                "state": bool(data.get("state", False)),
+                "brightness": min(BRIGHTNESS_MAX, max(0, int(raw))),
+            }
         except Exception as e:
             logger.debug("get_state_from_rpi device %s: %s", device.id, e)
             return None
@@ -147,6 +153,7 @@ class DeviceService:
         """
         Met à jour l'appareil en base avec l'état lu depuis le RPi.
         Retourne le device rafraîchi ou None si la lecture RPi échoue (exclut soft-deleted).
+        Ignoré pour les appareils de type sensor (pas de state/brightness).
         """
         device = self.db.query(Device).filter(
             Device.id == device_id,
@@ -154,6 +161,8 @@ class DeviceService:
         ).first()
         if not device:
             return None
+        if device.type == "sensor":
+            return device  # Pas de state/brightness pour les capteurs
         state_data = await self.get_state_from_rpi(device)
         if state_data is None:
             return None
