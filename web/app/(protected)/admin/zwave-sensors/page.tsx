@@ -188,6 +188,10 @@ export default function AdminZwaveSensorsPage() {
     }
   }, [isAdmin, fetchRaspberryPis, fetchKnownDevices, fetchSensorDevices])
 
+  const rpiIdNum = selectedRpiId ? Number(selectedRpiId) : 0
+  const nodeIdNum = nodeId ? Number(nodeId) : 0
+  const canStream = rpiIdNum >= 1 && nodeIdNum >= 1 && nodeIdNum <= 255
+
   const selectedRpi = raspberryPis.find((r) => String(r.id) === selectedRpiId)
   const existingSensorDevice = sensorDevices.find(
     (d) => d.raspberry_pi_id === rpiIdNum && d.gpio_pin === nodeIdNum
@@ -262,10 +266,6 @@ export default function AdminZwaveSensorsPage() {
   if (!isAdmin) {
     return null
   }
-
-  const rpiIdNum = selectedRpiId ? Number(selectedRpiId) : 0
-  const nodeIdNum = nodeId ? Number(nodeId) : 0
-  const canStream = rpiIdNum >= 1 && nodeIdNum >= 1 && nodeIdNum <= 255
 
   return (
     <div className="space-y-6">
