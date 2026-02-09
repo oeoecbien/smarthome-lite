@@ -41,5 +41,7 @@ BACKEND_HEARTBEAT_INTERVAL = int(os.environ.get("BACKEND_HEARTBEAT_INTERVAL", "3
 # Debug (évite conflit avec DEBUG du backend)
 DEBUG = os.environ.get("ZWAVE_DEBUG", os.environ.get("FLASK_DEBUG", "true")).lower() in ("1", "true", "yes")
 
-# MultiSensor7 (Z-Wave) : node_id du capteur de mouvement. 0 = désactivé.
+# Détecteur de mouvement Z-Wave (MultiSense / MultiSensor 7) : node_id. 0 = désactivé.
+# Pour que la lampe réagisse : enregistrer ce capteur côté backend (POST /api/raspberry-pis/{id}/register-sensor)
+# puis lier la lampe au capteur (controlled_by_sensor_id + sensor_rules).
 MULTISENSOR7_NODE_ID = int(os.environ.get("MULTISENSOR7_NODE_ID", "0"))

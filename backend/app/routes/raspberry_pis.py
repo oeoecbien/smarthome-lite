@@ -9,7 +9,8 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 from sqlalchemy import func
 
 from app.database import get_db
@@ -243,6 +244,72 @@ async def stream_raspberry_pi_node_sensor(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class RegisterSensorBody(BaseModel):
+    """Corps pour enregistrer un capteur Z-Wave (ex. MultiSense / MultiSensor 7)."""
+    node_id: int
+    name: Optional[str] = None
+
+
+@router.post("/{rpi_id}/register-sensor", status_code=status.HTTP_201_CREATED)
+async def register_sensor(
+    rpi_id: int,
+    body: RegisterSensorBody,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Enregistre un détecteur Z-Wave (MultiSense, MultiSensor 7, etc.) comme Device type sensor.
+    Permet ensuite de lier une lampe à ce capteur (controlled_by_sensor_id + sensor_rules)
+    pour que la lampe réagisse au mouvement (allumage + extinction après X s).
+    """
+    from app.config import BRIGHTNESS_MAX
+
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+
+    node_id = body.node_id
+    if not 1 <= node_id <= 255:
+        raise HTTPException(status_code=400, detail="node_id doit être entre 1 et 255")
+
+    existing = db.query(Device).filter(
+        Device.raspberry_pi_id == rpi_id,
+        Device.gpio_pin == node_id,
+        Device.deleted_at.is_(None),
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Un appareil existe déjà sur ce RPi avec gpio_pin={node_id} (device_id={existing.id})",
+        )
+
+    admin_user_obj = db.query(User).filter(User.role == "admin").first()
+    if not admin_user_obj:
+        raise HTTPException(status_code=500, detail="Aucun utilisateur admin en base")
+
+    name = body.name or f"Détecteur (node {node_id})"
+    device = Device(
+        user_id=admin_user_obj.id,
+        raspberry_pi_id=rpi_id,
+        name=name,
+        type="sensor",
+        gpio_pin=node_id,
+        state=False,
+        brightness=0,
+    )
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+    return {
+        "id": device.id,
+        "name": device.name,
+        "type": device.type,
+        "gpio_pin": device.gpio_pin,
+        "raspberry_pi_id": rpi_id,
+        "message": "Détecteur enregistré. Configurez une lampe avec controlled_by_sensor_id et sensor_rules pour réagir au mouvement.",
+    }
 
 
 @router.post("/", response_model=RaspberryPiResponse, status_code=status.HTTP_201_CREATED)

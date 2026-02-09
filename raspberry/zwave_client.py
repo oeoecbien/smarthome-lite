@@ -64,6 +64,9 @@ class ZWaveClient:
         # Cache liste complète des nœuds (TTL long) quand getNodes réussit
         self._cache_nodes_list: Optional[Tuple[list, float]] = None
         self._cache_nodes_list_ttl_sec: float = 300.0
+        # Cache données capteur (node_id -> (data dict, timestamp)) pour éviter réponses vides après timeout
+        self._cache_sensor_data: Dict[int, Tuple[Dict[str, Any], float]] = {}
+        self._cache_sensor_data_ttl_sec: float = 90.0
 
     async def _ensure_connected(self) -> socketio.AsyncClient:
         """Connexion Socket.IO si nécessaire."""
@@ -628,11 +631,27 @@ class ZWaveClient:
                             pass
         return out
 
+    def _sensor_data_has_values(self, data: Dict[str, Any]) -> bool:
+        """True si les données capteur contiennent au moins une valeur lue (pas tout vide)."""
+        if data.get("motion"):
+            return True
+        if data.get("temperature_c") is not None:
+            return True
+        if data.get("humidity") is not None:
+            return True
+        if data.get("illuminance_lux") is not None:
+            return True
+        if data.get("ultraviolet") is not None:
+            return True
+        if data.get("battery_percent") is not None:
+            return True
+        return False
+
     async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
         """
         Lit toutes les valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
         Compatible Aeotec MultiSensor 7 (ZWA024). Retourne aussi device_type si reconnu.
-        Si get_node timeout, tente quand même getValue(CC 48) pour le mouvement (plus rapide).
+        Si get_node timeout, tente getValue(CC 48) pour le mouvement ; si tout échoue, retourne le cache si dispo.
         """
         node = await self.get_node(node_id)
         data = self._sensor_values_from_node(node)
@@ -650,6 +669,22 @@ class ZWaveClient:
             data["device_type"] = None
             data["device_name"] = None
             data["device_model"] = None
+        # Mettre en cache si on a au moins une valeur
+        if self._sensor_data_has_values(data):
+            self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
+        else:
+            # Lecture échouée : retourner le cache si encore valide
+            now = time.monotonic()
+            entry = self._cache_sensor_data.get(node_id)
+            if entry:
+                cached_data, ts = entry
+                if now - ts <= self._cache_sensor_data_ttl_sec:
+                    out = dict(cached_data)
+                    out["cached"] = True
+                    out["node_id"] = node_id
+                    return out
+                self._cache_sensor_data.pop(node_id, None)
+            data["unknown"] = True  # Aucune donnée lue, pas de cache
         return data
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:

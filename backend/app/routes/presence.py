@@ -12,9 +12,10 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import Presence, RaspberryPi
+from app.models import Presence, RaspberryPi, Device
 from app.dependencies import verify_raspberry_pi, require_admin, User, PaginationParams
 from app.services.rule_engine import RuleEngine
+from app.services.device_service import DeviceService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -42,9 +43,11 @@ async def create_presence(
     db: Session = Depends(get_db)
 ):
     """
-    Enregistre une nouvelle détection de mouvement (appelé par le RPi Z-Wave quand le MultiSensor7 détecte un mouvement).
-    
-    Déclenche l'évaluation des règles (presence_detected).
+    Enregistre une détection de mouvement (appelé par le RPi quand le détecteur Z-Wave signale un mouvement).
+
+    Si le détecteur est enregistré comme Device (type sensor) avec gpio_pin = sensor_node_id,
+    les règles capteur→lampe (sensor_rules) sont appliquées (allumage, extinction après X s).
+    Les règles génériques (presence_detected) sont aussi évaluées.
     """
     # Anti-rebond : ne pas enregistrer si une détection a déjà eu lieu dans les 5 dernières secondes (même RPi)
     five_seconds_ago = datetime.now() - timedelta(seconds=5)
@@ -74,6 +77,35 @@ async def create_presence(
     db.commit()
     db.refresh(presence)
 
+    # Si le détecteur est enregistré comme Device (type sensor), appliquer les règles capteur → lampe
+    sensor_node_id = request.sensor_node_id
+    if sensor_node_id is not None:
+        sensor_device = (
+            db.query(Device)
+            .filter(
+                Device.raspberry_pi_id == rpi.id,
+                Device.gpio_pin == sensor_node_id,
+                Device.type == "sensor",
+                Device.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if sensor_device:
+            try:
+                device_service = DeviceService(db)
+                await device_service.evaluate_sensor_rules(
+                    sensor_device.id,
+                    {"motion": True},
+                )
+                logger.info(
+                    "Règles capteur→lampe appliquées pour le détecteur (device_id=%s, node_id=%s)",
+                    sensor_device.id,
+                    sensor_node_id,
+                )
+            except Exception as e:
+                logger.warning("evaluate_sensor_rules après présence: %s", e)
+
+    # Règles génériques (presence_detected)
     try:
         rule_engine = RuleEngine(db)
         trigger_data = {

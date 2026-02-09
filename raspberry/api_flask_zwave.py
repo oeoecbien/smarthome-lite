@@ -401,7 +401,7 @@ def _backend_heartbeat_loop():
 
 
 def _motion_to_backend_loop():
-    """Poll MultiSensor7 et envoie POST /api/presence au backend à chaque détection de mouvement (front montant)."""
+    """Envoie POST /api/presence au backend à chaque détection de mouvement (front montant)."""
     import time
     import urllib.request
     import urllib.error
@@ -429,7 +429,7 @@ def _motion_to_backend_loop():
                     },
                 )
                 urllib.request.urlopen(req, timeout=10)
-                logger.info("Mouvement MultiSensor7 (node %s) envoyé au backend", MULTISENSOR7_NODE_ID)
+                logger.info("Mouvement détecté (node %s) → backend", MULTISENSOR7_NODE_ID)
             last_motion = motion
         except urllib.error.HTTPError as e:
             logger.debug("Motion→backend HTTP %s: %s", e.code, e.reason)
@@ -446,7 +446,7 @@ if __name__ == "__main__":
     if BACKEND_URL and API_KEY and MULTISENSOR7_NODE_ID:
         _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
         _motion.start()
-        logger.info("Motion MultiSensor7 (node %s) → backend démarré", MULTISENSOR7_NODE_ID)
+        logger.info("Détecteur (node %s) → présence backend démarré", MULTISENSOR7_NODE_ID)
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)

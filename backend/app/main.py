@@ -158,15 +158,21 @@ async def lifespan(app: FastAPI):
     SENSOR_CONTROL_INTERVAL = 30
 
     async def _sensor_control_loop():
-        """Périodiquement : récupère les données de chaque capteur et applique les règles → lampes."""
+        """Périodiquement : récupère les données des capteurs qui pilotent au moins une lampe et applique les règles."""
         await asyncio.sleep(10)
         while True:
             try:
                 db = SessionLocal()
                 try:
+                    # Uniquement les capteurs qui ont au moins une lampe liée (controlled_by_sensor_id)
+                    sub = db.query(Device.controlled_by_sensor_id).filter(
+                        Device.controlled_by_sensor_id.isnot(None),
+                        Device.deleted_at.is_(None),
+                    ).distinct()
                     sensors = db.query(Device).filter(
                         Device.type == "sensor",
                         Device.deleted_at.is_(None),
+                        Device.id.in_(sub),
                     ).all()
                     for sensor in sensors:
                         try:
