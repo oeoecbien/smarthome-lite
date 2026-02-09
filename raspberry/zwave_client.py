@@ -11,6 +11,7 @@ Compatibilité lampe ABUS (node 3) : CC 38, currentValue/targetValue 0-99.
 import asyncio
 import json
 import logging
+import time
 from typing import Any, Dict, Optional, Tuple
 
 import socketio
@@ -57,6 +58,9 @@ class ZWaveClient:
         self.timeout = timeout
         self._sio: Optional[socketio.AsyncClient] = None
         self._cache_current_value: Dict[int, int] = {}
+        # Cache nœud (node_id -> (payload, timestamp)) pour éviter timeouts répétés sur capteurs lents
+        self._cache_node: Dict[int, Tuple[dict, float]] = {}
+        self._cache_node_ttl_sec: float = 90.0
 
     async def _ensure_connected(self) -> socketio.AsyncClient:
         """Connexion Socket.IO si nécessaire."""
@@ -282,22 +286,45 @@ class ZWaveClient:
                 logger.error(f"get_nodes fallback: {e2}")
                 return []
 
+    def _get_cached_node(self, node_id: int) -> Optional[dict]:
+        """Retourne le nœud en cache s'il est encore valide (TTL)."""
+        entry = self._cache_node.get(node_id)
+        if not entry:
+            return None
+        payload, ts = entry
+        if time.monotonic() - ts > self._cache_node_ttl_sec:
+            del self._cache_node[node_id]
+            return None
+        return payload
+
     async def get_node(self, node_id: int) -> Optional[dict]:
-        """Détails d'un nœud. Tente d'abord le HTTP (plus rapide) puis Socket.IO avec timeout court."""
+        """Détails d'un nœud. Tente HTTP puis Socket.IO ; en timeout retourne le cache si disponible."""
         node = await self._get_node_via_http(node_id)
         if node:
+            self._cache_node[node_id] = (node, time.monotonic())
             return node
         try:
             # Timeout court (15s) pour ne pas bloquer trop longtemps si Z-Wave JS UI est lent
-            return await asyncio.wait_for(
+            node = await asyncio.wait_for(
                 self._call_api("getNode", node_id),
                 timeout=15.0,
             )
+            if node:
+                self._cache_node[node_id] = (node, time.monotonic())
+            return node
         except asyncio.TimeoutError:
+            cached = self._get_cached_node(node_id)
+            if cached:
+                logger.debug("get_node %s: timeout (lecture Z-Wave lente), retour cache", node_id)
+                return cached
             logger.warning("get_node %s: timeout (lecture Z-Wave lente)", node_id)
             return None
         except Exception as e:
             logger.error(f"get_node {node_id}: {e}")
+            cached = self._get_cached_node(node_id)
+            if cached:
+                logger.debug("get_node %s: erreur, retour cache", node_id)
+                return cached
             return None
 
     def _motion_from_node(self, node: Optional[dict]) -> bool:
