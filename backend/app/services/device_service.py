@@ -229,29 +229,31 @@ class DeviceService:
         if device.type not in ["light", "dimmer"]:
             raise ValueError(f"Device {device.name} is not dimmable")
         
-        brightness = min(BRIGHTNESS_MAX, max(0, brightness))
+        # Stocker 0-100 pour le frontend ; envoyer 0-99 au RPi (Z-Wave)
+        brightness_stored = max(0, min(100, brightness))
+        brightness_rpi = min(BRIGHTNESS_MAX, brightness_stored)
         rpi = device.raspberry_pi
         
-        # Envoyer commande au Raspberry Pi
+        # Envoyer commande au Raspberry Pi (0-99)
         await self.send_command_to_rpi(
             rpi,
             f"/api/devices/{device.gpio_pin}/brightness",
             {
-                "brightness": brightness,
+                "brightness": brightness_rpi,
                 "transition": transition
             }
         )
         
-        # Mettre à jour en base
+        # Mettre à jour en base (0-100)
         previous_brightness = device.brightness
-        device.brightness = brightness
+        device.brightness = brightness_stored
         device.state = brightness > 0  # Auto ON si brightness > 0
         
         # Enregistrer l'événement
         event = Event(
             device_id=device.id,
             event_type="brightness_changed",
-            value=f"{previous_brightness}->{brightness}",
+            value=f"{previous_brightness}->{brightness_stored}",
             source=source
         )
         self.db.add(event)
@@ -265,7 +267,7 @@ class DeviceService:
                 rule_engine = RuleEngine(self.db)
                 executed_rules = rule_engine.evaluate_rules(
                     trigger_event="brightness_changed",
-                    trigger_data={"device_id": device.id, "brightness": brightness}
+                    trigger_data={"device_id": device.id, "brightness": brightness_stored}
                 )
                 if executed_rules:
                     logger.info(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
@@ -274,7 +276,7 @@ class DeviceService:
         
         logger.info(
             f"Device {device.name} brightness changed "
-            f"{previous_brightness}% → {brightness}% (source: {source})"
+            f"{previous_brightness}% → {brightness_stored}% (source: {source})"
         )
         
         return device
@@ -298,7 +300,7 @@ class DeviceService:
             "name": device.name,
             "type": device.type,
             "state": device.state,
-            "brightness": min(BRIGHTNESS_MAX, device.brightness),
+            "brightness": min(100, max(0, device.brightness)),
             "gpio_pin": device.gpio_pin,
             "raspberry_pi_name": device.raspberry_pi.name,
             "location": device.raspberry_pi.location,
@@ -323,7 +325,7 @@ class DeviceService:
                 "name": d.name,
                 "type": d.type,
                 "state": d.state,
-                "brightness": min(BRIGHTNESS_MAX, d.brightness),
+                "brightness": min(100, max(0, d.brightness)),
                 "raspberry_pi_name": d.raspberry_pi.name,
                 "location": d.raspberry_pi.location,
                 "raspberry_pi_online": d.raspberry_pi.is_online

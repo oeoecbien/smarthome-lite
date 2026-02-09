@@ -89,7 +89,8 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated }: Devi
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      await deviceService.getDeviceState(device.id, true)
+      const res = await deviceService.getDeviceState(device.id, true)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({ title: "État synchronisé", description: `État de ${device.name} rafraîchi depuis le RPi.` })
     } catch {

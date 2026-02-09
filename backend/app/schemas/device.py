@@ -99,8 +99,9 @@ class DeviceState(BaseModel):
 class DeviceBrightness(BaseModel):
     """
     Schéma pour changement d'intensité lumineuse.
+    Le frontend envoie 0-100 ; le backend envoie 0-99 au RPi (compatibilité Z-Wave).
     """
-    brightness: int = Field(..., ge=0, le=99, description="Intensité lumineuse (0-99)")
+    brightness: int = Field(..., ge=0, le=100, description="Intensité lumineuse (0-100)")
     transition: Optional[int] = Field(None, ge=0, description="Durée de transition en secondes")
     
     class Config:

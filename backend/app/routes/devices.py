@@ -157,7 +157,7 @@ async def get_device_state(
         "id": device.id,
         "name": device.name,
         "state": device.state,
-        "brightness": min(BRIGHTNESS_MAX, device.brightness),
+        "brightness": min(100, max(0, device.brightness)),
     }
 
 
@@ -239,17 +239,18 @@ async def set_device_brightness(
     - Admins: tous les appareils
     """
     if brightness_data is not None:
-        brightness = brightness_data.brightness
+        # Frontend envoie 0-100 ; on garde 0-100 en base, le service envoie 0-99 au RPi
+        brightness = max(0, min(100, brightness_data.brightness))
         transition = brightness_data.transition
     elif intensity is not None:
         # Accepter 0-1 (ex: 0.5) ou 0-99
         brightness = int(round(intensity * BRIGHTNESS_MAX)) if intensity <= 1 else int(round(intensity))
-        brightness = max(0, min(BRIGHTNESS_MAX, brightness))
+        brightness = max(0, min(100, brightness))
         transition = None
     else:
         raise HTTPException(
             status_code=422,
-            detail="Fournir soit un body avec 'brightness' (0-99), soit le paramètre de requête 'intensity'."
+            detail="Fournir soit un body avec 'brightness' (0-100), soit le paramètre de requête 'intensity'."
         )
 
     device = db.query(Device).filter(
