@@ -276,6 +276,7 @@ export default function AdminZwaveSensorsPage() {
         </h1>
         <p className="text-muted-foreground">
           Données en temps réel des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
+          Lecture rapide (cache driver). Enregistrez le capteur puis associez des lampes pour le pilotage par mouvement et luminosité.
         </p>
       </div>
 
@@ -362,11 +363,23 @@ export default function AdminZwaveSensorsPage() {
 
             {sensorData && (
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-                {(sensorData.device_name || sensorData.device_model) && (
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {sensorData.device_name ?? ""} {sensorData.device_model ? `(${sensorData.device_model})` : ""}
-                  </p>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {(sensorData.device_name || sensorData.device_model) && (
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {sensorData.device_name ?? ""} {sensorData.device_model ? `(${sensorData.device_model})` : ""}
+                    </p>
+                  )}
+                  {sensorData.cached && (
+                    <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
+                      Cache
+                    </span>
+                  )}
+                  {sensorData.unknown && (
+                    <span className="rounded-md bg-destructive/15 px-2 py-0.5 text-xs text-destructive">
+                      Données non disponibles
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <Activity className="h-4 w-4 text-muted-foreground" />
@@ -431,9 +444,12 @@ export default function AdminZwaveSensorsPage() {
                     </span>
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/devices">
-                        Voir les appareils <ExternalLink className="h-3 w-3 ml-1" />
+                        Voir / Modifier l&apos;appareil <ExternalLink className="h-3 w-3 ml-1" />
                       </Link>
                     </Button>
+                    <span className="text-xs text-muted-foreground">
+                      Lier une lampe à ce capteur (mouvement, luminosité) depuis la fiche appareil.
+                    </span>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">

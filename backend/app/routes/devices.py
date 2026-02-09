@@ -19,6 +19,7 @@ from app.schemas.device import (
 from app.services.device_service import DeviceService, OMIT
 from app.dependencies import get_current_user
 from app.config import BRIGHTNESS_MAX
+from app.schemas.zwave import ZwaveSensorData
 
 router = APIRouter()
 
@@ -211,7 +212,7 @@ async def get_device_state(
     }
 
 
-@router.get("/{device_id}/sensor")
+@router.get("/{device_id}/sensor", response_model=ZwaveSensorData)
 async def get_device_sensor(
     device_id: int,
     db: Session = Depends(get_db),
@@ -220,7 +221,7 @@ async def get_device_sensor(
     """
     Données capteur (température, humidité, mouvement, luminosité, UV, batterie).
     Réservé aux appareils de type « sensor » (ex. Aeotec MultiSensor 7).
-    Lecture en direct depuis le RPi (GET /api/nodes/{node_id}/sensor).
+    Lecture depuis le RPi (getValue sur le cache driver → réponse rapide).
     """
     device = db.query(Device).filter(
         Device.id == device_id,
@@ -241,13 +242,31 @@ async def get_device_sensor(
             device.raspberry_pi,
             device.gpio_pin,  # node_id Z-Wave pour un device sensor
         )
-        return {"success": True, "device_id": device_id, **data}
+        if not isinstance(data, dict):
+            data = {}
+        # Réponse normalisée (tous les champs présents)
+        return ZwaveSensorData(
+            success=data.get("success", True),
+            device_id=device_id,
+            node_id=data.get("node_id", device.gpio_pin),
+            motion=data.get("motion", False),
+            temperature_c=data.get("temperature_c"),
+            humidity=data.get("humidity"),
+            illuminance_lux=data.get("illuminance_lux"),
+            ultraviolet=data.get("ultraviolet"),
+            battery_percent=data.get("battery_percent"),
+            device_type=data.get("device_type"),
+            device_name=data.get("device_name"),
+            device_model=data.get("device_model"),
+            cached=data.get("cached"),
+            unknown=data.get("unknown"),
+        )
     except Exception as e:
         err = str(e).strip()
         if "not responding" in err or "Timeout" in err.lower():
             raise HTTPException(
                 status_code=502,
-                detail="Le Raspberry Pi n'a pas répondu à temps (lecture Z-Wave lente). Réessayez.",
+                detail="Le Raspberry Pi n'a pas répondu à temps. Réessayez.",
             )
         raise HTTPException(status_code=502, detail=f"Capteur indisponible : {err}")
 

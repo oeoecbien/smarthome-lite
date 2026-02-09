@@ -12,7 +12,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import socketio
 
@@ -138,6 +138,24 @@ class ZWaveClient:
             "property": "currentValue",
         }
 
+    def _multilevel_sensor_value_id(self, node_id: int, property_name: str, endpoint: int = 0) -> dict:
+        """ValueId pour CC 49 Multilevel Sensor (temp, illuminance, humidity, uv)."""
+        return {
+            "nodeId": node_id,
+            "commandClass": CC_MULTILEVEL_SENSOR,
+            "endpoint": endpoint,
+            "property": property_name,
+        }
+
+    def _battery_value_id(self, node_id: int, endpoint: int = 0) -> dict:
+        """ValueId pour CC 128 Battery (level)."""
+        return {
+            "nodeId": node_id,
+            "commandClass": CC_BATTERY,
+            "endpoint": endpoint,
+            "property": "level",
+        }
+
     async def _get_motion_via_getvalue(self, node_id: int) -> Optional[bool]:
         """
         Lit uniquement le mouvement via getValue(CC 48). Plus rapide que getNode.
@@ -158,6 +176,77 @@ class ZWaveClient:
             except (asyncio.TimeoutError, Exception):
                 continue
         return None
+
+    async def _get_sensor_values_via_getvalue(self, node_id: int) -> Dict[str, Any]:
+        """
+        Lit toutes les valeurs capteur via getValue (CC 48, 49, 128).
+        Utilise le cache du driver (pas de réveil du nœud) — rapide pour capteurs sur pile.
+        Retourne le même format que _sensor_values_from_node (motion, temperature_c, etc.).
+        """
+        out: Dict[str, Any] = {
+            "motion": False,
+            "temperature_c": None,
+            "humidity": None,
+            "illuminance_lux": None,
+            "ultraviolet": None,
+            "battery_percent": None,
+        }
+        timeout_per_call = 10.0
+
+        async def get_one(vid: dict, kind: str) -> Tuple[str, Any]:
+            try:
+                result = await asyncio.wait_for(
+                    self._call_api("getValue", vid),
+                    timeout=timeout_per_call,
+                )
+                if result is None:
+                    return (kind, None)
+                if isinstance(result, dict):
+                    val = result.get("value") if "value" in result else result.get("newValue") or result.get("currentValue")
+                else:
+                    val = result
+                if val is None:
+                    return (kind, None)
+                if kind == "motion":
+                    return (kind, bool(val))
+                if kind == "battery_percent":
+                    return (kind, min(100, max(0, int(val))))
+                f = self._float_from_value(val) if not isinstance(val, (int, float)) else float(val)
+                if f is None:
+                    return (kind, None)
+                if kind == "temperature_c":
+                    return (kind, round(f, 1))
+                if kind == "illuminance_lux":
+                    return (kind, int(round(f)))
+                if kind in ("humidity", "ultraviolet"):
+                    return (kind, round(f, 1))
+                return (kind, None)
+            except (asyncio.TimeoutError, Exception):
+                return (kind, None)
+
+        # Mouvement (CC 48)
+        for ep in (0, 1):
+            vid = self._binary_sensor_value_id(node_id, ep)
+            _, v = await get_one(vid, "motion")
+            if v is not None:
+                out["motion"] = v
+                break
+
+        # CC 49 + batterie en parallèle
+        value_ids: List[Tuple[dict, str]] = [
+            (self._multilevel_sensor_value_id(node_id, "Air temperature"), "temperature_c"),
+            (self._multilevel_sensor_value_id(node_id, "Illuminance"), "illuminance_lux"),
+            (self._multilevel_sensor_value_id(node_id, "Humidity"), "humidity"),
+            (self._multilevel_sensor_value_id(node_id, "Ultraviolet"), "ultraviolet"),
+            (self._battery_value_id(node_id), "battery_percent"),
+        ]
+        tasks = [get_one(vid, kind) for vid, kind in value_ids]
+        results = await asyncio.gather(*tasks)
+        for (_, kind), (_, val) in zip(value_ids, results):
+            if val is not None:
+                out[kind] = val
+
+        return out
 
     async def _set_value_via_ws(
         self,
@@ -651,12 +740,40 @@ class ZWaveClient:
         """
         Lit toutes les valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
         Compatible Aeotec MultiSensor 7 (ZWA024). Retourne aussi device_type si reconnu.
-        Si get_node timeout, tente getValue(CC 48) pour le mouvement ; si tout échoue, retourne le cache si dispo.
+        Ordre : HTTP get_node (rapide) → si échec, getValue par valeur (cache driver, rapide) → sinon get_node Socket → cache.
         """
+        # 1) Tenter d'abord le nœud via HTTP (souvent plus rapide, pas de réveil)
+        node = await self._get_node_via_http(node_id)
+        if node is not None:
+            self._cache_node[node_id] = (node, time.monotonic())
+            data = self._sensor_values_from_node(node)
+            data["node_id"] = node_id
+            if self._is_aeotec_multisensor7(node):
+                data["device_type"] = "aeotec_multisensor7"
+                data["device_name"] = AEOTEC_MULTISENSOR7_NAME
+                data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
+            else:
+                data["device_type"] = None
+                data["device_name"] = None
+                data["device_model"] = None
+            if self._sensor_data_has_values(data):
+                self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
+            return data
+
+        # 2) Pas de node HTTP : lire chaque valeur via getValue (cache du driver, sans réveil du nœud)
+        data = await self._get_sensor_values_via_getvalue(node_id)
+        data["node_id"] = node_id
+        if self._sensor_data_has_values(data):
+            data["device_type"] = "aeotec_multisensor7"
+            data["device_name"] = AEOTEC_MULTISENSOR7_NAME
+            data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
+            self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
+            return data
+
+        # 3) Fallback : get_node via Socket (peut être lent / timeout sur capteur pile)
         node = await self.get_node(node_id)
         data = self._sensor_values_from_node(node)
         data["node_id"] = node_id
-        # Si lecture complète en timeout mais pas de mouvement, tenter getValue(CC 48) pour le mouvement
         if not data["motion"] and node is None:
             motion_direct = await self._get_motion_via_getvalue(node_id)
             if motion_direct is not None:
@@ -669,22 +786,22 @@ class ZWaveClient:
             data["device_type"] = None
             data["device_name"] = None
             data["device_model"] = None
-        # Mettre en cache si on a au moins une valeur
         if self._sensor_data_has_values(data):
             self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
-        else:
-            # Lecture échouée : retourner le cache si encore valide
-            now = time.monotonic()
-            entry = self._cache_sensor_data.get(node_id)
-            if entry:
-                cached_data, ts = entry
-                if now - ts <= self._cache_sensor_data_ttl_sec:
-                    out = dict(cached_data)
-                    out["cached"] = True
-                    out["node_id"] = node_id
-                    return out
-                self._cache_sensor_data.pop(node_id, None)
-            data["unknown"] = True  # Aucune donnée lue, pas de cache
+            return data
+
+        # 4) Rien lu : retourner le cache si valide, sinon unknown
+        now = time.monotonic()
+        entry = self._cache_sensor_data.get(node_id)
+        if entry:
+            cached_data, ts = entry
+            if now - ts <= self._cache_sensor_data_ttl_sec:
+                out = dict(cached_data)
+                out["cached"] = True
+                out["node_id"] = node_id
+                return out
+            self._cache_sensor_data.pop(node_id, None)
+        data["unknown"] = True
         return data
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:

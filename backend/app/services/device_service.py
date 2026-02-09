@@ -118,10 +118,10 @@ class DeviceService:
         Récupère les données capteur d'un nœud Z-Wave depuis le RPi.
         Compatible Aeotec MultiSensor 7 (ZWA024) : motion, temperature_c, humidity,
         illuminance_lux, ultraviolet, battery_percent, device_type, etc.
-        Timeout long (45 s) : lecture Z-Wave lente (nœud batterie, réveil, Socket.IO).
+        Le RPi utilise getValue (cache driver) pour une réponse rapide ; timeout 25 s.
         """
         endpoint = f"/api/nodes/{node_id}/sensor"
-        return await self._request_rpi(rpi, "GET", endpoint, timeout_override=45.0)
+        return await self._request_rpi(rpi, "GET", endpoint, timeout_override=25.0)
 
     async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
         """

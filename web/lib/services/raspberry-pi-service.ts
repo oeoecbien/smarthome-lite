@@ -58,10 +58,10 @@ export const raspberryPiService = {
     return api.delete(`/api/raspberry-pis/${id}`)
   },
 
-  /** Données capteur d'un nœud Z-Wave sur ce RPi (ex. Aeotec MultiSensor 7). Timeout 50s (lecture Z-Wave très lente). */
+  /** Données capteur d'un nœud Z-Wave sur ce RPi (getValue → réponse rapide). Timeout 30s. */
   async getNodeSensor(rpiId: number, nodeId: number): Promise<ZwaveSensorData> {
     return api.get<ZwaveSensorData>(`/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor`, undefined, {
-      timeout: 50_000,
+      timeout: 30_000,
     })
   },
 

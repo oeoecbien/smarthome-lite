@@ -179,9 +179,10 @@ export interface RuleTestResult {
   reason?: string
 }
 
-/** Données capteur d'un nœud Z-Wave (ex. Aeotec MultiSensor 7). */
+/** Données capteur d'un nœud Z-Wave (ex. Aeotec MultiSensor 7). Réponse normalisée backend (getValue / cache driver). */
 export interface ZwaveSensorData {
   success?: boolean
+  device_id?: number | null
   node_id: number
   motion: boolean
   temperature_c: number | null
@@ -192,6 +193,8 @@ export interface ZwaveSensorData {
   device_type: string | null
   device_name: string | null
   device_model: string | null
+  cached?: boolean | null
+  unknown?: boolean | null
 }
 
 /** Appareil Z-Wave connu par le backend (registre). */

@@ -28,11 +28,12 @@ const DEVICE_TYPES = [
   { value: "light", label: "Lumière" },
   { value: "dimmer", label: "Variateur" },
   { value: "socket", label: "Prise" },
+  { value: "sensor", label: "Capteur (Z-Wave)" },
 ]
 
 interface NewDeviceForm {
   name: string
-  type: "light" | "dimmer" | "socket"
+  type: "light" | "dimmer" | "socket" | "sensor"
   raspberry_pi_id: number
   gpio_pin: number
   location: string
@@ -63,6 +64,7 @@ export default function AdminDevicesPage() {
     gpio_pin: 17,
     location: "",
   })
+  const maxGpio = formData.type === "sensor" ? 255 : 40
 
   useEffect(() => {
     if (!isAdmin) {
@@ -221,7 +223,7 @@ export default function AdminDevicesPage() {
                     <Label htmlFor="type">Type</Label>
                     <Select
                       value={formData.type}
-                      onValueChange={(value: "light" | "dimmer" | "socket") =>
+                      onValueChange={(value: "light" | "dimmer" | "socket" | "sensor") =>
                         setFormData({ ...formData, type: value })
                       }
                     >
@@ -258,13 +260,14 @@ export default function AdminDevicesPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="gpio">GPIO Pin</Label>
+                      <Label htmlFor="gpio">{formData.type === "sensor" ? "Node ID Z-Wave (1–255)" : "GPIO Pin (1–40)"}</Label>
                       <Input
                         id="gpio"
                         type="number"
-                        min="0"
+                        min={1}
+                        max={maxGpio}
                         value={formData.gpio_pin}
-                        onChange={(e) => setFormData({ ...formData, gpio_pin: Number.parseInt(e.target.value) })}
+                        onChange={(e) => setFormData({ ...formData, gpio_pin: Number.parseInt(e.target.value) || 1 })}
                         required
                       />
                     </div>
