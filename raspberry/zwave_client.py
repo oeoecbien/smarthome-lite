@@ -21,9 +21,20 @@ logger = logging.getLogger(__name__)
 CC_MULTILEVEL_SWITCH = 38
 # Command Class 48 = Binary Sensor (mouvement MultiSensor7)
 CC_BINARY_SENSOR = 48
+# Command Class 49 = Multilevel Sensor (temp, humidité, luminosité, UV)
+CC_MULTILEVEL_SENSOR = 49
+# Command Class 128 = Battery
+CC_BATTERY = 128
 # Propriétés pour CC 38 (alignées sur Z-Wave JS UI, ex. lampe ABUS node 3)
 PROP_CURRENT_VALUE = "currentValue"
 PROP_TARGET_VALUE = "targetValue"
+
+# Aeotec MultiSensor 7 (ZWA024) : manufacturerId 881, productType 2, productId 24
+AEOTEC_MANUFACTURER_ID = 881
+AEOTEC_MULTISENSOR7_PRODUCT_TYPE = 2
+AEOTEC_MULTISENSOR7_PRODUCT_ID = 24
+AEOTEC_MULTISENSOR7_MODEL = "ZWA024"
+AEOTEC_MULTISENSOR7_NAME = "Aeotec MultiSensor 7"
 
 # Niveau "ON" : 99 pour compatibilité appareils 0-99 uniquement (ex. ABUS SHLM10010)
 # Certains dimmers acceptent 255 (dernier niveau), d'autres uniquement 0-99
@@ -305,6 +316,134 @@ class ZWaveClient:
         """Lit l'état mouvement du nœud (MultiSensor7, CC 48 Binary Sensor)."""
         node = await self.get_node(node_id)
         return self._motion_from_node(node)
+
+    def _is_aeotec_multisensor7(self, node: Optional[dict]) -> bool:
+        """Vérifie si le nœud est un Aeotec MultiSensor 7 (ZWA024)."""
+        if not node:
+            return False
+        mid = node.get("manufacturerId") or node.get("manufacturer_id")
+        pt = node.get("productType") or node.get("product_type")
+        pid = node.get("productId") or node.get("product_id")
+        if mid is not None and pt is not None and pid is not None:
+            if int(mid) == AEOTEC_MANUFACTURER_ID and int(pt) == AEOTEC_MULTISENSOR7_PRODUCT_TYPE and int(pid) == AEOTEC_MULTISENSOR7_PRODUCT_ID:
+                return True
+        # Certaines APIs exposent sous deviceConfig
+        dev = node.get("deviceConfig") or node.get("device_config") or {}
+        if dev:
+            mid = dev.get("manufacturerId") or dev.get("manufacturer_id")
+            pt = dev.get("productType") or dev.get("product_type")
+            pid = dev.get("productId") or dev.get("product_id")
+            if mid is not None and pt is not None and pid is not None:
+                if int(mid) == AEOTEC_MANUFACTURER_ID and int(pt) == AEOTEC_MULTISENSOR7_PRODUCT_TYPE and int(pid) == AEOTEC_MULTISENSOR7_PRODUCT_ID:
+                    return True
+        return False
+
+    def _float_from_value(self, v: Any) -> Optional[float]:
+        """Extrait un float depuis une valeur (value ou newValue)."""
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            v = v.get("value") or v.get("newValue")
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    def _sensor_values_from_node(self, node: Optional[dict]) -> Dict[str, Any]:
+        """
+        Extrait les valeurs capteur depuis un nœud (MultiSensor 7 : CC 48, 49, 128).
+        Retourne motion, temperature_c, humidity, illuminance_lux, ultraviolet, battery_percent.
+        """
+        out: Dict[str, Any] = {
+            "motion": False,
+            "temperature_c": None,
+            "humidity": None,
+            "illuminance_lux": None,
+            "ultraviolet": None,
+            "battery_percent": None,
+        }
+        if not node:
+            return out
+        values = node.get("values") or {}
+        if isinstance(values, list):
+            for v in values:
+                if not isinstance(v, dict):
+                    continue
+                cc = v.get("commandClass")
+                prop = v.get("property") or v.get("propertyKey") or ""
+                val = v.get("value") if "value" in v else v.get("newValue")
+                if cc == CC_BINARY_SENSOR:
+                    if val is not None:
+                        out["motion"] = bool(val)
+                elif cc == CC_MULTILEVEL_SENSOR:
+                    f = self._float_from_value(val) if val is not None else self._float_from_value(v)
+                    if f is None:
+                        continue
+                    if "Air temperature" in str(prop) or prop == "Air temperature":
+                        out["temperature_c"] = round(f, 1)
+                    elif "Humidity" in str(prop) or prop == "Humidity":
+                        out["humidity"] = round(f, 1)
+                    elif "Illuminance" in str(prop) or prop == "Illuminance":
+                        out["illuminance_lux"] = int(round(f))
+                    elif "Ultraviolet" in str(prop) or prop == "Ultraviolet":
+                        out["ultraviolet"] = round(f, 1)
+                elif cc == CC_BATTERY and (prop == "level" or "level" in str(prop)):
+                    if val is not None:
+                        try:
+                            out["battery_percent"] = min(100, max(0, int(val)))
+                        except (TypeError, ValueError):
+                            pass
+            return out
+        # format dict: "5-49-0-Air temperature" ou "48-0-currentValue"
+        for k, v in values.items():
+            if not isinstance(v, dict):
+                continue
+            kstr = str(k)
+            if str(CC_BINARY_SENSOR) in kstr or kstr.startswith("48-"):
+                val = v.get("value") if "value" in v else v.get("newValue")
+                if val is not None:
+                    out["motion"] = bool(val)
+            elif str(CC_MULTILEVEL_SENSOR) in kstr or kstr.startswith("49-"):
+                f = self._float_from_value(v)
+                if f is None:
+                    continue
+                if "Air temperature" in kstr or "Air temperature" in str(v.get("property", "")):
+                    out["temperature_c"] = round(f, 1)
+                elif "Humidity" in kstr or "Humidity" in str(v.get("property", "")):
+                    out["humidity"] = round(f, 1)
+                elif "Illuminance" in kstr or "Illuminance" in str(v.get("property", "")):
+                    out["illuminance_lux"] = int(round(f))
+                elif "Ultraviolet" in kstr or "Ultraviolet" in str(v.get("property", "")):
+                    out["ultraviolet"] = round(f, 1)
+            elif str(CC_BATTERY) in kstr or kstr.startswith("128-"):
+                if "level" in kstr or v.get("property") == "level":
+                    val = v.get("value") if "value" in v else v.get("newValue")
+                    if val is not None:
+                        try:
+                            out["battery_percent"] = min(100, max(0, int(val)))
+                        except (TypeError, ValueError):
+                            pass
+        return out
+
+    async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
+        """
+        Lit toutes les valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
+        Compatible Aeotec MultiSensor 7 (ZWA024). Retourne aussi device_type si reconnu.
+        """
+        node = await self.get_node(node_id)
+        data = self._sensor_values_from_node(node)
+        data["node_id"] = node_id
+        if node and self._is_aeotec_multisensor7(node):
+            data["device_type"] = "aeotec_multisensor7"
+            data["device_name"] = AEOTEC_MULTISENSOR7_NAME
+            data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
+        else:
+            data["device_type"] = None
+            data["device_name"] = None
+            data["device_model"] = None
+        return data
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:
         """Allume le nœud (targetValue = ON_LEVEL_FULL). Compatible 0-99 (ex. ABUS node 3)."""

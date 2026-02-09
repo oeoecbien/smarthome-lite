@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Sun, Calendar, LogOut, Menu, X, Shield, Activity } from "lucide-react"
+import { Home, Lightbulb, Settings2, Brain, SunDim, Sun, Calendar, LogOut, Menu, X, Shield, Activity, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
@@ -24,6 +24,7 @@ const adminNavItems = [
   { href: "/admin", label: "Administration", icon: Shield },
   { href: "/admin/presence", label: "Présence (mouvement)", icon: Activity },
   { href: "/admin/light-readings", label: "Luminosité", icon: Sun },
+  { href: "/admin/zwave-sensors", label: "Capteurs Z-Wave", icon: Radio },
 ]
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {

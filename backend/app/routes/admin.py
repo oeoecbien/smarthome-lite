@@ -106,5 +106,14 @@ async def get_all_users(
     ]
 
 
+@router.get("/zwave-devices")
+async def get_zwave_known_devices(admin_user: User = Depends(require_admin)):
+    """
+    Liste des appareils Z-Wave connus par le backend (ex. Aeotec MultiSensor 7 ZWA024).
+    """
+    from app.zwave_devices import list_known_devices
+    return list_known_devices()
+
+
 # Note: Les endpoints /api/admin/devices/all et /api/admin/events/all ont été supprimés
 # car redondants avec /api/devices/ et /api/events/ qui filtrent déjà par rôle admin.

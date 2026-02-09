@@ -277,6 +277,21 @@ def get_node_current(node_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/nodes/<int:node_id>/sensor", methods=["GET"])
+@require_api_key
+def get_node_sensor(node_id):
+    """
+    Valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
+    Compatible Aeotec MultiSensor 7 (ZWA024). Retourne device_type si reconnu.
+    """
+    try:
+        data = run_async(zwave_client.get_sensor_data(node_id))
+        return jsonify({"success": True, **data})
+    except Exception as e:
+        logger.error("get_node_sensor %s: %s", node_id, e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/nodes/<int:node_id>/interview", methods=["POST"])
 def interview_node(node_id):
     """Forcer l’interview d’un nœud."""

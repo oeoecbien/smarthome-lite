@@ -16,6 +16,7 @@ from app.schemas.raspberry_pi import (
 )
 from app.dependencies import get_current_user, require_admin, verify_raspberry_pi
 from app.utils.auth import generate_api_key, hash_api_key
+from app.services.device_service import DeviceService
 
 router = APIRouter()
 
@@ -137,6 +138,31 @@ async def get_raspberry_pi(
         "updated_at": rpi.updated_at,
         "device_count": device_count
     }
+
+
+@router.get("/{rpi_id}/nodes/{node_id}/sensor")
+async def get_raspberry_pi_node_sensor(
+    rpi_id: int,
+    node_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Données capteur d'un nœud Z-Wave sur ce Raspberry Pi.
+    Compatible Aeotec MultiSensor 7 (ZWA024) : mouvement, température, humidité,
+    luminosité, UV, batterie. Proxy vers le RPi GET /api/nodes/{node_id}/sensor.
+    """
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+    if node_id < 1 or node_id > 255:
+        raise HTTPException(status_code=400, detail="node_id doit être entre 1 et 255")
+    device_service = DeviceService(db)
+    try:
+        data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Capteur indisponible : {str(e)}")
 
 
 @router.post("/", response_model=RaspberryPiResponse, status_code=status.HTTP_201_CREATED)

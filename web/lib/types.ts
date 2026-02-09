@@ -166,3 +166,30 @@ export interface RuleTestResult {
   matched: boolean
   reason?: string
 }
+
+/** Données capteur d'un nœud Z-Wave (ex. Aeotec MultiSensor 7). */
+export interface ZwaveSensorData {
+  success?: boolean
+  node_id: number
+  motion: boolean
+  temperature_c: number | null
+  humidity: number | null
+  illuminance_lux: number | null
+  ultraviolet: number | null
+  battery_percent: number | null
+  device_type: string | null
+  device_name: string | null
+  device_model: string | null
+}
+
+/** Appareil Z-Wave connu par le backend (registre). */
+export interface ZwaveKnownDevice {
+  manufacturer_id: number
+  manufacturer_name: string
+  product_type: number
+  product_id: number
+  model: string
+  name: string
+  full_name: string
+  sensor_capabilities: string[]
+}

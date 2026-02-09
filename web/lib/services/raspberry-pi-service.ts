@@ -1,4 +1,5 @@
 import { api } from "@/lib/api"
+import type { ZwaveSensorData, ZwaveKnownDevice } from "@/lib/types"
 
 export interface RaspberryPi {
   id: number
@@ -55,5 +56,17 @@ export const raspberryPiService = {
 
   async deleteRaspberryPi(id: number): Promise<void> {
     return api.delete(`/api/raspberry-pis/${id}`)
+  },
+
+  /** Données capteur d'un nœud Z-Wave sur ce RPi (ex. Aeotec MultiSensor 7). */
+  async getNodeSensor(rpiId: number, nodeId: number): Promise<ZwaveSensorData> {
+    return api.get<ZwaveSensorData>(`/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor`)
+  },
+}
+
+/** Service admin pour les appareils Z-Wave connus (registre backend). */
+export const zwaveService = {
+  async getKnownDevices(): Promise<ZwaveKnownDevice[]> {
+    return api.get<ZwaveKnownDevice[]>("/api/admin/zwave-devices")
   },
 }

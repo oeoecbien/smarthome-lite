@@ -99,6 +99,19 @@ class DeviceService:
         """Envoie une commande POST au RPi (ex: state, brightness)."""
         return await self._request_rpi(rpi, "POST", endpoint, json=data)
 
+    async def get_sensor_data_from_rpi(
+        self,
+        rpi: RaspberryPi,
+        node_id: int,
+    ) -> dict:
+        """
+        Récupère les données capteur d'un nœud Z-Wave depuis le RPi.
+        Compatible Aeotec MultiSensor 7 (ZWA024) : motion, temperature_c, humidity,
+        illuminance_lux, ultraviolet, battery_percent, device_type, etc.
+        """
+        endpoint = f"/api/nodes/{node_id}/sensor"
+        return await self._request_rpi(rpi, "GET", endpoint)
+
     async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
         """
         Récupère l'état réel depuis le RPi (GET /api/devices/{gpio_pin}/state).
