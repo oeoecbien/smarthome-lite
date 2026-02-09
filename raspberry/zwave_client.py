@@ -283,9 +283,19 @@ class ZWaveClient:
                 return []
 
     async def get_node(self, node_id: int) -> Optional[dict]:
-        """Détails d'un nœud."""
+        """Détails d'un nœud. Tente d'abord le HTTP (plus rapide) puis Socket.IO avec timeout court."""
+        node = await self._get_node_via_http(node_id)
+        if node:
+            return node
         try:
-            return await self._call_api("getNode", node_id)
+            # Timeout court (15s) pour ne pas bloquer trop longtemps si Z-Wave JS UI est lent
+            return await asyncio.wait_for(
+                self._call_api("getNode", node_id),
+                timeout=15.0,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("get_node %s: timeout (lecture Z-Wave lente)", node_id)
+            return None
         except Exception as e:
             logger.error(f"get_node {node_id}: {e}")
             return None

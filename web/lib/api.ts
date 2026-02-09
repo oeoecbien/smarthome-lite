@@ -76,7 +76,11 @@ class ApiClient {
     return response.json()
   }
 
-  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    options?: { timeout?: number }
+  ): Promise<T> {
     const url = new URL(`${this.baseUrl}${endpoint}`)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -86,8 +90,9 @@ class ApiClient {
       })
     }
 
+    const timeoutMs = options?.timeout ?? this.timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(url.toString(), {
