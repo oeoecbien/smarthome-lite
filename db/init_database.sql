@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS light_readings (
     sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750',
     measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT check_lux_value_range CHECK (lux_value >= 0),
-    CONSTRAINT check_sensor_type CHECK (sensor_type IN ('BH1750', 'LDR'))
+    CONSTRAINT check_sensor_type CHECK (sensor_type IN ('BH1750', 'LDR', 'simulated'))
 );
 
 -- Index pour requêtes temporelles (graphiques, tendances)
@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS events (
     value VARCHAR(100),
     source VARCHAR(20),
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT check_event_source CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming'))
+    CONSTRAINT check_event_source CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming', 'smart_dimming_ml'))
 );
 
 -- Index pour recherche par device, type et date
@@ -269,6 +269,20 @@ COMMENT ON TABLE smart_dimming_adjustments IS 'Enregistre chaque ajustement auto
 COMMENT ON COLUMN smart_dimming_adjustments.reason IS 'Justification textuelle (ex: "High natural light")';
 COMMENT ON COLUMN smart_dimming_adjustments.target_brightness IS 'Intensité calculée par l''algorithme';
 COMMENT ON COLUMN smart_dimming_adjustments.applied_brightness IS 'Intensité réellement appliquée (peut différer)';
+
+-- ----------------------------------------------------------------------------
+-- Table: system_settings
+-- Description: Paramètres système (ex. smart_dimming_enabled) persistés en BDD
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS system_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE system_settings IS 'Paramètres globaux du système (persistance au-delà du .env)';
+COMMENT ON COLUMN system_settings.key IS 'Clé du paramètre (ex: smart_dimming_enabled)';
+COMMENT ON COLUMN system_settings.value IS 'Valeur texte (ex: true, false)';
 
 -- ----------------------------------------------------------------------------
 -- Table: user_preferences

@@ -7,12 +7,20 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 from datetime import datetime, timedelta
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_admin, User
-from app.models import Device, User as UserModel, Event, SmartDimmingAdjustment, RaspberryPi
+from app.models import Device, User as UserModel, Event, SmartDimmingAdjustment, RaspberryPi, LightReading
+from app.services.smart_dimming_service import SmartDimmingService
 
 router = APIRouter()
+
+
+class SimulateLightReadingRequest(BaseModel):
+    """Corps pour simuler une mesure de luminosité (test Smart Dimming)."""
+    raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi (lieu de la mesure)")
+    lux_value: float = Field(..., ge=0, description="Valeur en lux (ex: 50, 300, 600)")
 
 
 @router.get("/stats")
@@ -104,6 +112,38 @@ async def get_all_users(
         }
         for user in users
     ]
+
+
+@router.post("/smart-dimming/simulate-reading")
+async def simulate_light_reading(
+    body: SimulateLightReadingRequest,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Simule une mesure de luminosité pour tester le Smart Dimming sans RPi ni capteur.
+    Crée une LightReading puis appelle process_light_reading (même logique que POST /api/light-readings).
+    Prérequis : Smart Dimming activé, au moins une lampe dimmable allumée sur ce RPi (non pilotée par capteur).
+    """
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == body.raspberry_pi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+    reading = LightReading(
+        raspberry_pi_id=body.raspberry_pi_id,
+        lux_value=body.lux_value,
+        sensor_type="simulated",
+    )
+    db.add(reading)
+    db.commit()
+    db.refresh(reading)
+    service = SmartDimmingService(db)
+    adjustments = await service.process_light_reading(reading)
+    return {
+        "light_reading_id": reading.id,
+        "lux_value": reading.lux_value,
+        "adjustments_count": len(adjustments),
+        "adjustments": adjustments,
+    }
 
 
 @router.get("/zwave-devices")

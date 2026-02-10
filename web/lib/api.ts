@@ -1,7 +1,13 @@
 // API Client with JWT interceptors
 
+// Injectées par next.config depuis le .env racine (BACKEND_URL → NEXT_PUBLIC_API_BASE_URL)
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000"
 const API_TIMEOUT = Number.parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || "10000", 10)
+
+/** URL de l’API utilisée par le client (pour affichage en cas d’erreur de connexion). */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL
+}
 
 interface ApiError {
   detail?: string
@@ -195,6 +201,11 @@ class ApiClient {
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error("La requête a expiré. Vérifiez votre connexion.")
+      }
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error(
+          "Impossible de joindre le backend. Vérifiez que le serveur tourne et que BACKEND_URL dans le .env à la racine du projet pointe vers l'API."
+        )
       }
       throw error
     } finally {

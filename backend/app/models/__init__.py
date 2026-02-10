@@ -14,6 +14,7 @@ from app.models.smart_dimming_adjustment import SmartDimmingAdjustment
 from app.models.user_preference import UserPreference
 from app.models.audit_log import AuditLog
 from app.models.sensor_control_state import SensorControlState
+from app.models.system_setting import SystemSetting
 
 __all__ = [
     "User",
@@ -28,4 +29,5 @@ __all__ = [
     "UserPreference",
     "AuditLog",
     "SensorControlState",
+    "SystemSetting",
 ]

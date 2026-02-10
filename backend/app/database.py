@@ -42,13 +42,14 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """
-    Initialise la base de données (crée les tables si nécessaire).
-    Applique les migrations optionnelles (colonnes ajoutées après coup).
+    Crée les tables si besoin et applique les migrations (idempotentes).
     """
-    Base.metadata.create_all(bind=engine)
-    # Migration: colonne smart_dimming_paused_until sur devices (si absente)
     from sqlalchemy import text
+
+    Base.metadata.create_all(bind=engine)
+
     with engine.connect() as conn:
+        # Colonne smart_dimming_paused_until sur devices
         if conn.execute(
             text(
                 "SELECT 1 FROM information_schema.columns "
@@ -57,3 +58,34 @@ def init_db() -> None:
         ).scalar() is None:
             conn.execute(text("ALTER TABLE devices ADD COLUMN smart_dimming_paused_until TIMESTAMP WITH TIME ZONE"))
             conn.commit()
+
+        # Table system_settings
+        if conn.execute(
+            text(
+                "SELECT 1 FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = 'system_settings'"
+            )
+        ).scalar() is None:
+            conn.execute(text(
+                "CREATE TABLE system_settings ("
+                "key VARCHAR(100) PRIMARY KEY, "
+                "value TEXT NOT NULL, "
+                "updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            ))
+            conn.commit()
+
+        # light_readings : sensor_type accepte 'simulated'
+        conn.execute(text("ALTER TABLE light_readings DROP CONSTRAINT IF EXISTS check_sensor_type"))
+        conn.execute(text(
+            "ALTER TABLE light_readings ADD CONSTRAINT check_sensor_type "
+            "CHECK (sensor_type IN ('BH1750', 'LDR', 'simulated'))"
+        ))
+        conn.commit()
+
+        # events : source accepte 'smart_dimming_ml'
+        conn.execute(text("ALTER TABLE events DROP CONSTRAINT IF EXISTS check_event_source"))
+        conn.execute(text(
+            "ALTER TABLE events ADD CONSTRAINT check_event_source "
+            "CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming', 'smart_dimming_ml'))"
+        ))
+        conn.commit()
