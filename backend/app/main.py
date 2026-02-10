@@ -15,8 +15,9 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings, validate_production_config
 from app.database import engine, Base, init_db, SessionLocal
-from app.models import Device, RaspberryPi
+from app.models import Device, RaspberryPi, LightReading
 from app.services.device_service import DeviceService
+from app.services.smart_dimming_service import SmartDimmingService
 
 logging.basicConfig(
     level=settings.log_level,
@@ -158,7 +159,8 @@ async def lifespan(app: FastAPI):
     SENSOR_CONTROL_INTERVAL = 30
 
     async def _sensor_control_loop():
-        """Périodiquement : récupère les données des capteurs qui pilotent au moins une lampe et applique les règles."""
+        """Périodiquement : récupère les données des capteurs qui pilotent au moins une lampe,
+        applique les règles capteur→lampe et déclenche le smart dimming si luminosité dispo."""
         await asyncio.sleep(10)
         while True:
             try:
@@ -181,6 +183,23 @@ async def lifespan(app: FastAPI):
                             svc = DeviceService(db)
                             data = await svc.get_sensor_data_from_rpi(rpi, node_id)
                             await svc.evaluate_sensor_rules(sensor.id, data)
+                            # Si le capteur expose une luminosité (Z-Wave MultiSensor, etc.),
+                            # l'utiliser aussi pour le Smart Dimming global.
+                            lux = data.get("illuminance_lux")
+                            if lux is not None:
+                                reading = LightReading(
+                                    raspberry_pi_id=rpi.id,
+                                    lux_value=float(lux),
+                                    # Typiquement BH1750 / LDR ; on réutilise ce champ
+                                    # pour marquer une mesure issue d'un capteur Z-Wave.
+                                    sensor_type="BH1750",
+                                )
+                                db.add(reading)
+                                db.commit()
+                                db.refresh(reading)
+
+                                sd_service = SmartDimmingService(db)
+                                await sd_service.process_light_reading(reading)
                         except Exception as e:
                             logger.debug("Sensor control %s (node %s): %s", sensor.name, sensor.gpio_pin, e)
                 finally:

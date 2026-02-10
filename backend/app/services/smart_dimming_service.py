@@ -130,10 +130,11 @@ class SmartDimmingService:
             logger.debug(f"Scénario par défaut: {scenario} (heure: {hour})")
         
         # Récupérer les appareils dimmables allumés du même RPi
+        # NB: côté DeviceService, sont considérés comme dimmables les types "light" et "dimmer".
         devices = self.db.query(Device).filter(
             Device.raspberry_pi_id == light_reading.raspberry_pi_id,
-            Device.type == "dimmer",
-            Device.state == True
+            Device.type.in_(["light", "dimmer"]),
+            Device.state == True,
         ).all()
         
         if not devices:
