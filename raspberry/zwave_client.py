@@ -831,30 +831,37 @@ class ZWaveClient:
             return True
         return False
 
+    async def _refresh_sensor_values(self, node_id: int) -> None:
+        """
+        Demande au nœud capteur de rapporter ses valeurs (équivalent du bouton Refresh du panneau).
+        Essaie refreshNodeValues(nodeId) ; sinon refreshCCValues(nodeId, 48) et (49). Attend 2 s après.
+        """
+        try:
+            await asyncio.wait_for(
+                self._call_api("refreshNodeValues", node_id),
+                timeout=5.0,
+            )
+            logger.debug("refreshNodeValues node %s OK", node_id)
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.debug("refreshNodeValues node %s: %s", node_id, e)
+            for cc in (CommandClass.SENSOR_BINARY, CommandClass.SENSOR_MULTILEVEL):
+                try:
+                    await asyncio.wait_for(
+                        self._call_api("refreshCCValues", node_id, int(cc)),
+                        timeout=5.0,
+                    )
+                    logger.debug("refreshCCValues node %s CC %s OK", node_id, cc)
+                except (asyncio.TimeoutError, Exception) as ec:
+                    logger.debug("refreshCCValues node %s CC %s: %s", node_id, cc, ec)
+        await asyncio.sleep(2.0)
+
     async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
         """
-        Lit les valeurs capteur du nœud (MultiSensor 7 : CC 48 Motion, CC 49 temp/lux/humidity/UV, CC 128 batterie).
-        Lecture de l'objet node (valeurs déjà connues du driver) :
-        1) HTTP (Z-Wave JS UI /api/nodes/{id} si exposé)
-        2) WebSocket zwave-js-server (port 3000, même canal que les lampes / Home Assistant)
-        3) Socket.IO getNodes (8091) en dernier recours.
+        Lit les valeurs capteur (MultiSensor 7). Avant lecture : refresh CC 48/49 (comme le bouton
+        Refresh du panneau) pour que le device rapporte ses valeurs. Puis lecture via HTTP, WS 3000, getNodes.
         """
         # 1) HTTP get_node (port Z-Wave JS UI, ex. 8091) — rapide si l’UI expose /api/nodes/{id}
-        node = await self._get_node_via_http(node_id)
-        if node is not None:
-            self._cache_node.set(node_id, node)
-            data = self._sensor_values_from_node(node)
-            data["node_id"] = node_id
-            info = device_info_from_node(node)
-            if info:
-                data["device_type"] = info["device_type"]
-                data["device_name"] = info["device_name"]
-                data["device_model"] = info["device_model"]
-            else:
-                data["device_type"] = data["device_name"] = data["device_model"] = None
-            return data
-
-        # 2) WebSocket port 3000 (zwave-js-server) — même canal que le contrôle des lampes
+        await self._refresh_sensor_values(node_id)
         node = await self._get_node_via_ws(node_id)
         if node is not None:
             self._cache_node.set(node_id, node)
@@ -867,7 +874,22 @@ class ZWaveClient:
                 data["device_model"] = info["device_model"]
             else:
                 data["device_type"] = data["device_name"] = data["device_model"] = None
-            logger.info("get_sensor_data node %s: données via WebSocket (port 3000)", node_id)
+            logger.debug("get_sensor_data node %s: via WebSocket 3000", node_id)
+            return data
+
+        # 2) HTTP get_node (port Z-Wave JS UI, ex. 8091)
+        node = await self._get_node_via_http(node_id)
+        if node is not None:
+            self._cache_node.set(node_id, node)
+            data = self._sensor_values_from_node(node)
+            data["node_id"] = node_id
+            info = device_info_from_node(node)
+            if info:
+                data["device_type"] = info["device_type"]
+                data["device_name"] = info["device_name"]
+                data["device_model"] = info["device_model"]
+            else:
+                data["device_type"] = data["device_name"] = data["device_model"] = None
             return data
 
         # 3) Fallback Socket.IO 8091 (getNodes) — souvent en timeout

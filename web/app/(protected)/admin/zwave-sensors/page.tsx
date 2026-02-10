@@ -59,8 +59,9 @@ function useSensorStream(
       rpiId,
       nodeId,
       (event) => {
-        if (event.error) {
-          onData(null, event.error)
+        if (event.error || (event as { success?: boolean }).success === false) {
+          const msg = event.error ?? (event as { error?: string }).error ?? "Erreur flux"
+          onData(null, typeof msg === "string" ? msg : "Erreur flux")
         } else {
           onData(event as ZwaveSensorData, null)
         }
