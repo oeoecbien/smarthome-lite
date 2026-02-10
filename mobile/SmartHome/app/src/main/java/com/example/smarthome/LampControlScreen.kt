@@ -62,8 +62,6 @@ fun LampControlScreen(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 1. HEADER (Titre + Status)
-        LampHeader(name = lamp.name, onBack = onBack)
 
         Spacer(modifier = Modifier.height(30.dp))
 
@@ -80,7 +78,7 @@ fun LampControlScreen(
         // 3. POURCENTAGE TEXTE
         Text(
             text = "${(lamp.brightness * 100).toInt()}%",
-            color = Color.White,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 48.sp,
             fontWeight = FontWeight.Bold
         )
@@ -108,52 +106,6 @@ fun LampControlScreen(
                 onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
             }
         )
-    }
-}
-
-// --- SOUS-COMPOSANTS ---
-
-@Composable
-fun LampHeader(name: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Bouton Retour
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
-        }
-
-        // Titre et Status
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Petit point vert
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(TextGreen)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Online",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextGreen
-                )
-            }
-        }
-
-        // Bouton Settings
-        IconButton(onClick = { /* Todo: Settings */ }) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
-        }
     }
 }
 
@@ -189,29 +141,62 @@ fun PowerControlCard(isOn: Boolean, onToggle: (Boolean) -> Unit) {
                 // Textes
                 Column {
                     Text(
-                        text = "Power",
+                        text = "État",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(
-                        text = if (isOn) "Allumer" else "Eteint",
+                        text = if (isOn) "Allumer" else "Éteint",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.secondary
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Petit point vert
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(TextGreen)
+                        )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Text(
+                            text = "Online",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextGreen
+                        )
+
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Switch(
+                    checked = isOn,
+                    onCheckedChange = onToggle,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = NeonBlue,
+                        uncheckedThumbColor = Color.Gray,
+                        uncheckedTrackColor = DarkSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(onClick = { /* Todo: Settings */ }) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            // Switch personnalisé
-            Switch(
-                checked = isOn,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = NeonBlue,
-                    uncheckedThumbColor = Color.Gray,
-                    uncheckedTrackColor = DarkSurface
-                )
-            )
         }
     }
 }
@@ -225,6 +210,8 @@ fun VerticalNeonSlider(
     // Hauteur totale du slider
     val barHeight = 300.dp
     val barWidth = 60.dp
+    val liftOffset = 4.dp // ajuste ici si besoin
+
 
     // Pour gérer le Drag (glissement) manuellement
     // BoxWithConstraints nous permet de connaître la hauteur en pixels pour les calculs
@@ -241,7 +228,7 @@ fun VerticalNeonSlider(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(40.dp))
-                .background(CardSurface)
+                .background(MaterialTheme.colorScheme.tertiary)
                 .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(40.dp))
         )
 
@@ -257,15 +244,14 @@ fun VerticalNeonSlider(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .offset(y = -liftOffset)
                 // Conversion de la hauteur calculée (pixels) en DP
                 .height(with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() })
                 .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp, topStart = 10.dp, topEnd = 10.dp))
-                // CORRECTION ICI :
                 .background(
                     if (isEnabled) neonBrush else SolidColor(Color.Gray)
                 )
         )
-
         // --- 3. LE ROND (Thumb) ---
         // On le positionne dynamiquement
         Box(

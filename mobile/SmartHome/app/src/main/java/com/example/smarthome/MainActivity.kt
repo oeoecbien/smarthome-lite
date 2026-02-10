@@ -100,13 +100,17 @@ fun SmartHomeApp(
     onThemeChange: (Boolean) -> Unit
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    // Hoisted state for Lamp detail navigation
+    var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Observe lamps to get the name for the title
+    val lamps by viewModel.lamps
     val snackbarHostState = remember { SnackbarHostState() }
 
     NavigationSuiteScaffold(
         containerColor = MaterialTheme.colorScheme.tertiary,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
             navigationBarContainerColor = MaterialTheme.colorScheme.tertiary,
-            navigationRailContainerColor = MaterialTheme.colorScheme.tertiary
+            navigationRailContainerColor = MaterialTheme.colorScheme.tertiary,
         ),
         navigationSuiteItems = {
             AppDestinations.entries.forEach { dest ->
@@ -127,12 +131,24 @@ fun SmartHomeApp(
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(text = currentDestination.label)
+                        val titleText = if (selectedLampId != null) {
+                            lamps.find { it.id == selectedLampId }?.name ?: "Détail"
+                        } else {
+                            currentDestination.label
+                        }
+                        Text(text = titleText)
+                    },
+                    navigationIcon = {
+                        if (selectedLampId != null) {
+                            IconButton(onClick = { selectedLampId = null }) {
+                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
                         titleContentColor = MaterialTheme.colorScheme.primary,
-                        navigationIconContentColor = Color.White,
+                        navigationIconContentColor = MaterialTheme.colorScheme.primary,
                         actionIconContentColor = Color.White
                     )
                 )
@@ -144,7 +160,11 @@ fun SmartHomeApp(
                     .padding(innerPadding)
             ) {
                 when (currentDestination) {
-                    AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
+                    AppDestinations.HOME -> HomeScreen(
+                        viewModel = viewModel,
+                        selectedLampId = selectedLampId,
+                        onLampSelect = { selectedLampId = it }
+                    )
                     AppDestinations.FAVORITES -> FavoritesScreen()
                     AppDestinations.PROFILE -> ProfileScreen(
                         viewModel.currentUsername,
@@ -166,98 +186,6 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
     PROFILE("Profil", Icons.Default.AccountBox),
 }
 
-/*
-// Page Home
-@Composable
-fun HomeScreen(modifier: Modifier = Modifier, viewModel: SmartHomeViewModel = viewModel()) {
-    // On observe les données du ViewModel
-    val lamps by viewModel.lamps
-    val error by viewModel.errorMessage
-
-    var selectedLampId by remember { mutableStateOf<Int?>(null) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(backgroundColor)
-    ) {
-        Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
-            if (lampId == null) {
-                Column(modifier = modifier
-                    .fillMaxSize()
-                    .padding(16.dp)) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Bonjour ${viewModel.currentUsername},",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Button(
-                            onClick = {
-                                viewModel.loadData(
-                                    viewModel.currentUsername,
-                                    viewModel.currentPassword
-                                )
-                            }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = null,
-                            )
-                        }
-                    }
-
-                    // Affichage d'erreur si besoin
-                    if (error != null) {
-                        Text(
-                            text = error ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
-
-                    Text(
-                        text = "Appareils détectés (${lamps.size})",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    )
-
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(lamps.size) { index ->
-                            LampCard(
-                                lamp = lamps[index],
-                                onClick = { selectedLampId = lamps[index].id }
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Vue Détails
-                val activeLamp = lamps.find { it.id == lampId }
-                if (activeLamp != null) {
-                    LampControlScreen(
-                        lamp = activeLamp,
-                        onBack = { selectedLampId = null },
-                        onUpdate = { updatedLamp ->
-                            viewModel.updateLamp(updatedLamp)
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-}
-
-*/
 @Composable
 fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
     Card(
@@ -326,11 +254,13 @@ fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    viewModel: SmartHomeViewModel = viewModel()
+    viewModel: SmartHomeViewModel = viewModel(),
+    selectedLampId: Int?,
+    onLampSelect: (Int?) -> Unit
 ) {
     val lamps by viewModel.lamps
     val error by viewModel.errorMessage
-    var selectedLampId by remember { mutableStateOf<Int?>(null) }
+    // Local state removed, using hoisted state passed via parameters
 
     // Navigation entre Liste et Détail
     Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
@@ -382,7 +312,7 @@ fun HomeScreen(
                 // Grille intelligente
                 DeviceGrid(
                     lamps = lamps,
-                    onLampClick = { selectedLampId = it.id },
+                    onLampClick = { onLampSelect(it.id) },
                     onToggleLamp = { lamp, newState ->
                         viewModel.updateLamp(lamp.copy(isOn = newState))
                     }
@@ -394,7 +324,7 @@ fun HomeScreen(
             if (activeLamp != null) {
                 LampControlScreen(
                     lamp = activeLamp,
-                    onBack = { selectedLampId = null },
+                    onBack = { onLampSelect(null) },
                     onUpdate = { viewModel.updateLamp(it) }
                 )
             }

@@ -176,10 +176,12 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color = MaterialTheme.colorScheme.primary
                     )
                 } else {
-                    Text("Se connecter")
+                    Text("Se connecter",
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -189,8 +191,6 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                 onClick = { /* TODO */ },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
-
-
                     )
 
             ) {

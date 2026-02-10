@@ -21,7 +21,6 @@ private val DarkColorScheme = darkColorScheme(
     tertiary = CardBackground,
     background = DarkBackground
 )
-
 private val LightColorScheme = lightColorScheme(
     primary = BlackText,
     secondary = GrayText,
