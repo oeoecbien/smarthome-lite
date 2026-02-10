@@ -151,12 +151,14 @@ export interface PresenceRecord {
   sensor_node_id?: number
 }
 
+/** Mesure de luminosité (backend GET /api/light-readings). */
 export interface LightReading {
   id: number
   raspberry_pi_id: number
-  lux: number
-  percentage: number
-  timestamp: string
+  raspberry_pi_name?: string
+  lux_value: number
+  sensor_type?: string
+  measured_at: string
 }
 
 export interface SystemEvent {
