@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -12,9 +13,10 @@ import { LightChart } from "@/components/light-chart"
 import { lightReadingService } from "@/lib/services/light-reading-service"
 import { raspberryPiService } from "@/lib/services/raspberry-pi-service"
 import { formatRelativeTime, formatDate, formatNumber } from "@/lib/formatters"
+import { toast } from "@/hooks/use-toast"
 import type { LightReading } from "@/lib/types"
 import type { RaspberryPi } from "@/lib/services/raspberry-pi-service"
-import { Sun, RefreshCw, AlertCircle, Filter, Gauge } from "lucide-react"
+import { Sun, RefreshCw, AlertCircle, Filter, Gauge, Save } from "lucide-react"
 
 function readingToPercent(lux: number): number {
   return Math.min(100, Math.round((lux / 65535) * 100))
@@ -29,6 +31,10 @@ export default function LightReadingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [filterRpiId, setFilterRpiId] = useState<string>("")
   const [filterLimit, setFilterLimit] = useState<number>(100)
+  const [manualRpiId, setManualRpiId] = useState<string>("")
+  const [manualLux, setManualLux] = useState<string>("")
+  const [manualSensorType, setManualSensorType] = useState<string>("BH1750")
+  const [isSaving, setIsSaving] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,6 +59,38 @@ export default function LightReadingsPage() {
       setRaspberryPis([])
     }
   }, [])
+
+  const handleSaveManual = async () => {
+    const rpiId = manualRpiId ? Number(manualRpiId) : 0
+    const lux = Number(manualLux)
+    if (!rpiId || Number.isNaN(lux) || lux < 0) {
+      toast({
+        variant: "destructive",
+        title: "Champs invalides",
+        description: "Sélectionnez un Raspberry Pi et une valeur lux ≥ 0.",
+      })
+      return
+    }
+    setIsSaving(true)
+    try {
+      await lightReadingService.createLightReadingManual({
+        raspberry_pi_id: rpiId,
+        lux_value: lux,
+        sensor_type: manualSensorType,
+      })
+      toast({ title: "Mesure enregistrée", description: `${lux} lux enregistrés pour le RPi sélectionné.` })
+      setManualLux("")
+      fetchData()
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: e instanceof Error ? e.message : "Impossible d'enregistrer la mesure.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) {
@@ -159,6 +197,66 @@ export default function LightReadingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Sauvegarde manuelle */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Save className="h-5 w-5" />
+            Ajouter une mesure
+          </CardTitle>
+          <CardDescription>
+            Enregistrer manuellement une valeur de luminosité (lux) pour un Raspberry Pi. Déclenche le Smart Dimming si activé.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="manual-rpi">Raspberry Pi</Label>
+            <Select value={manualRpiId || "__none__"} onValueChange={(v) => setManualRpiId(v === "__none__" ? "" : v)}>
+              <SelectTrigger id="manual-rpi" className="w-[220px]">
+                <SelectValue placeholder="Choisir un RPi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Choisir un RPi</SelectItem>
+                {raspberryPis.map((rpi) => (
+                  <SelectItem key={rpi.id} value={String(rpi.id)}>
+                    {rpi.name} {rpi.location ? `(${rpi.location})` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="manual-lux">Lux</Label>
+            <Input
+              id="manual-lux"
+              type="number"
+              min={0}
+              step={0.1}
+              placeholder="ex. 250"
+              value={manualLux}
+              onChange={(e) => setManualLux(e.target.value)}
+              className="w-[120px]"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="manual-sensor">Type capteur</Label>
+            <Select value={manualSensorType} onValueChange={setManualSensorType}>
+              <SelectTrigger id="manual-sensor" className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BH1750">BH1750</SelectItem>
+                <SelectItem value="LDR">LDR</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button onClick={handleSaveManual} disabled={isSaving}>
+            {isSaving ? <LoadingSpinner size="sm" className="mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+            Sauvegarder
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Chart */}
       <LightChart data={readings} />

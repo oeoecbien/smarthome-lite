@@ -9,4 +9,17 @@ export const lightReadingService = {
     }
     return api.get<LightReading[]>("/api/light-readings", params)
   },
+
+  /** Crée une mesure manuellement (admin). */
+  async createLightReadingManual(payload: {
+    raspberry_pi_id: number
+    lux_value: number
+    sensor_type?: string
+  }): Promise<LightReading> {
+    return api.post<LightReading>("/api/light-readings/manual", {
+      raspberry_pi_id: payload.raspberry_pi_id,
+      lux_value: payload.lux_value,
+      sensor_type: payload.sensor_type ?? "BH1750",
+    })
+  },
 }
