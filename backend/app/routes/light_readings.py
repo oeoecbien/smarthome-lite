@@ -22,13 +22,6 @@ class LightReadingCreate(BaseModel):
     sensor_type: str = Field(default="BH1750", description="Type de capteur")
 
 
-class LightReadingCreateAdmin(BaseModel):
-    """Schéma pour création manuelle par un admin (choix du RPi)."""
-    raspberry_pi_id: int = Field(..., ge=1, description="ID du Raspberry Pi")
-    lux_value: float = Field(..., ge=0, description="Valeur en lux")
-    sensor_type: str = Field(default="BH1750", description="Type de capteur (BH1750, LDR)")
-
-
 class LightReadingResponse(BaseModel):
     """Schéma de réponse pour une mesure."""
     id: int
@@ -124,45 +117,4 @@ async def get_light_readings(
         })
     
     return result
-
-
-@router.post("/manual", response_model=LightReadingResponse, status_code=status.HTTP_201_CREATED)
-async def create_light_reading_manual(
-    data: LightReadingCreateAdmin,
-    db: Session = Depends(get_db),
-    admin_user: User = Depends(require_admin),
-):
-    """
-    Crée une mesure de luminosité depuis l'interface admin (sauvegarde manuelle).
-    Déclenche le Smart Dimming si activé.
-    """
-    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == data.raspberry_pi_id).first()
-    if not rpi:
-        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
-    reading = LightReading(
-        raspberry_pi_id=rpi.id,
-        lux_value=data.lux_value,
-        sensor_type=data.sensor_type,
-    )
-    db.add(reading)
-    db.commit()
-    db.refresh(reading)
-    try:
-        import logging
-        log = logging.getLogger(__name__)
-        smart_dimming_service = SmartDimmingService(db)
-        adjustments = await smart_dimming_service.process_light_reading(reading)
-        if adjustments:
-            log.info("Smart Dimming: %s ajustements après mesure manuelle", len(adjustments))
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Smart Dimming après mesure manuelle: %s", e)
-    return {
-        "id": reading.id,
-        "raspberry_pi_id": reading.raspberry_pi_id,
-        "raspberry_pi_name": rpi.name,
-        "lux_value": reading.lux_value,
-        "sensor_type": reading.sensor_type,
-        "measured_at": reading.measured_at,
-    }
 
