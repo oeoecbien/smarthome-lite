@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useRouter } from "next/navigation"
@@ -33,10 +34,49 @@ import {
   RefreshCw,
   Cpu,
   AlertCircle,
+  Circle,
   Plus,
   ExternalLink,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+
+function useSensorStream(
+  enabled: boolean,
+  rpiId: number | null,
+  nodeId: number | null,
+  onData: (data: ZwaveSensorData | null, error: string | null) => void
+) {
+  const abortRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    if (!enabled || !rpiId || nodeId == null || nodeId < 1 || nodeId > 255) {
+      if (abortRef.current) {
+        abortRef.current()
+        abortRef.current = null
+      }
+      return
+    }
+    abortRef.current = raspberryPiService.subscribeNodeSensorStream(
+      rpiId,
+      nodeId,
+      (event) => {
+        if (event.error) {
+          onData(null, event.error)
+        } else {
+          onData(event as ZwaveSensorData, null)
+        }
+      },
+      (err) => {
+        onData(null, err.message)
+      }
+    ).abort
+    return () => {
+      if (abortRef.current) {
+        abortRef.current()
+        abortRef.current = null
+      }
+    }
+  }, [enabled, rpiId, nodeId, onData])
+}
 
 function formatLastUpdate(ms: number | null): string {
   if (ms == null) return "—"
@@ -57,6 +97,7 @@ export default function AdminZwaveSensorsPage() {
   const [sensorData, setSensorData] = useState<ZwaveSensorData | null>(null)
   const [sensorError, setSensorError] = useState<string | null>(null)
   const [lastUpdateMs, setLastUpdateMs] = useState<number | null>(null)
+  const [liveEnabled, setLiveEnabled] = useState(true)
   const [isLoadingRpis, setIsLoadingRpis] = useState(true)
   const [isLoadingDevices, setIsLoadingDevices] = useState(true)
   const [isManualRefresh, setIsManualRefresh] = useState(false)
@@ -72,6 +113,23 @@ export default function AdminZwaveSensorsPage() {
     const id = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(id)
   }, [lastUpdateMs])
+
+  const handleStreamData = useCallback((data: ZwaveSensorData | null, error: string | null) => {
+    if (error) {
+      setSensorError(error)
+    } else if (data) {
+      setSensorData(data)
+      setSensorError(null)
+      setLastUpdateMs(Date.now())
+    }
+  }, [])
+
+  useSensorStream(
+    liveEnabled,
+    selectedRpiId ? Number(selectedRpiId) : null,
+    nodeId ? Number(nodeId) : null,
+    handleStreamData
+  )
 
   useEffect(() => {
     if (!isAdmin) {
@@ -210,8 +268,7 @@ export default function AdminZwaveSensorsPage() {
           Capteurs Z-Wave
         </h1>
         <p className="text-muted-foreground">
-          Consultez les données des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
-          Choisissez le RPi et le node ID puis cliquez sur « Rafraîchir ». Enregistrez le capteur puis associez des lampes pour le pilotage par mouvement et luminosité.
+          Données des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi. Activez « Valeurs en direct » pour un flux toutes les 5 s, ou cliquez sur « Rafraîchir ». Enregistrez le capteur puis associez des lampes pour le pilotage par mouvement et luminosité.
         </p>
       </div>
 
@@ -220,7 +277,7 @@ export default function AdminZwaveSensorsPage() {
           <CardHeader>
             <CardTitle>Lecture capteur</CardTitle>
             <CardDescription>
-              Choisissez le Raspberry Pi et le node ID Z-Wave, puis cliquez sur « Rafraîchir maintenant » pour récupérer les dernières valeurs.
+              Choisissez le RPi et le node ID Z-Wave. Valeurs en direct (flux 5 s) ou « Rafraîchir maintenant » pour une lecture immédiate.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -288,6 +345,23 @@ export default function AdminZwaveSensorsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="live"
+                  checked={liveEnabled}
+                  onCheckedChange={setLiveEnabled}
+                  disabled={!canRefresh}
+                />
+                <Label htmlFor="live" className="cursor-pointer">
+                  Valeurs en direct (flux 5 s)
+                </Label>
+              </div>
+              {liveEnabled && canRefresh && (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
+                  En direct
+                </span>
+              )}
               <span className="text-sm text-muted-foreground">
                 Dernière mise à jour : {formatLastUpdate(lastUpdateMs)}
               </span>
@@ -394,8 +468,11 @@ export default function AdminZwaveSensorsPage() {
               </div>
             )}
 
-            {!sensorData && !sensorError && canRefresh && (
-              <p className="text-sm text-muted-foreground">Cliquez sur « Rafraîchir maintenant » pour charger les données du capteur.</p>
+            {!sensorData && !sensorError && canRefresh && liveEnabled && (
+              <p className="text-sm text-muted-foreground">Connexion au flux en cours…</p>
+            )}
+            {!sensorData && !sensorError && canRefresh && !liveEnabled && (
+              <p className="text-sm text-muted-foreground">Cliquez sur « Rafraîchir maintenant » ou activez « Valeurs en direct ».</p>
             )}
 
             {/* Enregistrer ce capteur comme appareil (type sensor) */}

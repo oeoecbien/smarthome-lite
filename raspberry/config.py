@@ -4,7 +4,7 @@ Configuration de l'API Raspberry Z-Wave (serveur Flask sur le RPi).
 Ports (cohérence capteur / lampes) :
 - 5000 : API Flask (backend appelle http://<rpi>:5000/api/nodes/<node_id>/sensor)
 - 8091 : Z-Wave JS UI — HTTP (get node) + Socket.IO (getValue). Lecture capteur = 8091 uniquement.
-- 3000 : Z-Wave JS Server WebSocket (setValue lampes). Capteur = non utilisé.
+- 3000 : Z-Wave JS Server WebSocket (setValue lampes + lecture état nœuds pour capteur).
 
 Lit les variables depuis os.environ (chargé depuis sae_s5/.env à la racine).
 Sur le RPi : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_UI_URL, ZWAVE_JS_WS_URL,

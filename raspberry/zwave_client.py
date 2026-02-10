@@ -834,8 +834,10 @@ class ZWaveClient:
     async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
         """
         Lit les valeurs capteur du nœud (MultiSensor 7 : CC 48 Motion, CC 49 temp/lux/humidity/UV, CC 128 batterie).
-        Un seul chemin : HTTP get_node (si dispo) puis sinon getValue par valueId string (format panneau).
-        Pas de cache : lecture fraîche à chaque appel. 10 s par getValue pour appareils sur pile.
+        Lecture de l'objet node (valeurs déjà connues du driver) :
+        1) HTTP (Z-Wave JS UI /api/nodes/{id} si exposé)
+        2) WebSocket zwave-js-server (port 3000, même canal que les lampes / Home Assistant)
+        3) Socket.IO getNodes (8091) en dernier recours.
         """
         # 1) HTTP get_node (port Z-Wave JS UI, ex. 8091) — rapide si l’UI expose /api/nodes/{id}
         node = await self._get_node_via_http(node_id)
@@ -852,20 +854,64 @@ class ZWaveClient:
                 data["device_type"] = data["device_name"] = data["device_model"] = None
             return data
 
-        # 2) Lecture simple : getValue avec valueId strings (ex. 5-48-0-Motion, 5-49-0-Air temperature)
-        data = await self._get_sensor_data_simple(node_id, timeout_per_call=10.0)
-        data["node_id"] = node_id
-        data["device_type"] = "aeotec_multisensor7"
-        data["device_name"] = "Aeotec MultiSensor 7"
-        data["device_model"] = "ZWA024"
-        if self._sensor_data_has_values(data):
-            logger.info("get_sensor_data node %s: données via getValue (valueId strings)", node_id)
+        # 2) WebSocket port 3000 (zwave-js-server) — même canal que le contrôle des lampes
+        node = await self._get_node_via_ws(node_id)
+        if node is not None:
+            self._cache_node.set(node_id, node)
+            data = self._sensor_values_from_node(node)
+            data["node_id"] = node_id
+            info = device_info_from_node(node)
+            if info:
+                data["device_type"] = info["device_type"]
+                data["device_name"] = info["device_name"]
+                data["device_model"] = info["device_model"]
+            else:
+                data["device_type"] = data["device_name"] = data["device_model"] = None
+            logger.info("get_sensor_data node %s: données via WebSocket (port 3000)", node_id)
             return data
 
-        # 3) Aucune valeur lue (pas de cache)
-        logger.warning("get_sensor_data node %s: aucune donnée (HTTP + getValue)", node_id)
-        data["unknown"] = True
-        return data
+        # 3) Fallback Socket.IO 8091 (getNodes) — souvent en timeout
+        try:
+            nodes = await self.get_nodes()
+        except Exception:
+            nodes = []
+        if nodes:
+            target = None
+            for n in nodes:
+                if not isinstance(n, dict):
+                    continue
+                nid = n.get("nodeId") or n.get("id")
+                if nid == node_id:
+                    target = n
+                    break
+            if target is not None:
+                self._cache_node.set(node_id, target)
+                data = self._sensor_values_from_node(target)
+                data["node_id"] = node_id
+                info = device_info_from_node(target)
+                if info:
+                    data["device_type"] = info["device_type"]
+                    data["device_name"] = info["device_name"]
+                    data["device_model"] = info["device_model"]
+                else:
+                    data["device_type"] = data["device_name"] = data["device_model"] = None
+                return data
+
+        # 4) Aucune valeur lue
+        logger.warning("get_sensor_data node %s: aucune donnée (HTTP + WS 3000 + getNodes)", node_id)
+        return {
+            "node_id": node_id,
+            "motion": False,
+            "temperature_c": None,
+            "humidity": None,
+            "illuminance_lux": None,
+            "ultraviolet": None,
+            "battery_percent": None,
+            "device_type": None,
+            "device_name": None,
+            "device_model": None,
+            "unknown": True,
+        }
 
     async def turn_on(self, node_id: int, transition_duration: Optional[str] = None) -> Any:
         """Allume le nœud (targetValue = ON_LEVEL_FULL). Compatible 0-99 (ex. ABUS node 3)."""
@@ -978,6 +1024,66 @@ class ZWaveClient:
                             break
         except Exception as e:
             logger.debug("_get_current_value_via_ws node %s: %s", node_id, e)
+        return None
+
+    async def _get_node_via_ws(self, node_id: int) -> Optional[dict]:
+        """
+        Récupère le nœud complet (avec values) via WebSocket zwave-js-server (port 3000).
+        Même canal que le contrôle des lampes et que Home Assistant — évite l'API Socket.IO 8091 qui timeout.
+        """
+        if not self.ws_url:
+            return None
+        try:
+            import aiohttp
+        except ImportError:
+            return None
+        try:
+            timeout = aiohttp.ClientTimeout(total=15)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.ws_connect(self.ws_url) as ws:
+                    msg = await ws.receive()
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return None
+                    data = json.loads(msg.data)
+                    if data.get("type") != "version":
+                        return None
+                    schema = data.get("maxSchemaVersion", 0)
+                    await ws.send_str(json.dumps({
+                        "messageId": "init",
+                        "command": "initialize",
+                        "schemaVersion": min(schema, 31),
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=8)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "init":
+                            break
+                    await ws.send_str(json.dumps({
+                        "messageId": "listen",
+                        "command": "start_listening",
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=15)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "listen":
+                            result = data.get("result") or {}
+                            state = result.get("state") or {}
+                            nodes = state.get("nodes") or state.get("controller", {}).get("nodes") or []
+                            if not nodes and isinstance(state.get("driver"), dict):
+                                nodes = state.get("driver", {}).get("nodes") or []
+                            for n in nodes:
+                                if not isinstance(n, dict):
+                                    continue
+                                nid = n.get("nodeId") or n.get("id")
+                                if nid == node_id:
+                                    return n
+                            break
+        except Exception as e:
+            logger.debug("_get_node_via_ws node %s: %s", node_id, e)
         return None
 
     async def _get_node_via_http(self, node_id: int) -> Optional[dict]:
