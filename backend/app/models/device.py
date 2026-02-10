@@ -55,6 +55,8 @@ class Device(Base):
         index=True,
     )
     sensor_rules = Column(Text, nullable=True)  # JSON: motion { on_brightness, off_after_seconds }, illuminance { below_lux, brightness, above_lux }
+    # Smart dimming: si défini, ne pas ajuster automatiquement avant cette date (UTC)
+    smart_dimming_paused_until = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
     # Timestamps
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

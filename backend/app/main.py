@@ -159,22 +159,20 @@ async def lifespan(app: FastAPI):
     SENSOR_CONTROL_INTERVAL = 30
 
     async def _sensor_control_loop():
-        """Périodiquement : récupère les données des capteurs qui pilotent au moins une lampe,
-        applique les règles capteur→lampe et déclenche le smart dimming si luminosité dispo."""
+        """Périodiquement : récupère les données des capteurs Z-Wave,
+        applique les règles capteur→lampe (si des lampes sont liées)
+        et déclenche le smart dimming si une luminosité est disponible."""
         await asyncio.sleep(10)
         while True:
             try:
                 db = SessionLocal()
                 try:
-                    # Uniquement les capteurs qui ont au moins une lampe liée (controlled_by_sensor_id)
-                    sub = db.query(Device.controlled_by_sensor_id).filter(
-                        Device.controlled_by_sensor_id.isnot(None),
-                        Device.deleted_at.is_(None),
-                    ).distinct()
+                    # Tous les capteurs déclarés (type == sensor).
+                    # Les règles capteur→lampe ne s'appliquent que si une lampe a controlled_by_sensor_id,
+                    # mais on veut toujours enregistrer la luminosité (light_readings) pour le dashboard.
                     sensors = db.query(Device).filter(
                         Device.type == "sensor",
                         Device.deleted_at.is_(None),
-                        Device.id.in_(sub),
                     ).all()
                     for sensor in sensors:
                         try:

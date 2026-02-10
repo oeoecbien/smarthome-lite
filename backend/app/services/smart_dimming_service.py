@@ -86,7 +86,7 @@ class SmartDimmingService:
             reason = f"Medium natural light ({lux_value:.0f} lux) - interpolated"
         
         return {
-            "target_brightness": max(0, min(99, target)),
+            "target_brightness": max(0, min(100, target)),
             "reason": reason,
             "transition": transition,
             "enabled": True
@@ -129,16 +129,31 @@ class SmartDimmingService:
                 scenario = 1  # Night
             logger.debug(f"Scénario par défaut: {scenario} (heure: {hour})")
         
-        # Récupérer les appareils dimmables allumés du même RPi
-        # NB: côté DeviceService, sont considérés comme dimmables les types "light" et "dimmer".
+        # Récupérer les appareils dimmables allumés du même RPi, non pilotés par un capteur
+        # (les lampes avec controlled_by_sensor_id sont gérées par evaluate_sensor_rules).
+        from datetime import timezone as tz
+        now_utc = datetime.now(tz.utc)
         devices = self.db.query(Device).filter(
             Device.raspberry_pi_id == light_reading.raspberry_pi_id,
             Device.type.in_(["light", "dimmer"]),
             Device.state == True,
+            Device.controlled_by_sensor_id.is_(None),
+            Device.deleted_at.is_(None),
         ).all()
-        
+        # Exclure les appareils en pause smart dimming ; réinitialiser la pause si expirée
+        eligible = []
+        for d in devices:
+            if d.smart_dimming_paused_until is None:
+                eligible.append(d)
+            elif d.smart_dimming_paused_until <= now_utc:
+                d.smart_dimming_paused_until = None
+                self.db.add(d)
+                eligible.append(d)
+        if eligible:
+            self.db.commit()
+        devices = eligible
         if not devices:
-            logger.info("No dimmable devices active")
+            logger.debug("No dimmable devices eligible for smart dimming (same RPi, on, not sensor-controlled, not paused)")
             return []
         
         adjustments = []
