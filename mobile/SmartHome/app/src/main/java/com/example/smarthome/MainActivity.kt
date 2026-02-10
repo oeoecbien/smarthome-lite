@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Button
@@ -49,34 +51,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smarthome.ui.theme.SmartHomeTheme
 import com.example.smarthome.ui.theme.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.materialIcon
-import androidx.compose.material.icons.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
-
 import androidx.compose.ui.tooling.preview.Preview
-
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
+
 
 
 class MainActivity : ComponentActivity() {
@@ -84,9 +72,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var isDarkTheme by rememberSaveable { mutableStateOf(false) }
+            var isDarkTheme by remember { mutableStateOf(false) }
 
-            SmartHomeTheme(darkTheme = isDarkTheme, dynamicColor = false) {
+
+            SmartHomeTheme(dynamicColor = false) {
                 // On instancie le ViewModel au niveau le plus haut
                 val viewModel: SmartHomeViewModel = viewModel()
 
@@ -102,10 +91,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-
 // Modifie SmartHomeApp pour accepter le viewModel déjà créé
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartHomeApp(
     viewModel: SmartHomeViewModel,
@@ -113,42 +100,58 @@ fun SmartHomeApp(
     onThemeChange: (Boolean) -> Unit
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     NavigationSuiteScaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        containerColor = MaterialTheme.colorScheme.tertiary,
+        navigationSuiteColors = NavigationSuiteDefaults.colors(
+            navigationBarContainerColor = MaterialTheme.colorScheme.tertiary,
+            navigationRailContainerColor = MaterialTheme.colorScheme.tertiary
+        ),
         navigationSuiteItems = {
-            AppDestinations.entries.forEach {
+            AppDestinations.entries.forEach { dest ->
                 item(
-                    icon = { Icon(it.icon, contentDescription = it.label) },
-                    label = { Text(it.label) },
-                    selected = it == currentDestination,
-                    onClick = { currentDestination = it }
+                    icon = { Icon(dest.icon, contentDescription = dest.label) },
+                    label = { Text(dest.label) },
+                    selected = dest == currentDestination,
+                    onClick = { currentDestination = dest }
                 )
             }
         }
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background
+            containerColor = MaterialTheme.colorScheme.tertiary,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(text = currentDestination.label)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                        navigationIconContentColor = Color.White,
+                        actionIconContentColor = Color.White
+                    )
+                )
+            }
         ) { innerPadding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 when (currentDestination) {
-                    // On passe le viewModel à HomeScreen pour qu'il affiche les données chargées
                     AppDestinations.HOME -> HomeScreen(viewModel = viewModel)
                     AppDestinations.FAVORITES -> FavoritesScreen()
                     AppDestinations.PROFILE -> ProfileScreen(
-                        name = viewModel.currentUsername,
-                        email = viewModel.currentEmail,
-                        onLogoutClick = { viewModel.logout() },
-                        isDarkTheme = isDarkTheme,
-                        onThemeChange = onThemeChange
+                        viewModel.currentUsername,
+                        viewModel.currentEmail,
+                        { viewModel.logout() },
+                        isDarkTheme,
+                        onThemeChange
                     )
                 }
             }
@@ -299,687 +302,6 @@ fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-}
-
-@Composable
-fun LampControlScreen(
-    lamp: SmartLamp,
-    onBack: () -> Unit,
-    onUpdate: (SmartLamp) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // 1. HEADER (Titre + Status)
-        LampHeader(name = lamp.name, onBack = onBack)
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        // 2. POWER CARD (L'interrupteur)
-        PowerControlCard(
-            isOn = lamp.isOn,
-            onToggle = { isChecked ->
-                onUpdate(lamp.copy(isOn = isChecked))
-            }
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // 3. POURCENTAGE TEXTE
-        Text(
-            text = "${(lamp.brightness * 100).toInt()}%",
-            color = Color.White,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 4. ICONE SOLEIL
-        Icon(
-            imageVector = Icons.Outlined.WbSunny,
-            contentDescription = "Brightness",
-            tint = Color.Gray,
-            modifier = Modifier.size(28.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 5. SLIDER VERTICAL PERSONNALISÉ (Le gros morceau)
-        // On ne l'affiche que si la lampe est allumée pour l'effet visuel,
-        // ou on le grise si éteint.
-        VerticalNeonSlider(
-            brightness = lamp.brightness,
-            isEnabled = lamp.isOn,
-            onBrightnessChange = { newBrightness ->
-                // On met à jour la lampe (note: onUpdate gère déjà le debounce grâce au ViewModel)
-                onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
-            }
-        )
-    }
-}
-
-// --- SOUS-COMPOSANTS ---
-
-@Composable
-fun LampHeader(name: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Bouton Retour
-        IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
-        }
-
-        // Titre et Status
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Petit point vert
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(TextGreen)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Online",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextGreen
-                )
-            }
-        }
-
-        // Bouton Settings
-        IconButton(onClick = { /* Todo: Settings */ }) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.primary)
-        }
-    }
-}
-
-@Composable
-fun PowerControlCard(isOn: Boolean, onToggle: (Boolean) -> Unit) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary),
-        modifier = Modifier.fillMaxWidth().height(80.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icone Ampoule dans un cercle
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (isOn) NeonBlue.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Lightbulb,
-                        contentDescription = null,
-                        tint = if (isOn) NeonBlue else Color.Gray
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Textes
-                Column {
-                    Text(
-                        text = "Power",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = if (isOn) "Allumer" else "Eteint",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-            }
-
-            // Switch personnalisé
-            Switch(
-                checked = isOn,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = NeonBlue,
-                    uncheckedThumbColor = Color.Gray,
-                    uncheckedTrackColor = DarkSurface
-                )
-            )
-        }
-    }
-}
-
-@Composable
-fun VerticalNeonSlider(
-    brightness: Float,
-    isEnabled: Boolean,
-    onBrightnessChange: (Float) -> Unit
-) {
-    // Hauteur totale du slider
-    val barHeight = 300.dp
-    val barWidth = 60.dp
-
-    // Pour gérer le Drag (glissement) manuellement
-    // BoxWithConstraints nous permet de connaître la hauteur en pixels pour les calculs
-    BoxWithConstraints(
-        modifier = Modifier
-            .height(barHeight)
-            .width(barWidth),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        val maxHeightPx = constraints.maxHeight.toFloat()
-
-        // --- 1. LE FOND (Track sombre) ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(40.dp))
-                .background(CardSurface)
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(40.dp))
-        )
-
-        // --- 2. LA BARRE REMPLIE (Bleu Néon) ---
-        // On calcule la hauteur de la barre bleue en fonction de la luminosité
-        val fillHeight = maxHeightPx * brightness
-
-        // Dégradé pour l'effet "Glow"
-        val neonBrush = Brush.verticalGradient(
-            colors = listOf(NeonBlueGlow, NeonBlue)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                // Conversion de la hauteur calculée (pixels) en DP
-                .height(with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() })
-                .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp, topStart = 10.dp, topEnd = 10.dp))
-                // CORRECTION ICI :
-                .background(
-                    if (isEnabled) neonBrush else SolidColor(Color.Gray)
-                )
-        )
-
-        // --- 3. LE ROND (Thumb) ---
-        // On le positionne dynamiquement
-        Box(
-            modifier = Modifier
-                .offset(y = -with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() - (barWidth/2) }) // Centrer le rond sur le haut de la barre
-                .size(barWidth - 10.dp) // Un peu plus petit que la largeur totale
-                .clip(CircleShape)
-                .background(Color.White)
-                .shadow(10.dp, CircleShape, spotColor = NeonBlue) // L'ombre bleue
-        ) {
-            // Petit point au centre du rond blanc (optionnel, pour le style)
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray)
-                    .align(Alignment.Center)
-            )
-        }
-
-        // --- 4. GESTION DU TOUCHER (Invisible, par dessus tout) ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(40.dp))
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { offset ->
-                            // Gère le clic initial (saut direct à la position)
-                            val newBrightness = ((maxHeightPx - offset.y) / maxHeightPx).coerceIn(0f, 1f)
-                            if (isEnabled) onBrightnessChange(newBrightness)
-                        },
-                        onVerticalDrag = { change, _ -> // CORRECTION : "onVerticalDrag" au lieu de "onDrag"
-                            change.consume() // Important : on consomme l'événement
-
-                            // Gère le glissement
-                            val newBrightness = ((maxHeightPx - change.position.y) / maxHeightPx).coerceIn(0f, 1f)
-                            if (isEnabled) onBrightnessChange(newBrightness)
-                        }
-                    )
-                }
-        )
-    }
-}
-
-
-@Composable
-fun FavoritesScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Tes favoris")
-    }
-}
-
-
-@Composable
-fun LoginScreen(viewModel: SmartHomeViewModel) {
-    // Variables locales pour les champs de texte
-    var username by remember { mutableStateOf("admin") } // Pré-rempli pour tester vite
-    var password by remember { mutableStateOf("admin123") }
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    val isLoading by viewModel.isLoading
-    val error by viewModel.errorMessage
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0A1A33),
-                        Color(0xFF060B16)
-                    )
-                )
-            ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Icon container
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF121826)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Lightbulb,
-                    contentDescription = null,
-                    tint = Color(0xFF2979FF),
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "SmartHome",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Connecter vous pour accéder à vos appareils",
-                color = Color(0xFF9AA4B2),
-                fontSize = 14.sp
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Username
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Utilisateur") },
-                singleLine = true,
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Champ Password
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Mot de passe") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible)
-                                Icons.Filled.Visibility
-                            else
-                                Icons.Filled.VisibilityOff,
-                            contentDescription = null
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible)
-                    VisualTransformation.None
-                else
-                    PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Message d'erreur (si existe)
-            if (error != null) {
-                Text(
-                    text = error ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-            }
-
-            // Bouton de connexion
-            Button(
-                onClick = { viewModel.login(username, password) },
-                enabled = !isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2979FF)
-                )
-
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Se connecter")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = { /* TODO */ },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-
-
-                )
-
-            ) {
-                Text(
-                    text = "Mot de passe oublié ?",
-                    fontSize = 14.sp,
-                    color = TextWhite
-                )
-            }
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-
-
-@Composable
-fun ProfileScreen(
-    name: String,
-    email: String,
-    onLogoutClick: () -> Unit,
-    isDarkTheme: Boolean,
-    onThemeChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        contentPadding = PaddingValues(24.dp)
-    ) {
-
-        // --- 1. Header ---
-        item {
-            Text(
-                text = "Profil",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
-        }
-
-        // --- 2. Avatar Section ---
-        item {
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.size(120.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .background(Color(0xFFE0E0E0)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = Color.Gray
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue)
-                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-
-        // --- 3. User Info ---
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = name.ifEmpty { "Utilisateur" },
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit name",
-                    tint = PrimaryBlue,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { }
-                )
-            }
-        }
-
-        item {
-            Text(
-                text = email,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(40.dp)) }
-
-        // --- 4. Settings Menu ---
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-
-                ProfileMenuItem(
-                    icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
-                    title = "Thème de l'application",
-                    subtitle = if (isDarkTheme) "Mode Sombre" else "Mode Clair",
-                    iconBgColor = if (isDarkTheme) Color(0xFF1E1F2B) else Color(0xFFF5F5F5),
-                    iconColor = if (isDarkTheme) Color.White else Color.Black,
-                    trailingContent = {
-                        Switch(
-                            checked = isDarkTheme,
-                            onCheckedChange = onThemeChange
-                        )
-                    }
-                )
-
-                ProfileMenuItem(
-                    icon = Icons.Default.Lock,
-                    title = "Account Security",
-                    subtitle = "Password, 2FA",
-                    iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
-                    iconColor = PrimaryBlue
-                )
-
-                ProfileMenuItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notification Preferences",
-                    subtitle = "Push, Email, SMS",
-                    iconBgColor = AccentOrange.copy(alpha = 0.1f),
-                    iconColor = AccentOrange
-                )
-
-                ProfileMenuItem(
-                    icon = Icons.Default.Code,
-                    title = "API Configuration",
-                    subtitle = "Keys & Webhooks",
-                    iconBgColor = AccentPurple.copy(alpha = 0.1f),
-                    iconColor = AccentPurple
-                )
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(32.dp)) }
-
-        // --- 5. Logout Button ---
-        item {
-            Button(
-                onClick = onLogoutClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = DangerRed
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.ExitToApp,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Log Out",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        item { Spacer(modifier = Modifier.height(20.dp)) }
-    }
-
-}
-
-// --- Composant réutilisable pour les lignes de menu ---
-@Composable
-fun ProfileMenuItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    iconBgColor: Color,
-    iconColor: Color,
-    trailingContent: @Composable (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.tertiary)
-            .clickable { }
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Icon Box
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(iconBgColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconColor
-            )
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        // Texts
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
-            Text(
-                text = subtitle,
-                color = MaterialTheme.colorScheme.secondary,
-                fontSize = 12.sp
-            )
-        }
-
-        // Action or Arrow
-        if (trailingContent != null) {
-            trailingContent()
-        } else {
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
         }
     }
 }

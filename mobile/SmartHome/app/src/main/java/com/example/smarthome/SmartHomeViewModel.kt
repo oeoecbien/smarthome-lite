@@ -119,6 +119,9 @@ class SmartHomeViewModel : ViewModel() {
                 // 2. Info User
                 val userInfo = RetrofitInstance.api.getUserInfo(token!!)
                 currentUsername = userInfo.username
+                currentEmail = userInfo.email ?: ""
+
+
 
                 // 3. Premier chargement des lampes
                 fetchDevices()
