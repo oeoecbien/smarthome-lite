@@ -831,28 +831,119 @@ class ZWaveClient:
             return True
         return False
 
+    async def _refresh_sensor_values_via_ws(self, node_id: int) -> bool:
+        """
+        Refresh des valeurs capteur via WebSocket zwave-js-server (port 3000).
+        Envoie node.refresh_values ou node.refresh_cc_values (CC 48, 49) pour forcer
+        le device à rapporter (équivalent du bouton Refresh du panneau).
+        Retourne True si le refresh a été envoyé avec succès, False sinon.
+        """
+        if not self.ws_url:
+            return False
+        try:
+            import aiohttp
+        except ImportError:
+            return False
+        try:
+            timeout = aiohttp.ClientTimeout(total=20)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.ws_connect(self.ws_url) as ws:
+                    msg = await ws.receive()
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return False
+                    data = json.loads(msg.data)
+                    if data.get("type") != "version":
+                        return False
+                    schema = data.get("maxSchemaVersion", 0)
+                    await ws.send_str(json.dumps({
+                        "messageId": "init",
+                        "command": "initialize",
+                        "schemaVersion": min(schema, 31),
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=8)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "init":
+                            break
+                    await ws.send_str(json.dumps({
+                        "messageId": "listen",
+                        "command": "start_listening",
+                    }))
+                    while True:
+                        msg = await asyncio.wait_for(ws.receive(), timeout=10)
+                        if msg.type != aiohttp.WSMsgType.TEXT:
+                            continue
+                        data = json.loads(msg.data)
+                        if data.get("type") == "result" and data.get("messageId") == "listen":
+                            break
+                    # Refresh : node.refresh_values (toutes les valeurs) ou refresh_cc_values par CC
+                    refresh_ok = False
+                    try:
+                        await ws.send_str(json.dumps({
+                            "messageId": f"refresh-{node_id}",
+                            "command": "node.refresh_values",
+                            "nodeId": node_id,
+                        }))
+                        while True:
+                            msg = await asyncio.wait_for(ws.receive(), timeout=15)
+                            if msg.type != aiohttp.WSMsgType.TEXT:
+                                continue
+                            data = json.loads(msg.data)
+                            if data.get("messageId") == f"refresh-{node_id}" and data.get("type") == "result":
+                                refresh_ok = data.get("success", True)
+                                break
+                    except (asyncio.TimeoutError, Exception) as e:
+                        logger.debug("refresh_values node %s: %s", node_id, e)
+                    if not refresh_ok:
+                        for cc in (CommandClass.SENSOR_BINARY, CommandClass.SENSOR_MULTILEVEL):
+                            try:
+                                await ws.send_str(json.dumps({
+                                    "messageId": f"refresh-cc-{node_id}-{cc}",
+                                    "command": "node.refresh_cc_values",
+                                    "nodeId": node_id,
+                                    "commandClass": int(cc),
+                                }))
+                                while True:
+                                    msg = await asyncio.wait_for(ws.receive(), timeout=12)
+                                    if msg.type != aiohttp.WSMsgType.TEXT:
+                                        continue
+                                    data = json.loads(msg.data)
+                                    if data.get("messageId") == f"refresh-cc-{node_id}-{cc}" and data.get("type") == "result":
+                                        break
+                            except (asyncio.TimeoutError, Exception) as ec:
+                                logger.debug("refresh_cc_values node %s CC %s: %s", node_id, cc, ec)
+                    return True
+        except Exception as e:
+            logger.debug("_refresh_sensor_values_via_ws node %s: %s", node_id, e)
+            return False
+
     async def _refresh_sensor_values(self, node_id: int) -> None:
         """
         Demande au nœud capteur de rapporter ses valeurs (équivalent du bouton Refresh du panneau).
-        Essaie refreshNodeValues(nodeId) ; sinon refreshCCValues(nodeId, 48) et (49). Attend 2 s après.
+        Priorité : WebSocket 3000 (node.refresh_values / node.refresh_cc_values), puis Socket.IO 8091.
+        Attend 2 s après pour laisser le device rapporter.
         """
-        try:
-            await asyncio.wait_for(
-                self._call_api("refreshNodeValues", node_id),
-                timeout=5.0,
-            )
-            logger.debug("refreshNodeValues node %s OK", node_id)
-        except (asyncio.TimeoutError, Exception) as e:
-            logger.debug("refreshNodeValues node %s: %s", node_id, e)
-            for cc in (CommandClass.SENSOR_BINARY, CommandClass.SENSOR_MULTILEVEL):
-                try:
-                    await asyncio.wait_for(
-                        self._call_api("refreshCCValues", node_id, int(cc)),
-                        timeout=5.0,
-                    )
-                    logger.debug("refreshCCValues node %s CC %s OK", node_id, cc)
-                except (asyncio.TimeoutError, Exception) as ec:
-                    logger.debug("refreshCCValues node %s CC %s: %s", node_id, cc, ec)
+        ok = await self._refresh_sensor_values_via_ws(node_id)
+        if not ok:
+            try:
+                await asyncio.wait_for(
+                    self._call_api("refreshNodeValues", node_id),
+                    timeout=5.0,
+                )
+                logger.debug("refreshNodeValues (Socket.IO) node %s OK", node_id)
+            except (asyncio.TimeoutError, Exception) as e:
+                logger.debug("refreshNodeValues node %s: %s", node_id, e)
+                for cc in (CommandClass.SENSOR_BINARY, CommandClass.SENSOR_MULTILEVEL):
+                    try:
+                        await asyncio.wait_for(
+                            self._call_api("refreshCCValues", node_id, int(cc)),
+                            timeout=5.0,
+                        )
+                        logger.debug("refreshCCValues node %s CC %s OK", node_id, cc)
+                    except (asyncio.TimeoutError, Exception) as ec:
+                        logger.debug("refreshCCValues node %s CC %s: %s", node_id, cc, ec)
         await asyncio.sleep(2.0)
 
     async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
