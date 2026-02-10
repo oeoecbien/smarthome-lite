@@ -58,10 +58,10 @@ export const raspberryPiService = {
     return api.delete(`/api/raspberry-pis/${id}`)
   },
 
-  /** Données capteur d'un nœud Z-Wave sur ce RPi (getValue → réponse rapide). Timeout 30s. */
+  /** Données capteur d'un nœud Z-Wave sur ce RPi. Lecture Z-Wave lente (réveil pile) : timeout 70s. */
   async getNodeSensor(rpiId: number, nodeId: number): Promise<ZwaveSensorData> {
     return api.get<ZwaveSensorData>(`/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor`, undefined, {
-      timeout: 30_000,
+      timeout: 70_000,
     })
   },
 

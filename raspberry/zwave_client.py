@@ -217,8 +217,10 @@ class ZWaveClient:
 
     # ValueId strings exacts comme dans Z-Wave JS UI (ex. [5-48-0-Motion], [5-49-0-Air temperature])
     # CC 48 = Binary Sensor (mouvement), CC 49 = Multilevel Sensor (temp, lux, humidité, UV), CC 128 = Battery
+    # Motion : essayer "Motion" puis "currentValue" (selon version Z-Wave JS UI)
     _SENSOR_VALUE_IDS = [
         ("{node_id}-48-0-Motion", "motion", "bool"),
+        ("{node_id}-48-0-currentValue", "motion", "bool"),  # fallback si Motion non trouvé
         ("{node_id}-49-0-Air temperature", "temperature_c", "float"),
         ("{node_id}-49-0-Illuminance", "illuminance_lux", "float"),
         ("{node_id}-49-0-Humidity", "humidity", "float"),
@@ -229,7 +231,7 @@ class ZWaveClient:
     async def _get_sensor_data_simple(self, node_id: int, timeout_per_call: float = 10.0) -> Dict[str, Any]:
         """
         Lecture capteur simple : un getValue par valueId string (format panneau Z-Wave JS UI).
-        Pas de timeout court — 10 s par appel pour appareils sur pile (réveil lent).
+        10 s par appel pour appareils sur pile (réveil lent).
         """
         out: Dict[str, Any] = {
             "motion": False,
@@ -242,6 +244,8 @@ class ZWaveClient:
         for tpl in self._SENSOR_VALUE_IDS:
             vid_str = tpl[0].format(node_id=node_id)
             kind, typ = tpl[1], tpl[2]
+            if kind == "motion" and out["motion"]:
+                continue  # déjà lu par un valueId motion précédent
             try:
                 result = await asyncio.wait_for(
                     self._call_api("getValue", vid_str),
@@ -831,7 +835,7 @@ class ZWaveClient:
         """
         Lit les valeurs capteur du nœud (MultiSensor 7 : CC 48 Motion, CC 49 temp/lux/humidity/UV, CC 128 batterie).
         Un seul chemin : HTTP get_node (si dispo) puis sinon getValue par valueId string (format panneau).
-        Pas de timeout court — 10 s par getValue pour appareils sur pile.
+        Pas de cache : lecture fraîche à chaque appel. 10 s par getValue pour appareils sur pile.
         """
         # 1) HTTP get_node (port Z-Wave JS UI, ex. 8091) — rapide si l’UI expose /api/nodes/{id}
         node = await self._get_node_via_http(node_id)
@@ -846,8 +850,6 @@ class ZWaveClient:
                 data["device_model"] = info["device_model"]
             else:
                 data["device_type"] = data["device_name"] = data["device_model"] = None
-            if self._sensor_data_has_values(data):
-                self._cache_sensor_data.set(node_id, dict(data))
             return data
 
         # 2) Lecture simple : getValue avec valueId strings (ex. 5-48-0-Motion, 5-49-0-Air temperature)
@@ -857,19 +859,10 @@ class ZWaveClient:
         data["device_name"] = "Aeotec MultiSensor 7"
         data["device_model"] = "ZWA024"
         if self._sensor_data_has_values(data):
-            self._cache_sensor_data.set(node_id, dict(data))
             logger.info("get_sensor_data node %s: données via getValue (valueId strings)", node_id)
             return data
 
-        # 3) Aucune valeur : cache ou unknown
-        cached_data = self._cache_sensor_data.get(node_id)
-        if cached_data is not None:
-            out = dict(cached_data)
-            out["cached"] = True
-            out["node_id"] = node_id
-            logger.info("get_sensor_data node %s: retour cache", node_id)
-            return out
-        self._cache_sensor_data.pop(node_id, None)
+        # 3) Aucune valeur lue (pas de cache)
         logger.warning("get_sensor_data node %s: aucune donnée (HTTP + getValue)", node_id)
         data["unknown"] = True
         return data
