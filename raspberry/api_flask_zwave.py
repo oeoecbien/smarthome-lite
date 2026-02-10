@@ -5,15 +5,21 @@ API Flask locale pour exposer les commandes Z-Wave au backend SmartHome Lite.
 Contrat backend (app/services/device_service.py) :
   - GET/POST http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/state
   - POST     http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/brightness
-Sur un RPi Z-Wave, gpio_pin = node_id Z-Wave (ex: 3 pour l'ampoule ABUS).
+  - GET      http://{rpi.ip_address}:5000/api/nodes/{node_id}/sensor
+Sur un RPi Z-Wave, gpio_pin = node_id Z-Wave. Port 5000 = Flask ; capteur lit via Z-Wave JS UI (8091).
 
+Reconnaissance des appareils (device_type, device_name, device_model) : zwave_constants.device_info_from_node.
 Configuration : variables dans sae_s5/.env (pas de .env dans raspberry/).
+
+Note : run_async crée une nouvelle boucle d'événements par requête ; pour une connexion Socket.IO
+persistante et de meilleures perfs, envisager Quart (API compatible Flask).
 """
 
 import asyncio
 import logging
 from pathlib import Path
 from functools import wraps
+from typing import Tuple
 
 # Charger le .env à la racine du projet (sae_s5/.env) avant tout import de config
 _env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -23,7 +29,7 @@ try:
 except ImportError:
     pass
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 from config import (
@@ -55,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 def run_async(coro):
     """
-    Exécute une coroutine dans une nouvelle boucle d'événements.
+    Exécute une coroutine dans une nouvelle boucle d'événements (Flask est synchrone).
     Déconnecte le client Z-Wave après chaque requête pour éviter "Event loop is closed".
     """
     loop = asyncio.new_event_loop()
@@ -70,6 +76,11 @@ def run_async(coro):
         loop.close()
 
 
+def _api_error(message: str, status: int = 500) -> Tuple[Response, int]:
+    """Réponse JSON d'erreur normalisée."""
+    return jsonify({"success": False, "error": message}), status
+
+
 def require_api_key(f):
     """Si RASPBERRY_API_KEY est défini, exige le header X-API-Key."""
     @wraps(f)
@@ -78,7 +89,7 @@ def require_api_key(f):
             return f(*args, **kwargs)
         key = request.headers.get("X-API-Key") or request.args.get("api_key")
         if key != API_KEY:
-            return jsonify({"success": False, "error": "Invalid or missing API key"}), 401
+            return _api_error("Invalid or missing API key", 401)
         return f(*args, **kwargs)
     return decorated
 
@@ -110,59 +121,6 @@ def health():
         "zwave_js_ui_ws_url": ZWAVE_JS_UI_WS_URL,
         "zwave_js_ws_url": ZWAVE_JS_WS_URL,
     })
-
-
-@app.route("/docs", methods=["GET"])
-def docs():
-    """Documentation de l'API (liste des endpoints)."""
-    endpoints = [
-        ("GET", "/", "Infos API (status, health, liens)."),
-        ("GET", "/health", "Santé (backend heartbeat)."),
-        ("GET", "/docs", "Cette documentation."),
-        ("GET", "/api/nodes", "Liste des nœuds Z-Wave."),
-        ("GET", "/api/nodes/<node_id>", "Détail d'un nœud."),
-        ("GET", "/api/nodes/<node_id>/sensor", "Valeurs capteur (mouvement, température, humidité, etc.). Requiert X-API-Key si RASPBERRY_API_KEY est défini."),
-        ("GET", "/api/nodes/<node_id>/current", "État et intensité actuels (lampe)."),
-        ("POST", "/api/nodes/<node_id>/state", "ON/OFF. Corps: { \"state\": true|false }."),
-        ("POST", "/api/nodes/<node_id>/brightness", "Intensité. Corps: { \"brightness\": 0-100 }."),
-        ("POST", "/api/nodes/<node_id>/interview", "Forcer l'interview du nœud."),
-        ("GET", "/api/devices/<node_id>/state", "État lampe (state, brightness). Requiert X-API-Key."),
-        ("POST", "/api/devices/<node_id>/state", "ON/OFF. Corps: { \"state\": true|false }. Requiert X-API-Key."),
-        ("POST", "/api/devices/<node_id>/brightness", "Intensité. Corps: { \"brightness\": 0-100 }. Requiert X-API-Key."),
-    ]
-    def _esc(s: str) -> str:
-        """Échappe < et > pour affichage HTML (évite que <node_id> soit interprété comme balise)."""
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-    rows = "".join(
-        f'<tr><td><code>{_esc(m)}</code></td><td><code>{_esc(p)}</code></td><td>{_esc(d)}</td></tr>'
-        for m, p, d in endpoints
-    )
-    html = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <title>API Z-Wave – Documentation</title>
-  <style>
-    body {{ font-family: system-ui, sans-serif; margin: 2rem; max-width: 800px; }}
-    table {{ border-collapse: collapse; width: 100%; }}
-    th, td {{ border: 1px solid #ddd; padding: 0.5rem 0.75rem; text-align: left; }}
-    th {{ background: #f5f5f5; }}
-    code {{ background: #f0f0f0; padding: 0.1em 0.3em; border-radius: 3px; }}
-    h1 {{ margin-top: 0; }}
-  </style>
-</head>
-<body>
-  <h1>API Flask Z-Wave – Documentation</h1>
-  <p>Base URL : <code>{request.url_root.rstrip("/")}</code></p>
-  <p>Authentification : si <code>RASPBERRY_API_KEY</code> est défini, envoyer le header <code>X-API-Key</code> pour les routes <code>/api/devices/*</code> et <code>/api/nodes/*/sensor</code>.</p>
-  <table>
-    <thead><tr><th>Méthode</th><th>Endpoint</th><th>Description</th></tr></thead>
-    <tbody>{rows}</tbody>
-  </table>
-</body>
-</html>"""
-    return app.response_class(html, mimetype="text/html; charset=utf-8")
 
 
 # ---------- Routes compatibles backend (device_service) ----------
@@ -205,7 +163,7 @@ def set_device_state(device_id):
             return jsonify(payload)
         except Exception as e:
             logger.error("get_device_state node %s: %s", device_id, e)
-            return jsonify({"success": False, "error": str(e)}), 500
+            return _api_error(str(e), 500)
 
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -222,7 +180,7 @@ def set_device_state(device_id):
         })
     except Exception as e:
         logger.error("set_device_state node %s: %s", device_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(str(e), 500)
 
 
 @app.route("/api/devices/<int:device_id>/brightness", methods=["POST"])
@@ -238,10 +196,7 @@ def set_device_brightness(device_id):
         node_id = device_id
 
         if not 0 <= brightness <= 100:
-            return jsonify({
-                "success": False,
-                "error": "Brightness must be between 0 and 100",
-            }), 400
+            return _api_error("Brightness must be between 0 and 100", 400)
 
         duration = "5s" if transition == "fade" else None
         result = run_async(
@@ -354,7 +309,7 @@ def get_node_current(node_id):
 def get_node_sensor(node_id):
     """
     Valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
-    Compatible Aeotec MultiSensor 7 (ZWA024). Retourne device_type si reconnu.
+    device_type / device_name / device_model renseignés si le nœud est reconnu (registre zwave_constants).
     """
     logger.info("GET /api/nodes/%s/sensor request received", node_id)
     try:
@@ -371,7 +326,7 @@ def get_node_sensor(node_id):
         return jsonify({"success": True, **data})
     except Exception as e:
         logger.error("get_node_sensor %s: %s", node_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(str(e), 500)
 
 
 @app.route("/api/nodes/<int:node_id>/interview", methods=["POST"])
@@ -382,7 +337,7 @@ def interview_node(node_id):
         return jsonify({"success": True, "node_id": node_id, "result": result})
     except Exception as e:
         logger.error("interview_node %s: %s", node_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(str(e), 500)
 
 
 def _backend_heartbeat_loop():

@@ -1,11 +1,10 @@
 """
 Client Z-Wave : WebSocket (zwave-js-server, port 3000) en priorité, puis Socket.IO (Z-Wave JS UI, 8091).
 
-- Port 3000 (docker-compose) : protocole zwave-js-server (WebSocket brut), commande node.set_value.
-  Voir https://github.com/zwave-js/zwave-js-server
-- Port 8091 : Socket.IO (interface web Z-Wave JS UI), fallback si WebSocket indisponible.
+- Port 3000 : WebSocket zwave-js-server (commandes setValue).
+- Port 8091 : Socket.IO Z-Wave JS UI (lectures getValue / getNode).
 
-Compatibilité lampe ABUS (node 3) : CC 38, currentValue/targetValue 0-99.
+Reconnaissance des appareils (nom, modèle) : zwave_constants.device_info_from_node.
 """
 
 import asyncio
@@ -16,30 +15,30 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import socketio
 
+from zwave_cache import SimpleCache
+from zwave_constants import (
+    CommandClass,
+    MultilevelSensorType,
+    ON_LEVEL_FULL,
+    PROP_CURRENT_VALUE,
+    PROP_TARGET_VALUE,
+    device_info_from_node,
+)
+
 logger = logging.getLogger(__name__)
 
-# Command Class 38 = Multilevel Switch (dimmer / ampoule)
-CC_MULTILEVEL_SWITCH = 38
-# Command Class 48 = Binary Sensor (mouvement MultiSensor7)
-CC_BINARY_SENSOR = 48
-# Command Class 49 = Multilevel Sensor (temp, humidité, luminosité, UV)
-CC_MULTILEVEL_SENSOR = 49
-# Command Class 128 = Battery
-CC_BATTERY = 128
-# Propriétés pour CC 38 (alignées sur Z-Wave JS UI, ex. lampe ABUS node 3)
-PROP_CURRENT_VALUE = "currentValue"
-PROP_TARGET_VALUE = "targetValue"
 
-# Aeotec MultiSensor 7 (ZWA024) : manufacturerId 881, productType 2, productId 24
-AEOTEC_MANUFACTURER_ID = 881
-AEOTEC_MULTISENSOR7_PRODUCT_TYPE = 2
-AEOTEC_MULTISENSOR7_PRODUCT_ID = 24
-AEOTEC_MULTISENSOR7_MODEL = "ZWA024"
-AEOTEC_MULTISENSOR7_NAME = "Aeotec MultiSensor 7"
-
-# Niveau "ON" : 99 pour compatibilité appareils 0-99 uniquement (ex. ABUS SHLM10010)
-# Certains dimmers acceptent 255 (dernier niveau), d'autres uniquement 0-99
-ON_LEVEL_FULL = 99
+def extract_zwave_value(payload: Any) -> Optional[Any]:
+    """
+    Extrait la valeur primitive d'une réponse Z-Wave (getValue, node.values, etc.).
+    Accepte : {value}, {newValue}, {currentValue}, ou valeur directe (scalaire / list).
+    """
+    if payload is None:
+        return None
+    if isinstance(payload, dict):
+        v = payload.get("value") if "value" in payload else payload.get("newValue") or payload.get("currentValue")
+        return v
+    return payload
 
 
 class ZWaveClient:
@@ -58,15 +57,10 @@ class ZWaveClient:
         self.timeout = timeout
         self._sio: Optional[socketio.AsyncClient] = None
         self._cache_current_value: Dict[int, int] = {}
-        # Cache nœud (node_id -> (payload, timestamp)) pour éviter timeouts répétés sur capteurs lents
-        self._cache_node: Dict[int, Tuple[dict, float]] = {}
-        self._cache_node_ttl_sec: float = 90.0
-        # Cache liste complète des nœuds (TTL long) quand getNodes réussit
+        self._cache_node = SimpleCache[int, dict](ttl_sec=90.0)
         self._cache_nodes_list: Optional[Tuple[list, float]] = None
         self._cache_nodes_list_ttl_sec: float = 300.0
-        # Cache données capteur (node_id -> (data dict, timestamp)) pour éviter réponses vides après timeout
-        self._cache_sensor_data: Dict[int, Tuple[Dict[str, Any], float]] = {}
-        self._cache_sensor_data_ttl_sec: float = 90.0
+        self._cache_sensor_data = SimpleCache[int, Dict[str, Any]](ttl_sec=90.0)
 
     async def _ensure_connected(self) -> socketio.AsyncClient:
         """Connexion Socket.IO si nécessaire."""
@@ -86,9 +80,11 @@ class ZWaveClient:
                 logger.debug("Socket.IO déconnecté de Z-Wave JS UI")
 
             try:
+                # Limiter à 12s pour rester sous le timeout backend (60s) quand on enchaîne HTTP + getValue capteur
+                wait = min(12, self.timeout)
                 await self._sio.connect(
                     self.base_url,
-                    wait_timeout=self.timeout,
+                    wait_timeout=wait,
                     transports=["websocket", "polling"],
                 )
             except Exception as e:
@@ -120,20 +116,20 @@ class ZWaveClient:
         """Construit un valueId pour Multilevel Switch (CC 38)."""
         return {
             "nodeId": node_id,
-            "commandClass": CC_MULTILEVEL_SWITCH,
+            "commandClass": CommandClass.MULTILEVEL_SWITCH,
             "endpoint": 0,
             "property": property_name,
         }
 
     def _value_id_str(self, node_id: int, property_name: str = PROP_TARGET_VALUE) -> str:
         """Format string du valueId (ex. 3-38-0-targetValue) utilisé par Z-Wave JS UI."""
-        return f"{node_id}-{CC_MULTILEVEL_SWITCH}-0-{property_name}"
+        return f"{node_id}-{CommandClass.MULTILEVEL_SWITCH}-0-{property_name}"
 
     def _binary_sensor_value_id(self, node_id: int, endpoint: int = 0) -> dict:
         """ValueId pour CC 48 Binary Sensor (mouvement)."""
         return {
             "nodeId": node_id,
-            "commandClass": CC_BINARY_SENSOR,
+            "commandClass": CommandClass.SENSOR_BINARY,
             "endpoint": endpoint,
             "property": "currentValue",
         }
@@ -142,46 +138,98 @@ class ZWaveClient:
         """ValueId pour CC 49 Multilevel Sensor (temp, illuminance, humidity, uv)."""
         return {
             "nodeId": node_id,
-            "commandClass": CC_MULTILEVEL_SENSOR,
+            "commandClass": CommandClass.SENSOR_MULTILEVEL,
             "endpoint": endpoint,
             "property": property_name,
+        }
+
+    def _multilevel_sensor_value_id_numeric(self, node_id: int, property_id: int, endpoint: int = 0) -> dict:
+        """ValueId CC 49 avec property numérique (compatible zwave-js)."""
+        return {
+            "nodeId": node_id,
+            "commandClass": CommandClass.SENSOR_MULTILEVEL,
+            "endpoint": endpoint,
+            "property": property_id,
         }
 
     def _battery_value_id(self, node_id: int, endpoint: int = 0) -> dict:
         """ValueId pour CC 128 Battery (level)."""
         return {
             "nodeId": node_id,
-            "commandClass": CC_BATTERY,
+            "commandClass": CommandClass.BATTERY,
             "endpoint": endpoint,
             "property": "level",
         }
 
     async def _get_motion_via_getvalue(self, node_id: int) -> Optional[bool]:
         """
-        Lit uniquement le mouvement via getValue(CC 48). Plus rapide que getNode.
-        Essaie currentValue (endpoint 0 puis 1). Retourne None si timeout/erreur.
+        Lit uniquement le mouvement via getValue(CC 48). Limité à 2 essais (3s chacun)
+        pour ne pas dépasser le timeout backend après le fast path.
         """
-        for endpoint in (0, 1):
+        for vid in (
+            {"nodeId": node_id, "commandClass": CommandClass.SENSOR_BINARY, "endpoint": 0, "property": "Motion"},
+            {"nodeId": node_id, "commandClass": CommandClass.SENSOR_BINARY, "endpoint": 0, "property": "currentValue"},
+        ):
+            result = await self._get_value_one_call(vid, timeout_sec=3.0)
+            if result is None:
+                continue
+            val = extract_zwave_value(result)
+            if val is not None:
+                return bool(val)
+        return None
+
+    async def _get_value_any_format(self, vid, timeout_sec: float = 6.0) -> Optional[Any]:
+        """
+        Appelle getValue avec valueId (dict ou string). Z-Wave JS UI accepte parfois
+        la forme string "nodeId-commandClass-endpoint-property".
+        """
+        result = None
+        for payload in (vid, self._value_id_to_string(vid) if isinstance(vid, dict) else None):
+            if payload is None:
+                continue
             try:
-                vid = self._binary_sensor_value_id(node_id, endpoint)
                 result = await asyncio.wait_for(
-                    self._call_api("getValue", vid),
-                    timeout=8.0,
+                    self._call_api("getValue", payload),
+                    timeout=timeout_sec,
                 )
-                if result is None:
-                    continue
-                val = result.get("value") if isinstance(result, dict) else result
-                if val is not None:
-                    return bool(val)
+                if result is not None:
+                    break
+            except (asyncio.TimeoutError, Exception):
+                continue
+        return result
+
+    async def _get_value_one_call(self, vid, timeout_sec: float = 4.0) -> Optional[Any]:
+        """Un seul getValue : essaie d'abord string (format panneau), puis objet."""
+        value_id_str = self._value_id_to_string(vid) if isinstance(vid, dict) else None
+        for payload in (value_id_str, vid):
+            if payload is None:
+                continue
+            try:
+                result = await asyncio.wait_for(
+                    self._call_api("getValue", payload),
+                    timeout=timeout_sec,
+                )
+                if result is not None:
+                    return result
             except (asyncio.TimeoutError, Exception):
                 continue
         return None
 
-    async def _get_sensor_values_via_getvalue(self, node_id: int) -> Dict[str, Any]:
+    # ValueId strings exacts comme dans Z-Wave JS UI (ex. [5-48-0-Motion], [5-49-0-Air temperature])
+    # CC 48 = Binary Sensor (mouvement), CC 49 = Multilevel Sensor (temp, lux, humidité, UV), CC 128 = Battery
+    _SENSOR_VALUE_IDS = [
+        ("{node_id}-48-0-Motion", "motion", "bool"),
+        ("{node_id}-49-0-Air temperature", "temperature_c", "float"),
+        ("{node_id}-49-0-Illuminance", "illuminance_lux", "float"),
+        ("{node_id}-49-0-Humidity", "humidity", "float"),
+        ("{node_id}-49-0-Ultraviolet", "ultraviolet", "float"),
+        ("{node_id}-128-0-level", "battery_percent", "int"),
+    ]
+
+    async def _get_sensor_data_simple(self, node_id: int, timeout_per_call: float = 10.0) -> Dict[str, Any]:
         """
-        Lit toutes les valeurs capteur via getValue (CC 48, 49, 128), en séquentiel pour éviter
-        l'erreur Socket.IO « / is not a connected namespace » (appels concurrents non supportés).
-        Utilise le cache du driver (pas de réveil du nœud). Timeout court par appel pour rester sous le timeout backend.
+        Lecture capteur simple : un getValue par valueId string (format panneau Z-Wave JS UI).
+        Pas de timeout court — 10 s par appel pour appareils sur pile (réveil lent).
         """
         out: Dict[str, Any] = {
             "motion": False,
@@ -191,28 +239,85 @@ class ZWaveClient:
             "ultraviolet": None,
             "battery_percent": None,
         }
-        timeout_per_call = 3.0
-
-        async def get_one(vid: dict, kind: str) -> Optional[Any]:
+        for tpl in self._SENSOR_VALUE_IDS:
+            vid_str = tpl[0].format(node_id=node_id)
+            kind, typ = tpl[1], tpl[2]
             try:
                 result = await asyncio.wait_for(
-                    self._call_api("getValue", vid),
+                    self._call_api("getValue", vid_str),
                     timeout=timeout_per_call,
                 )
-                if result is None:
-                    return None
-                if isinstance(result, dict):
-                    val = result.get("value") if "value" in result else result.get("newValue") or result.get("currentValue")
+                val = extract_zwave_value(result)
+                if val is None:
+                    continue
+                if kind == "motion":
+                    out["motion"] = bool(val)
+                elif kind == "battery_percent":
+                    try:
+                        out["battery_percent"] = min(100, max(0, int(val)))
+                    except (TypeError, ValueError):
+                        pass
                 else:
-                    val = result
+                    try:
+                        f = float(val)
+                        if kind == "temperature_c":
+                            out["temperature_c"] = round(f, 1)
+                        elif kind == "illuminance_lux":
+                            out["illuminance_lux"] = int(round(f))
+                        elif kind in ("humidity", "ultraviolet"):
+                            out[kind] = round(f, 1)
+                    except (TypeError, ValueError):
+                        pass
+            except asyncio.TimeoutError:
+                logger.debug("getValue %s timeout (node %s)", vid_str, node_id)
+            except Exception as e:
+                logger.debug("getValue %s: %s", vid_str, e)
+        return out
+
+    async def _get_sensor_values_via_getvalue_fast(self, node_id: int) -> Dict[str, Any]:
+        """Délègue à la lecture simple (valueId strings, timeout 10s/appel)."""
+        return await self._get_sensor_data_simple(node_id, timeout_per_call=10.0)
+
+    def _value_id_to_string(self, vid: dict) -> Optional[str]:
+        """Construit la forme string du valueId (ex. 5-49-0-Air temperature ou 5-49-0-1)."""
+        node_id = vid.get("nodeId")
+        cc = vid.get("commandClass")
+        ep = vid.get("endpoint", 0)
+        prop = vid.get("property")
+        if node_id is None or cc is None:
+            return None
+        return f"{node_id}-{cc}-{ep}-{prop}"
+
+    async def _get_sensor_values_via_getvalue(self, node_id: int) -> Dict[str, Any]:
+        """
+        Lit toutes les valeurs capteur via getValue (CC 48, 49, 128), en séquentiel pour éviter
+        l'erreur Socket.IO « / is not a connected namespace » (appels concurrents non supportés).
+        Essaie valueId en objet et en string ; pour CC 49 essaie property nom et property numérique.
+        """
+        out: Dict[str, Any] = {
+            "motion": False,
+            "temperature_c": None,
+            "humidity": None,
+            "illuminance_lux": None,
+            "ultraviolet": None,
+            "battery_percent": None,
+        }
+        timeout_per_call = 6.0
+
+        async def get_one(vid, kind: str) -> Optional[Any]:
+            try:
+                result = await self._get_value_any_format(vid, timeout_sec=timeout_per_call)
+                val = extract_zwave_value(result)
                 if val is None:
                     return None
                 if kind == "motion":
                     return bool(val)
                 if kind == "battery_percent":
                     return min(100, max(0, int(val)))
-                f = self._float_from_value(val) if not isinstance(val, (int, float)) else float(val)
-                if f is None:
+                raw = extract_zwave_value(val) if isinstance(val, dict) else val
+                try:
+                    f = float(raw)
+                except (TypeError, ValueError):
                     return None
                 if kind == "temperature_c":
                     return round(f, 1)
@@ -224,24 +329,44 @@ class ZWaveClient:
             except (asyncio.TimeoutError, Exception):
                 return None
 
-        # Séquentiel : évite " / is not a connected namespace" avec Socket.IO
+        # Motion (CC 48) : essayer currentValue, Motion, Sensor state (endpoints 0 et 1)
+        motion_done = False
         for ep in (0, 1):
-            vid = self._binary_sensor_value_id(node_id, ep)
-            v = await get_one(vid, "motion")
-            if v is not None:
-                out["motion"] = v
+            for prop in ("currentValue", "Motion", "Sensor state"):
+                vid = {"nodeId": node_id, "commandClass": CommandClass.SENSOR_BINARY, "endpoint": ep, "property": prop}
+                v = await get_one(vid, "motion")
+                if v is not None:
+                    out["motion"] = v
+                    motion_done = True
+                    break
+            if motion_done:
                 break
+        # CC 49 : essayer property string puis property numérique
 
-        for vid, kind in [
-            (self._multilevel_sensor_value_id(node_id, "Air temperature"), "temperature_c"),
-            (self._multilevel_sensor_value_id(node_id, "Illuminance"), "illuminance_lux"),
-            (self._multilevel_sensor_value_id(node_id, "Humidity"), "humidity"),
-            (self._multilevel_sensor_value_id(node_id, "Ultraviolet"), "ultraviolet"),
-            (self._battery_value_id(node_id), "battery_percent"),
-        ]:
-            val = await get_one(vid, kind)
-            if val is not None:
-                out[kind] = val
+        cc49_tries = [
+            ("Air temperature", MultilevelSensorType.AIR_TEMPERATURE, "temperature_c"),
+            ("Illuminance", MultilevelSensorType.ILLUMINANCE, "illuminance_lux"),
+            ("Humidity", MultilevelSensorType.HUMIDITY, "humidity"),
+            ("Ultraviolet", MultilevelSensorType.ULTRAVIOLET, "ultraviolet"),
+        ]
+        for prop_name, prop_id_enum, kind in cc49_tries:
+            if out.get(kind) is not None:
+                continue
+            vid_str = self._multilevel_sensor_value_id(node_id, prop_name)
+            v = await get_one(vid_str, kind)
+            if v is not None:
+                out[kind] = v
+                continue
+            vid_num = self._multilevel_sensor_value_id_numeric(node_id, int(prop_id_enum))
+            v = await get_one(vid_num, kind)
+            if v is not None:
+                out[kind] = v
+
+        # Batterie (CC 128)
+        if out.get("battery_percent") is None:
+            v = await get_one(self._battery_value_id(node_id), "battery_percent")
+            if v is not None:
+                out["battery_percent"] = v
 
         return out
 
@@ -305,7 +430,7 @@ class ZWaveClient:
                             break
                     # 4) node.set_value (valueId sans nodeId, cf. zwave-js-server API)
                     value_id = {
-                        "commandClass": CC_MULTILEVEL_SWITCH,
+                        "commandClass": CommandClass.MULTILEVEL_SWITCH,
                         "endpoint": 0,
                         "property": PROP_TARGET_VALUE,
                     }
@@ -421,15 +546,9 @@ class ZWaveClient:
             self._cache_nodes_list = None
         # Sinon : retourner les nœuds déjà lus (get_node / sensor) encore en cache
         out = []
-        to_del = []
-        for node_id, (payload, ts) in list(self._cache_node.items()):
-            if now - ts > self._cache_node_ttl_sec:
-                to_del.append(node_id)
-                continue
+        for node_id, payload in self._cache_node.items():
             if isinstance(payload, dict):
                 out.append(payload)
-        for k in to_del:
-            del self._cache_node[k]
         return out
 
     async def get_nodes(self) -> list:
@@ -485,27 +604,20 @@ class ZWaveClient:
             now = time.monotonic()
             for nid, r in zip(range(1, 11), results):
                 if isinstance(r, dict):
-                    self._cache_node[nid] = (r, now)
+                    self._cache_node.set(nid, r)
         except (asyncio.TimeoutError, Exception):
             pass
         return self._get_nodes_from_caches()
 
     def _get_cached_node(self, node_id: int) -> Optional[dict]:
         """Retourne le nœud en cache s'il est encore valide (TTL)."""
-        entry = self._cache_node.get(node_id)
-        if not entry:
-            return None
-        payload, ts = entry
-        if time.monotonic() - ts > self._cache_node_ttl_sec:
-            del self._cache_node[node_id]
-            return None
-        return payload
+        return self._cache_node.get(node_id)
 
     async def get_node(self, node_id: int) -> Optional[dict]:
         """Détails d'un nœud. Tente HTTP puis Socket.IO ; en timeout retourne le cache si disponible."""
         node = await self._get_node_via_http(node_id)
         if node:
-            self._cache_node[node_id] = (node, time.monotonic())
+            self._cache_node.set(node_id, node)
             return node
         try:
             # Timeout 25s pour réseaux Z-Wave lents (capteurs batterie, réveil)
@@ -514,10 +626,10 @@ class ZWaveClient:
                 timeout=25.0,
             )
             if node:
-                self._cache_node[node_id] = (node, time.monotonic())
+                self._cache_node.set(node_id, node)
             return node
         except asyncio.TimeoutError:
-            cached = self._get_cached_node(node_id)
+            cached = self._cache_node.get(node_id)
             if cached:
                 logger.debug("get_node %s: timeout (lecture Z-Wave lente), retour cache", node_id)
                 return cached
@@ -525,39 +637,32 @@ class ZWaveClient:
             return None
         except Exception as e:
             logger.error(f"get_node {node_id}: {e}")
-            cached = self._get_cached_node(node_id)
+            cached = self._cache_node.get(node_id)
             if cached:
                 logger.debug("get_node %s: erreur, retour cache", node_id)
                 return cached
             return None
 
-    def _bool_from_value_dict(self, v: dict) -> Optional[bool]:
-        """Extrait un booléen depuis un objet valeur (value, newValue ou currentValue)."""
-        val = v.get("value") if "value" in v else v.get("newValue") or v.get("currentValue")
-        if val is None:
-            return None
-        return bool(val)
-
     def _motion_from_node(self, node: Optional[dict]) -> bool:
-        """Extrait l'état mouvement (CC 48 Binary Sensor) depuis l'objet node. MultiSensor7."""
+        """Extrait l'état mouvement (CC 48 Binary Sensor) depuis l'objet node."""
         if not node:
             return False
         values = node.get("values") or {}
+        cc = CommandClass.SENSOR_BINARY
         if isinstance(values, list):
             for v in values:
-                if isinstance(v, dict) and v.get("commandClass") == CC_BINARY_SENSOR:
-                    b = self._bool_from_value_dict(v)
+                if isinstance(v, dict) and v.get("commandClass") == cc:
+                    b = extract_zwave_value(v)
                     if b is not None:
-                        return b
+                        return bool(b)
             return False
-        # format dict: "48-0-currentValue" ou "5-48-0-currentValue"
         for k, v in values.items():
             if not isinstance(v, dict):
                 continue
-            if str(v.get("commandClass")) == str(CC_BINARY_SENSOR) or (isinstance(k, str) and "48-" in k):
-                b = self._bool_from_value_dict(v)
+            if str(v.get("commandClass")) == str(cc) or (isinstance(k, str) and "48-" in k):
+                b = extract_zwave_value(v)
                 if b is not None:
-                    return b
+                    return bool(b)
         return False
 
     async def get_motion_state(self, node_id: int) -> bool:
@@ -565,12 +670,13 @@ class ZWaveClient:
         node = await self.get_node(node_id)
         return self._motion_from_node(node)
 
-    def _node_has_command_class(self, node: Optional[dict], cc: int) -> bool:
-        """Vérifie si le nœud expose la command class donnée (ex. 38 = Multilevel Switch, 48 = Binary Sensor)."""
+    def _node_has_command_class(self, node: Optional[dict], cc: Any) -> bool:
+        """Vérifie si le nœud expose la command class donnée (IntEnum ou int)."""
         if not node:
             return False
         values = node.get("values") or {}
-        cc_str = str(cc)
+        cc_val = int(cc) if hasattr(cc, "__int__") else cc
+        cc_str = str(cc_val)
         if isinstance(values, list):
             for v in values:
                 if isinstance(v, dict) and str(v.get("commandClass")) == cc_str:
@@ -579,64 +685,30 @@ class ZWaveClient:
         for k, v in values.items():
             if isinstance(v, dict) and str(v.get("commandClass")) == cc_str:
                 return True
-            if isinstance(k, str) and (k.startswith(f"{cc}-") or f"-{cc}-" in k):
+            if isinstance(k, str) and (k.startswith(f"{cc_val}-") or f"-{cc_val}-" in k):
                 return True
         return False
 
     def _is_sensor_node(self, node: Optional[dict]) -> bool:
-        """True si le nœud est un capteur (MultiSensor 7 ou Binary Sensor sans Multilevel Switch)."""
+        """True si le nœud est un capteur (reconnu par le registre ou Binary Sensor sans Multilevel Switch)."""
         if not node:
             return False
-        if self._is_aeotec_multisensor7(node):
+        if device_info_from_node(node) is not None:
             return True
-        has_cc38 = self._node_has_command_class(node, CC_MULTILEVEL_SWITCH)
-        has_cc48 = self._node_has_command_class(node, CC_BINARY_SENSOR)
+        has_cc38 = self._node_has_command_class(node, CommandClass.MULTILEVEL_SWITCH)
+        has_cc48 = self._node_has_command_class(node, CommandClass.SENSOR_BINARY)
         return has_cc48 and not has_cc38
 
     async def is_sensor_node(self, node_id: int) -> bool:
         """True si le nœud est un capteur (utilise le cache ou HTTP pour éviter getNode lent)."""
-        node = self._get_cached_node(node_id)
+        node = self._cache_node.get(node_id)
         if node is not None:
             return self._is_sensor_node(node)
         node = await self._get_node_via_http(node_id)
         if node is not None:
-            self._cache_node[node_id] = (node, time.monotonic())
+            self._cache_node.set(node_id, node)
             return self._is_sensor_node(node)
         return False
-
-    def _is_aeotec_multisensor7(self, node: Optional[dict]) -> bool:
-        """Vérifie si le nœud est un Aeotec MultiSensor 7 (ZWA024)."""
-        if not node:
-            return False
-        mid = node.get("manufacturerId") or node.get("manufacturer_id")
-        pt = node.get("productType") or node.get("product_type")
-        pid = node.get("productId") or node.get("product_id")
-        if mid is not None and pt is not None and pid is not None:
-            if int(mid) == AEOTEC_MANUFACTURER_ID and int(pt) == AEOTEC_MULTISENSOR7_PRODUCT_TYPE and int(pid) == AEOTEC_MULTISENSOR7_PRODUCT_ID:
-                return True
-        # Certaines APIs exposent sous deviceConfig
-        dev = node.get("deviceConfig") or node.get("device_config") or {}
-        if dev:
-            mid = dev.get("manufacturerId") or dev.get("manufacturer_id")
-            pt = dev.get("productType") or dev.get("product_type")
-            pid = dev.get("productId") or dev.get("product_id")
-            if mid is not None and pt is not None and pid is not None:
-                if int(mid) == AEOTEC_MANUFACTURER_ID and int(pt) == AEOTEC_MULTISENSOR7_PRODUCT_TYPE and int(pid) == AEOTEC_MULTISENSOR7_PRODUCT_ID:
-                    return True
-        return False
-
-    def _float_from_value(self, v: Any) -> Optional[float]:
-        """Extrait un float depuis une valeur (value ou newValue)."""
-        if v is None:
-            return None
-        if isinstance(v, dict):
-            v = v.get("value") or v.get("newValue")
-        if v is None:
-            return None
-        try:
-            return float(v)
-        except (TypeError, ValueError):
-            return None
 
     def _sensor_values_from_node(self, node: Optional[dict]) -> Dict[str, Any]:
         """
@@ -659,57 +731,79 @@ class ZWaveClient:
                 if not isinstance(v, dict):
                     continue
                 cc = v.get("commandClass")
-                prop = v.get("property") or v.get("propertyKey") or ""
-                if cc == CC_BINARY_SENSOR:
-                    b = self._bool_from_value_dict(v)
+                prop = v.get("property")
+                prop_key = v.get("propertyKey")
+                prop_str = str(prop or "") + " " + str(prop_key or "")
+                if cc == CommandClass.SENSOR_BINARY:
+                    b = extract_zwave_value(v)
                     if b is not None:
-                        out["motion"] = b
+                        out["motion"] = bool(b)
                     continue
-                elif cc == CC_MULTILEVEL_SENSOR:
-                    val = v.get("value") if "value" in v else v.get("newValue")
-                    f = self._float_from_value(val) if val is not None else self._float_from_value(v)
-                    if f is None:
+                elif cc == CommandClass.SENSOR_MULTILEVEL:
+                    raw = extract_zwave_value(v)
+                    try:
+                        f = float(raw)
+                    except (TypeError, ValueError):
                         continue
-                    if "Air temperature" in str(prop) or prop == "Air temperature":
+                    if prop == 1 or prop_key == 1 or "Air temperature" in prop_str:
                         out["temperature_c"] = round(f, 1)
-                    elif "Humidity" in str(prop) or prop == "Humidity":
+                    elif prop == 5 or prop_key == 5 or "Humidity" in prop_str:
                         out["humidity"] = round(f, 1)
-                    elif "Illuminance" in str(prop) or prop == "Illuminance":
+                    elif prop == 3 or prop_key == 3 or "Illuminance" in prop_str:
                         out["illuminance_lux"] = int(round(f))
-                    elif "Ultraviolet" in str(prop) or prop == "Ultraviolet":
+                    elif prop == 27 or prop_key == 27 or "Ultraviolet" in prop_str:
                         out["ultraviolet"] = round(f, 1)
-                elif cc == CC_BATTERY and (prop == "level" or "level" in str(prop)):
-                    val = v.get("value") if "value" in v else v.get("newValue")
+                elif cc == CommandClass.BATTERY and (prop == "level" or prop == 128 or "level" in str(prop)):
+                    val = extract_zwave_value(v)
                     if val is not None:
                         try:
                             out["battery_percent"] = min(100, max(0, int(val)))
                         except (TypeError, ValueError):
                             pass
             return out
-        # format dict: "5-49-0-Air temperature" ou "48-0-currentValue"
+        # format dict: "5-49-0-Air temperature", "49-0-1", "48-0-currentValue"
+        # CC 49 property numeric: 1=Air temperature, 3=Illuminance, 5=Humidity, 27=Ultraviolet
+        cc49_property_map = {"1": "temperature_c", "3": "illuminance_lux", "5": "humidity", "27": "ultraviolet"}
         for k, v in values.items():
             if not isinstance(v, dict):
                 continue
             kstr = str(k)
-            if str(CC_BINARY_SENSOR) in kstr or kstr.startswith("48-"):
-                b = self._bool_from_value_dict(v)
+            if str(CommandClass.SENSOR_BINARY) in kstr or kstr.startswith("48-"):
+                b = extract_zwave_value(v)
                 if b is not None:
-                    out["motion"] = b
-            elif str(CC_MULTILEVEL_SENSOR) in kstr or kstr.startswith("49-"):
-                f = self._float_from_value(v)
-                if f is None:
+                    out["motion"] = bool(b)
+            elif str(CommandClass.SENSOR_MULTILEVEL) in kstr or kstr.startswith("49-"):
+                raw = extract_zwave_value(v)
+                try:
+                    f = float(raw)
+                except (TypeError, ValueError):
                     continue
-                if "Air temperature" in kstr or "Air temperature" in str(v.get("property", "")):
+                prop = str(v.get("property", ""))
+                prop_key = str(v.get("propertyKey", ""))
+                # Clé du type "49-0-1" ou "49-0-Air temperature"
+                parts = kstr.split("-")
+                last_part = parts[-1] if parts else ""
+                if last_part in cc49_property_map:
+                    kind = cc49_property_map[last_part]
+                    if kind == "temperature_c":
+                        out["temperature_c"] = round(f, 1)
+                    elif kind == "illuminance_lux":
+                        out["illuminance_lux"] = int(round(f))
+                    elif kind == "humidity":
+                        out["humidity"] = round(f, 1)
+                    elif kind == "ultraviolet":
+                        out["ultraviolet"] = round(f, 1)
+                elif "Air temperature" in kstr or "Air temperature" in prop or prop_key == "1":
                     out["temperature_c"] = round(f, 1)
-                elif "Humidity" in kstr or "Humidity" in str(v.get("property", "")):
+                elif "Humidity" in kstr or "Humidity" in prop or prop_key == "5":
                     out["humidity"] = round(f, 1)
-                elif "Illuminance" in kstr or "Illuminance" in str(v.get("property", "")):
+                elif "Illuminance" in kstr or "Illuminance" in prop or prop_key == "3":
                     out["illuminance_lux"] = int(round(f))
-                elif "Ultraviolet" in kstr or "Ultraviolet" in str(v.get("property", "")):
+                elif "Ultraviolet" in kstr or "Ultraviolet" in prop or prop_key == "27":
                     out["ultraviolet"] = round(f, 1)
-            elif str(CC_BATTERY) in kstr or kstr.startswith("128-"):
+            elif str(CommandClass.BATTERY) in kstr or kstr.startswith("128-"):
                 if "level" in kstr or v.get("property") == "level":
-                    val = v.get("value") if "value" in v else v.get("newValue")
+                    val = extract_zwave_value(v)
                     if val is not None:
                         try:
                             out["battery_percent"] = min(100, max(0, int(val)))
@@ -735,60 +829,48 @@ class ZWaveClient:
 
     async def get_sensor_data(self, node_id: int) -> Dict[str, Any]:
         """
-        Lit toutes les valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
-        Compatible Aeotec MultiSensor 7 (ZWA024). Retourne aussi device_type si reconnu.
-        Ordre : HTTP get_node (rapide) → si échec, getValue par valeur (cache driver, rapide) → sinon get_node Socket → cache.
+        Lit les valeurs capteur du nœud (MultiSensor 7 : CC 48 Motion, CC 49 temp/lux/humidity/UV, CC 128 batterie).
+        Un seul chemin : HTTP get_node (si dispo) puis sinon getValue par valueId string (format panneau).
+        Pas de timeout court — 10 s par getValue pour appareils sur pile.
         """
-        # 1) Tenter d'abord le nœud via HTTP (souvent plus rapide, pas de réveil)
+        # 1) HTTP get_node (port Z-Wave JS UI, ex. 8091) — rapide si l’UI expose /api/nodes/{id}
         node = await self._get_node_via_http(node_id)
         if node is not None:
-            self._cache_node[node_id] = (node, time.monotonic())
+            self._cache_node.set(node_id, node)
             data = self._sensor_values_from_node(node)
             data["node_id"] = node_id
-            if self._is_aeotec_multisensor7(node):
-                data["device_type"] = "aeotec_multisensor7"
-                data["device_name"] = AEOTEC_MULTISENSOR7_NAME
-                data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
+            info = device_info_from_node(node)
+            if info:
+                data["device_type"] = info["device_type"]
+                data["device_name"] = info["device_name"]
+                data["device_model"] = info["device_model"]
             else:
-                data["device_type"] = None
-                data["device_name"] = None
-                data["device_model"] = None
+                data["device_type"] = data["device_name"] = data["device_model"] = None
             if self._sensor_data_has_values(data):
-                self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
+                self._cache_sensor_data.set(node_id, dict(data))
             return data
 
-        # 2) Lire chaque valeur via getValue en séquentiel (cache du driver, évite timeout get_node)
-        data = await self._get_sensor_values_via_getvalue(node_id)
+        # 2) Lecture simple : getValue avec valueId strings (ex. 5-48-0-Motion, 5-49-0-Air temperature)
+        data = await self._get_sensor_data_simple(node_id, timeout_per_call=10.0)
         data["node_id"] = node_id
+        data["device_type"] = "aeotec_multisensor7"
+        data["device_name"] = "Aeotec MultiSensor 7"
+        data["device_model"] = "ZWA024"
         if self._sensor_data_has_values(data):
-            data["device_type"] = "aeotec_multisensor7"
-            data["device_name"] = AEOTEC_MULTISENSOR7_NAME
-            data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
-            self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
+            self._cache_sensor_data.set(node_id, dict(data))
+            logger.info("get_sensor_data node %s: données via getValue (valueId strings)", node_id)
             return data
 
-        # 3) Pas de données getValue : tenter uniquement le mouvement (1 getValue rapide), puis cache ou unknown
-        motion_direct = await self._get_motion_via_getvalue(node_id)
-        if motion_direct is not None:
-            data["motion"] = motion_direct
-            if self._sensor_data_has_values(data):
-                data["device_type"] = "aeotec_multisensor7"
-                data["device_name"] = AEOTEC_MULTISENSOR7_NAME
-                data["device_model"] = AEOTEC_MULTISENSOR7_MODEL
-                self._cache_sensor_data[node_id] = (dict(data), time.monotonic())
-                return data
-
-        # 4) Rien lu : retourner le cache si valide, sinon unknown (on ne fait plus get_node pour éviter 25s timeout)
-        now = time.monotonic()
-        entry = self._cache_sensor_data.get(node_id)
-        if entry:
-            cached_data, ts = entry
-            if now - ts <= self._cache_sensor_data_ttl_sec:
-                out = dict(cached_data)
-                out["cached"] = True
-                out["node_id"] = node_id
-                return out
-            self._cache_sensor_data.pop(node_id, None)
+        # 3) Aucune valeur : cache ou unknown
+        cached_data = self._cache_sensor_data.get(node_id)
+        if cached_data is not None:
+            out = dict(cached_data)
+            out["cached"] = True
+            out["node_id"] = node_id
+            logger.info("get_sensor_data node %s: retour cache", node_id)
+            return out
+        self._cache_sensor_data.pop(node_id, None)
+        logger.warning("get_sensor_data node %s: aucune donnée (HTTP + getValue)", node_id)
         data["unknown"] = True
         return data
 
@@ -821,30 +903,25 @@ class ZWaveClient:
         """Extrait currentValue (CC 38) depuis l'objet node (values[] ou values{})."""
         if not node:
             return None
-        def _int_from_val(v: Any) -> Optional[int]:
-            if v is None:
-                return None
-            if isinstance(v, dict):
-                v = v.get("value") or v.get("newValue") or v.get("currentValue")
-            if v is None:
-                return None
-            try:
-                return int(v)
-            except (TypeError, ValueError):
-                return None
         values = node.get("values")
         if isinstance(values, list):
             for v in values:
-                if isinstance(v, dict) and v.get("commandClass") == CC_MULTILEVEL_SWITCH and v.get("property") == PROP_CURRENT_VALUE:
-                    val = _int_from_val(v)
+                if isinstance(v, dict) and v.get("commandClass") == CommandClass.MULTILEVEL_SWITCH and v.get("property") == PROP_CURRENT_VALUE:
+                    val = extract_zwave_value(v)
                     if val is not None:
-                        return val
+                        try:
+                            return int(val)
+                        except (TypeError, ValueError):
+                            pass
         elif isinstance(values, dict):
             for k, v in values.items():
                 if "currentValue" in str(k) and isinstance(v, dict):
-                    val = _int_from_val(v)
+                    val = extract_zwave_value(v)
                     if val is not None:
-                        return val
+                        try:
+                            return int(val)
+                        except (TypeError, ValueError):
+                            pass
         return None
 
     async def _get_current_value_via_ws(self, node_id: int) -> Optional[int]:
@@ -920,7 +997,7 @@ class ZWaveClient:
             try:
                 url = self.base_url.rstrip("/") + path
                 async with aiohttp.ClientSession() as session:
-                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                         if resp.status != 200:
                             continue
                         content_type = (resp.headers.get("Content-Type") or "").lower()
@@ -942,24 +1019,28 @@ class ZWaveClient:
                         return data if isinstance(data, dict) else None
             except Exception as e:
                 logger.debug("_get_node_via_http %s %s: %s", path, node_id, e)
-        return None
-
-    def _int_from_getvalue_response(self, val: Any) -> Optional[int]:
-        """Extrait un int depuis la réponse getValue (dict avec value/newValue/currentValue ou scalaire)."""
-        if val is None:
-            return None
-        if isinstance(val, dict):
-            v = val.get("value") if "value" in val else val.get("newValue") or val.get("currentValue")
-            if v is None:
-                return None
+        # Fallback : récupérer la liste des nœuds et extraire le bon (certaines UIs n'exposent pas GET /nodes/{id})
+        for list_path in ("/api/nodes", "/nodes"):
             try:
-                return int(v)
-            except (TypeError, ValueError):
-                return None
-        try:
-            return int(val)
-        except (TypeError, ValueError):
-            return None
+                url = self.base_url.rstrip("/") + list_path
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                        if resp.status != 200:
+                            continue
+                        content_type = (resp.headers.get("Content-Type") or "").lower()
+                        if "application/json" not in content_type:
+                            continue
+                        data = await resp.json()
+                        nodes = data if isinstance(data, list) else (data.get("nodes") or data.get("data")) if isinstance(data, dict) else None
+                        if not nodes:
+                            continue
+                        for n in nodes:
+                            if isinstance(n, dict) and (n.get("id") == node_id or n.get("nodeId") == node_id):
+                                logger.debug("_get_node_via_http: node %s trouvé via %s", node_id, list_path)
+                                return n
+            except Exception as e:
+                logger.debug("_get_node_via_http list %s: %s", list_path, e)
+        return None
 
     async def _get_current_value(self, node_id: int) -> Tuple[Optional[int], bool]:
         """Lit currentValue (CC 38). Ordre : WebSocket → HTTP → Socket.IO getValue/getNode → cache."""
@@ -982,7 +1063,11 @@ class ZWaveClient:
                     self._call_api("getValue", vid),
                     timeout=15.0,
                 )
-                v = self._int_from_getvalue_response(result)
+                raw = extract_zwave_value(result)
+                try:
+                    v = int(raw) if raw is not None else None
+                except (TypeError, ValueError):
+                    v = None
                 if v is not None:
                     self._cache_current_value[node_id] = v
                     return (v, False)

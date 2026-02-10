@@ -1,14 +1,18 @@
 """
 Configuration de l'API Raspberry Z-Wave (serveur Flask sur le RPi).
 
+Ports (cohérence capteur / lampes) :
+- 5000 : API Flask (backend appelle http://<rpi>:5000/api/nodes/<node_id>/sensor)
+- 8091 : Z-Wave JS UI — HTTP (get node) + Socket.IO (getValue). Lecture capteur = 8091 uniquement.
+- 3000 : Z-Wave JS Server WebSocket (setValue lampes). Capteur = non utilisé.
+
 Lit les variables depuis os.environ (chargé depuis sae_s5/.env à la racine).
-Ne pas utiliser API_HOST / API_PORT du .env : ce sont les variables du backend (FastAPI).
-Sur le RPi on utilise uniquement : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_*,
-BACKEND_URL, RASPBERRY_API_KEY, BACKEND_HEARTBEAT_INTERVAL, ZWAVE_DEBUG.
+Sur le RPi : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_UI_URL, ZWAVE_JS_WS_URL,
+BACKEND_URL, RASPBERRY_API_KEY, BACKEND_HEARTBEAT_INTERVAL, ZWAVE_DEBUG, MULTISENSOR7_NODE_ID.
 """
 import os
 
-# Z-Wave JS UI (zwave-js/docker-compose.yml : SOCKET_PORT=8091, interface web Socket.IO)
+# Z-Wave JS UI : HTTP + Socket.IO (port 8091). Lecture capteur = get_node HTTP puis getValue Socket.IO.
 ZWAVE_JS_UI_URL = os.environ.get("ZWAVE_JS_UI_URL", "http://localhost:8091").rstrip("/")
 
 def _default_ws_url(http_url: str) -> str:
