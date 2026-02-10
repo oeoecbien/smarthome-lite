@@ -30,16 +30,9 @@ import {
 } from "@/components/ui/select"
 import {
   Radio,
-  Thermometer,
-  Droplets,
-  Sun,
-  Gauge,
-  Battery,
-  Activity,
   RefreshCw,
   Cpu,
   AlertCircle,
-  Circle,
   Plus,
   ExternalLink,
 } from "lucide-react"
@@ -79,17 +72,6 @@ export default function AdminZwaveSensorsPage() {
     const id = setInterval(() => setTick((t) => t + 1), 1000)
     return () => clearInterval(id)
   }, [lastUpdateMs])
-
-  const handleStreamData = useCallback((data: ZwaveSensorData | null, error: string | null) => {
-    if (error) {
-      setSensorError(error)
-      // Garder les dernières données en cas d'erreur temporaire
-    } else if (data) {
-      setSensorData(data)
-      setSensorError(null)
-      setLastUpdateMs(Date.now())
-    }
-  }, [])
 
   useEffect(() => {
     if (!isAdmin) {
@@ -143,7 +125,7 @@ export default function AdminZwaveSensorsPage() {
 
   const rpiIdNum = selectedRpiId ? Number(selectedRpiId) : 0
   const nodeIdNum = nodeId ? Number(nodeId) : 0
-  const canStream = rpiIdNum >= 1 && nodeIdNum >= 1 && nodeIdNum <= 255
+  const canRefresh = rpiIdNum >= 1 && nodeIdNum >= 1 && nodeIdNum <= 255
 
   const selectedRpi = raspberryPis.find((r) => String(r.id) === selectedRpiId)
   const existingSensorDevice = sensorDevices.find(
@@ -228,18 +210,17 @@ export default function AdminZwaveSensorsPage() {
           Capteurs Z-Wave
         </h1>
         <p className="text-muted-foreground">
-          Données en temps réel des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
-          Lecture rapide (cache driver). Enregistrez le capteur puis associez des lampes pour le pilotage par mouvement et luminosité.
+          Consultez les données des capteurs Z-Wave (ex. Aeotec MultiSensor 7) via le Raspberry Pi.
+          Choisissez le RPi et le node ID puis cliquez sur « Rafraîchir ». Enregistrez le capteur puis associez des lampes pour le pilotage par mouvement et luminosité.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Lecture capteur + flux temps réel */}
         <Card>
           <CardHeader>
-            <CardTitle>Dashboard capteur en direct</CardTitle>
+            <CardTitle>Lecture capteur</CardTitle>
             <CardDescription>
-              Choisissez le Raspberry Pi et le node ID Z-Wave (modifiable). Valeurs en temps réel, flux toutes les 5 secondes.
+              Choisissez le Raspberry Pi et le node ID Z-Wave, puis cliquez sur « Rafraîchir maintenant » pour récupérer les dernières valeurs.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -307,23 +288,6 @@ export default function AdminZwaveSensorsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="live"
-                  checked={liveEnabled}
-                  onCheckedChange={setLiveEnabled}
-                  disabled={!canStream}
-                />
-                <Label htmlFor="live" className="cursor-pointer">
-                  Temps réel (flux 5 s)
-                </Label>
-              </div>
-              {liveEnabled && canStream && (
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Circle className="h-2 w-2 fill-green-500 text-green-500 animate-pulse" />
-                  En direct
-                </span>
-              )}
               <span className="text-sm text-muted-foreground">
                 Dernière mise à jour : {formatLastUpdate(lastUpdateMs)}
               </span>
@@ -331,7 +295,7 @@ export default function AdminZwaveSensorsPage() {
 
             <Button
               onClick={fetchSensorDataManual}
-              disabled={isManualRefresh || isLoadingRpis || raspberryPis.length === 0}
+              disabled={isManualRefresh || isLoadingRpis || raspberryPis.length === 0 || !canRefresh}
               variant="secondary"
             >
               {isManualRefresh ? (
@@ -430,12 +394,12 @@ export default function AdminZwaveSensorsPage() {
               </div>
             )}
 
-            {!sensorData && !sensorError && canStream && liveEnabled && (
-              <p className="text-sm text-muted-foreground">Connexion au flux en cours…</p>
+            {!sensorData && !sensorError && canRefresh && (
+              <p className="text-sm text-muted-foreground">Cliquez sur « Rafraîchir maintenant » pour charger les données du capteur.</p>
             )}
 
             {/* Enregistrer ce capteur comme appareil (type sensor) */}
-            {canStream && (
+            {canRefresh && (
               <div className="pt-4 border-t border-border space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Appareils</p>
                 {isLoadingSensors ? (
