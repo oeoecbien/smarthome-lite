@@ -1,12 +1,11 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
+import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 import { useRouter } from "next/navigation"
@@ -46,44 +45,6 @@ import {
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
-function useSensorStream(
-  enabled: boolean,
-  rpiId: number | null,
-  nodeId: number | null,
-  onData: (data: ZwaveSensorData | null, error: string | null) => void
-) {
-  const abortRef = useRef<(() => void) | null>(null)
-  useEffect(() => {
-    if (!enabled || !rpiId || nodeId == null || nodeId < 1 || nodeId > 255) {
-      if (abortRef.current) {
-        abortRef.current()
-        abortRef.current = null
-      }
-      return
-    }
-    abortRef.current = raspberryPiService.subscribeNodeSensorStream(
-      rpiId,
-      nodeId,
-      (event) => {
-        if (event.error) {
-          onData(null, event.error)
-        } else {
-          onData(event as ZwaveSensorData, null)
-        }
-      },
-      (err) => {
-        onData(null, err.message)
-      }
-    ).abort
-    return () => {
-      if (abortRef.current) {
-        abortRef.current()
-        abortRef.current = null
-      }
-    }
-  }, [enabled, rpiId, nodeId, onData])
-}
-
 function formatLastUpdate(ms: number | null): string {
   if (ms == null) return "—"
   const sec = Math.floor((Date.now() - ms) / 1000)
@@ -103,7 +64,6 @@ export default function AdminZwaveSensorsPage() {
   const [sensorData, setSensorData] = useState<ZwaveSensorData | null>(null)
   const [sensorError, setSensorError] = useState<string | null>(null)
   const [lastUpdateMs, setLastUpdateMs] = useState<number | null>(null)
-  const [liveEnabled, setLiveEnabled] = useState(true)
   const [isLoadingRpis, setIsLoadingRpis] = useState(true)
   const [isLoadingDevices, setIsLoadingDevices] = useState(true)
   const [isManualRefresh, setIsManualRefresh] = useState(false)
@@ -130,13 +90,6 @@ export default function AdminZwaveSensorsPage() {
       setLastUpdateMs(Date.now())
     }
   }, [])
-
-  useSensorStream(
-    liveEnabled,
-    selectedRpiId ? Number(selectedRpiId) : null,
-    nodeId ? Number(nodeId) : null,
-    handleStreamData
-  )
 
   useEffect(() => {
     if (!isAdmin) {
