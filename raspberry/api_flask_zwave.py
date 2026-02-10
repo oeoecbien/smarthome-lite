@@ -356,8 +356,18 @@ def get_node_sensor(node_id):
     Valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
     Compatible Aeotec MultiSensor 7 (ZWA024). Retourne device_type si reconnu.
     """
+    logger.info("GET /api/nodes/%s/sensor request received", node_id)
     try:
         data = run_async(zwave_client.get_sensor_data(node_id))
+        motion = data.get("motion")
+        temp = data.get("temperature_c")
+        humidity = data.get("humidity")
+        lux = data.get("illuminance_lux")
+        cached = data.get("cached", False)
+        logger.info(
+            "GET /api/nodes/%s/sensor OK: motion=%s temp=%s humidity=%s lux=%s cached=%s",
+            node_id, motion, temp, humidity, lux, cached,
+        )
         return jsonify({"success": True, **data})
     except Exception as e:
         logger.error("get_node_sensor %s: %s", node_id, e)

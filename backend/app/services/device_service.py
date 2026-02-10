@@ -47,18 +47,23 @@ class DeviceService:
         method: str,
         endpoint: str,
         timeout_override: Optional[float] = None,
+        dont_mark_offline_on_timeout: bool = False,
         **kwargs,
     ) -> dict:
         """
         Requête HTTP vers le RPi (GET ou POST). Met à jour is_online selon le résultat.
         Envoie X-API-Key si RASPBERRY_PI_API_KEY est défini (requis si le RPi exige une clé).
-        timeout_override: délai en secondes (ex. 20 pour la lecture capteur Z-Wave, plus lente).
+        timeout_override: délai en secondes (ex. 60 pour la lecture capteur Z-Wave, plus lente).
+        dont_mark_offline_on_timeout: si True, en cas de timeout on ne passe pas le RPi en hors ligne
+          (utile pour la lecture capteur : le timeout peut venir du réveil Z-Wave, pas du RPi).
         """
         url = _rpi_base_url(rpi) + endpoint
         headers = {**self._rpi_headers(), **kwargs.pop("headers", {})}
         if headers:
             kwargs["headers"] = headers
         timeout_sec = timeout_override if timeout_override is not None else settings.raspberry_pi_timeout
+        if "/sensor" in endpoint:
+            logger.info("RPi sensor request: %s %s (timeout=%ss)", method, url, timeout_sec)
         try:
             async with httpx.AsyncClient(timeout=timeout_sec) as client:
                 if method.upper() == "GET":
@@ -70,14 +75,27 @@ class DeviceService:
                     rpi.is_online = True
                     self.db.commit()
                     self.db.refresh(rpi)
-                    logger.info(f"Raspberry Pi {rpi.name} is now online")
-                return response.json()
+                    logger.info("Raspberry Pi %s is now online", rpi.name)
+                result = response.json()
+                if "/sensor" in endpoint and isinstance(result, dict):
+                    motion = result.get("motion")
+                    temp = result.get("temperature_c")
+                    cached = result.get("cached", False)
+                    logger.info(
+                        "RPi sensor response OK: node_id=%s motion=%s temp=%s cached=%s",
+                        result.get("node_id"), motion, temp, cached,
+                    )
+                return result
         except httpx.TimeoutException:
             logger.error(f"Timeout connecting to {rpi.name} at {url}")
-            if rpi.is_online:
+            if not dont_mark_offline_on_timeout and rpi.is_online:
                 rpi.is_online = False
                 self.db.commit()
                 self.db.refresh(rpi)
+            if dont_mark_offline_on_timeout:
+                raise Exception(
+                    f"Lecture du capteur en timeout (appareil Z-Wave sur pile possible). Le RPi « {rpi.name} » est peut-être en ligne. Réessayez."
+                )
             raise Exception(f"Raspberry Pi {rpi.name} not responding")
         except httpx.HTTPStatusError as e:
             status = e.response.status_code
@@ -118,10 +136,15 @@ class DeviceService:
         Récupère les données capteur d'un nœud Z-Wave depuis le RPi.
         Compatible Aeotec MultiSensor 7 (ZWA024) : motion, temperature_c, humidity,
         illuminance_lux, ultraviolet, battery_percent, device_type, etc.
-        Le RPi utilise getValue en séquentiel (cache driver) ; timeout 30 s.
+        Le RPi utilise getValue en séquentiel (cache driver). Timeout 60 s pour
+        appareils sur pile (réveil Z-Wave lent) ; on ne marque pas le RPi hors ligne en cas de timeout.
         """
         endpoint = f"/api/nodes/{node_id}/sensor"
-        return await self._request_rpi(rpi, "GET", endpoint, timeout_override=30.0)
+        return await self._request_rpi(
+            rpi, "GET", endpoint,
+            timeout_override=60.0,
+            dont_mark_offline_on_timeout=True,
+        )
 
     async def get_state_from_rpi(self, device: Device) -> Optional[dict]:
         """

@@ -4,6 +4,7 @@ Routes pour la gestion des Raspberry Pi.
 
 import asyncio
 import json
+import logging
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -25,6 +26,7 @@ from app.utils.auth import generate_api_key, hash_api_key
 from app.services.device_service import DeviceService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _client_ip(request: Request) -> str | None:
@@ -164,17 +166,24 @@ async def get_raspberry_pi_node_sensor(
         raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
     if node_id < 1 or node_id > 255:
         raise HTTPException(status_code=400, detail="node_id doit être entre 1 et 255")
+    logger.info("GET sensor: rpi_id=%s rpi=%s node_id=%s", rpi_id, rpi.name, node_id)
     device_service = DeviceService(db)
     try:
         data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
+        logger.info("GET sensor OK: rpi_id=%s node_id=%s", rpi_id, node_id)
         return data
     except Exception as e:
+        logger.warning("GET sensor failed: rpi_id=%s node_id=%s err=%s", rpi_id, node_id, e)
         err = str(e).strip()
-        if "not responding" in err or "Timeout" in err.lower():
+        if "timeout" in err.lower() and "capteur" in err.lower():
             detail = (
-                f"Le Raspberry Pi « {rpi.name} » n'a pas répondu à temps (lecture Z-Wave lente ou inaccessible). "
-                "Vérifiez que le RPi est allumé, que l'API Flask (port 5000) tourne, que l'IP est correcte "
-                "et que le serveur backend peut joindre le RPi (même réseau ou réseau joignable)."
+                "Lecture du capteur en timeout (appareil Z-Wave sur pile possible). "
+                "Le RPi est peut-être en ligne. Attendez quelques secondes puis cliquez sur « Rafraîchir maintenant »."
+            )
+        elif "not responding" in err or "Timeout" in err.lower():
+            detail = (
+                f"Le Raspberry Pi « {rpi.name} » n'a pas répondu à temps. "
+                "Vérifiez que l'API Flask (port 5000) tourne sur le RPi et que le backend peut le joindre."
             )
         elif "401" in err or "API key" in err.lower():
             detail = (
@@ -192,6 +201,7 @@ SENSOR_STREAM_INTERVAL_SEC = 5
 async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[str, None]:
     """Génère des événements SSE avec les données capteur toutes les SENSOR_STREAM_INTERVAL_SEC secondes."""
     from app.database import SessionLocal
+    logger.info("Sensor stream started: rpi_id=%s node_id=%s", rpi_id, node_id)
     try:
         while True:
             try:
@@ -199,17 +209,20 @@ async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[
                 try:
                     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
                     if not rpi:
+                        logger.warning("Sensor stream: RPi id=%s introuvable", rpi_id)
                         yield f"data: {json.dumps({'error': 'Raspberry Pi introuvable'})}\n\n"
                         return
                     device_service = DeviceService(db)
                     data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
                     payload = {"success": True, **data}
                     yield f"data: {json.dumps(payload)}\n\n"
+                    logger.debug("Sensor stream event sent: rpi_id=%s node_id=%s motion=%s", rpi_id, node_id, data.get("motion"))
                 finally:
                     db.close()
             except asyncio.CancelledError:
                 break
             except Exception as e:
+                logger.warning("Sensor stream error: rpi_id=%s node_id=%s err=%s", rpi_id, node_id, e)
                 yield f"data: {json.dumps({'error': str(e), 'success': False})}\n\n"
             try:
                 await asyncio.sleep(SENSOR_STREAM_INTERVAL_SEC)
@@ -217,6 +230,7 @@ async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[
                 break
     except asyncio.CancelledError:
         pass
+    logger.info("Sensor stream ended: rpi_id=%s node_id=%s", rpi_id, node_id)
 
 
 @router.get("/{rpi_id}/nodes/{node_id}/sensor/stream")
@@ -230,6 +244,7 @@ async def stream_raspberry_pi_node_sensor(
     Flux temps réel des données capteur (Server-Sent Events).
     Envoie un événement toutes les 5 secondes. Fermez la connexion pour arrêter.
     """
+    logger.info("GET sensor/stream: rpi_id=%s node_id=%s", rpi_id, node_id)
     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
     if not rpi:
         raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
