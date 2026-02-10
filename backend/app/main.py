@@ -15,7 +15,9 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings, validate_production_config
 from app.database import engine, Base, init_db, SessionLocal
-from app.models import RaspberryPi
+from app.models import Device, RaspberryPi, LightReading
+from app.services.device_service import DeviceService
+from app.services.smart_dimming_service import SmartDimmingService
 
 logging.basicConfig(
     level=settings.log_level,
@@ -105,9 +107,11 @@ async def lifespan(app: FastAPI):
 
     async def _rpi_heartbeat_loop():
         """Ping périodique des RPi via GET / : si la RPi répond → is_online = True."""
+        import os
         headers = {}
-        if getattr(settings, "raspberry_pi_api_key", None):
-            headers["X-API-Key"] = settings.raspberry_pi_api_key
+        key = getattr(settings, "raspberry_pi_api_key", None) or os.environ.get("RASPBERRY_API_KEY")
+        if key:
+            headers["X-API-Key"] = key.strip()
         interval = max(15, getattr(settings, "raspberry_pi_heartbeat_interval", 60))
         timeout = getattr(settings, "raspberry_pi_timeout", 5)
         await asyncio.sleep(3)  # Premier ping 3 s après démarrage
@@ -151,8 +155,74 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Impossible de démarrer le heartbeat RPi: {e}")
 
+    _sensor_control_task = None
+    SENSOR_CONTROL_INTERVAL = 30
+
+    async def _sensor_control_loop():
+        """Périodiquement : récupère les données des capteurs Z-Wave,
+        applique les règles capteur→lampe (si des lampes sont liées)
+        et déclenche le smart dimming si une luminosité est disponible."""
+        await asyncio.sleep(10)
+        while True:
+            try:
+                db = SessionLocal()
+                try:
+                    # Tous les capteurs déclarés (type == sensor).
+                    # Les règles capteur→lampe ne s'appliquent que si une lampe a controlled_by_sensor_id,
+                    # mais on veut toujours enregistrer la luminosité (light_readings) pour le dashboard.
+                    sensors = db.query(Device).filter(
+                        Device.type == "sensor",
+                        Device.deleted_at.is_(None),
+                    ).all()
+                    for sensor in sensors:
+                        try:
+                            rpi = sensor.raspberry_pi
+                            node_id = sensor.gpio_pin
+                            svc = DeviceService(db)
+                            data = await svc.get_sensor_data_from_rpi(rpi, node_id)
+                            await svc.evaluate_sensor_rules(sensor.id, data)
+                            # Si le capteur expose une luminosité (Z-Wave MultiSensor, etc.),
+                            # l'utiliser aussi pour le Smart Dimming global.
+                            lux = data.get("illuminance_lux")
+                            if lux is not None:
+                                reading = LightReading(
+                                    raspberry_pi_id=rpi.id,
+                                    lux_value=float(lux),
+                                    # Typiquement BH1750 / LDR ; on réutilise ce champ
+                                    # pour marquer une mesure issue d'un capteur Z-Wave.
+                                    sensor_type="BH1750",
+                                )
+                                db.add(reading)
+                                db.commit()
+                                db.refresh(reading)
+
+                                sd_service = SmartDimmingService(db)
+                                await sd_service.process_light_reading(reading)
+                        except Exception as e:
+                            logger.debug("Sensor control %s (node %s): %s", sensor.name, sensor.gpio_pin, e)
+                finally:
+                    db.close()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning("Sensor control loop error: %s", e)
+            await asyncio.sleep(SENSOR_CONTROL_INTERVAL)
+
+    try:
+        _sensor_control_task = asyncio.create_task(_sensor_control_loop())
+        logger.info("Pilotage lampes par capteur démarré (intervalle %s s)", SENSOR_CONTROL_INTERVAL)
+    except Exception as e:
+        logger.warning("Impossible de démarrer le pilotage capteur: %s", e)
+
     yield
 
+    if _sensor_control_task and not _sensor_control_task.done():
+        _sensor_control_task.cancel()
+        try:
+            await _sensor_control_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Pilotage capteur arrêté")
     if _heartbeat_task and not _heartbeat_task.done():
         _heartbeat_task.cancel()
         try:

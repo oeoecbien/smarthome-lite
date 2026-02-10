@@ -1,46 +1,61 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
-import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw, Pencil, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
+
+/** Patch renvoyé après mise à jour état/brillance pour mise à jour immédiate de la liste */
+export type DeviceStatePatch = { state?: boolean; brightness?: number }
 
 interface DeviceCardProps {
   device: Device
   onUpdate: () => void
   onDelete: (id: number) => void
+  /** Mise à jour immédiate de l'appareil dans la liste (évite d'attendre le refetch) */
+  onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
+  /** Édition (nom, type, pilotage par capteur) — affiche le bouton Modifier */
+  onEdit?: (device: Device) => void
 }
 
 const deviceIcons = {
   light: Lightbulb,
   dimmer: SunDim,
   socket: Plug,
+  sensor: Radio,
 }
 
-export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
+export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit }: DeviceCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
-  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 100)
+  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
   const [isDragging, setIsDragging] = useState(false)
+
+  // Synchroniser la brillance locale quand le device change (refetch ou callback)
+  useEffect(() => {
+    const b = device.brightness ?? 99
+    if (!isDragging) setLocalBrightness(b)
+  }, [device.brightness, isDragging])
 
   const Icon = deviceIcons[device.type] || Lightbulb
   const isOn = device.state === true || device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
+  const isSensor = device.type === "sensor"
   const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
-    // Ne pas permettre le changement si déjà en cours de mise à jour
     if (isUpdating) return
     
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, checked)
+      const res = await deviceService.updateState(device.id, checked)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Appareil mis à jour",
@@ -78,7 +93,8 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
     if (isSyncing) return
     setIsSyncing(true)
     try {
-      await deviceService.getDeviceState(device.id, true)
+      const res = await deviceService.getDeviceState(device.id, true)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({ title: "État synchronisé", description: `État de ${device.name} rafraîchi depuis le RPi.` })
     } catch {
@@ -99,7 +115,8 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
 
     setIsUpdating(true)
     try {
-      await deviceService.updateBrightness(device.id, value[0])
+      const res = await deviceService.updateBrightness(device.id, value[0])
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Intensité mise à jour",
@@ -119,7 +136,7 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
         friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
       }
       
-      setLocalBrightness(device.brightness ?? 100)
+      setLocalBrightness(device.brightness ?? 99)
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -176,32 +193,51 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
                     {device.location}
                   </span>
                 )}
+                {device.controlled_by_sensor_name && (
+                  <span className="text-xs text-muted-foreground">Piloté par {device.controlled_by_sensor_name}</span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Toggle, Sync, Delete */}
+          {/* Toggle, Sync, Delete, Edit */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={handleSyncFromRpi}
-              disabled={isSyncing}
-              title="Synchroniser l'état depuis le RPi"
-              aria-label="Synchroniser état RPi"
-            >
-              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            </Button>
-            {isUpdating ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            ) : (
-              <Switch 
-                checked={isOn} 
-                onCheckedChange={handleToggle} 
-                disabled={isUpdating}
-                aria-label={`Toggle ${device.name}`} 
-              />
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => onEdit(device)}
+                title="Modifier l'appareil"
+                aria-label="Modifier"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {!isSensor && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={handleSyncFromRpi}
+                  disabled={isSyncing}
+                  title="Synchroniser l'état depuis le RPi"
+                  aria-label="Synchroniser état RPi"
+                >
+                  {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                </Button>
+                {isUpdating ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <Switch 
+                    checked={isOn} 
+                    onCheckedChange={handleToggle} 
+                    disabled={isUpdating}
+                    aria-label={`Toggle ${device.name}`} 
+                  />
+                )}
+              </>
             )}
             <Button
               variant="ghost"
@@ -221,12 +257,12 @@ export function DeviceCard({ device, onUpdate, onDelete }: DeviceCardProps) {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Intensité</span>
-              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 100)}%</span>
+              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 99)}%</span>
             </div>
             <Slider
-              value={[isDragging ? localBrightness : (device.brightness ?? 100)]}
+              value={[isDragging ? localBrightness : (device.brightness ?? 99)]}
               min={0}
-              max={100}
+              max={99}
               step={1}
               onValueChange={handleBrightnessChange}
               onValueCommit={handleBrightnessCommit}

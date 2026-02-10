@@ -43,8 +43,17 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """
     Initialise la base de données (crée les tables si nécessaire).
-    
-    Note: Pour l'initialisation complète avec données de test,
-    utiliser le script SQL: db/init_database.sql
+    Applique les migrations optionnelles (colonnes ajoutées après coup).
     """
     Base.metadata.create_all(bind=engine)
+    # Migration: colonne smart_dimming_paused_until sur devices (si absente)
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        if conn.execute(
+            text(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'devices' AND column_name = 'smart_dimming_paused_until'"
+            )
+        ).scalar() is None:
+            conn.execute(text("ALTER TABLE devices ADD COLUMN smart_dimming_paused_until TIMESTAMP WITH TIME ZONE"))
+            conn.commit()

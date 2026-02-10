@@ -18,6 +18,7 @@ import type {
   CurrentScenario,
   ClassifyRequest,
   ClassifyResponse,
+  PredictIntensityRequest,
   PredictIntensityResponse,
   ModelMetrics,
   ScenarioType,
@@ -25,8 +26,6 @@ import type {
 import { SCENARIO_LABELS } from "@/lib/types"
 import { Brain, RefreshCw, AlertCircle, Cpu, SunDim, CheckCircle, XCircle, Gauge } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-const ROOM_TYPES = ["salon", "chambre", "cuisine", "bureau", "salle_de_bain", "couloir", "exterieur"]
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Lundi" },
@@ -49,25 +48,22 @@ export default function AdminAIPage() {
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null)
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true)
 
-  // Classification
+  // Classification (API: hour, day_of_week, presence_detected, light_on)
   const [classifyForm, setClassifyForm] = useState<ClassifyRequest>({
     hour: new Date().getHours(),
     day_of_week: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
     presence_detected: true,
     light_on: false,
-    ambient_light_level: 500,
-    temperature: 22,
   })
   const [isClassifying, setIsClassifying] = useState(false)
   const [classifyResult, setClassifyResult] = useState<ClassifyResponse | null>(null)
 
-  // Prediction
-  const [predictForm, setPredictForm] = useState({
-    ambient_light_lux: 300,
+  // Prédiction d'intensité (API: hour, day_of_week, lux_value, presence_detected, scenario)
+  const [predictForm, setPredictForm] = useState<PredictIntensityRequest>({
     hour: new Date().getHours(),
     day_of_week: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
-    user_preference_avg: 70,
-    room_type: "salon",
+    lux_value: 300,
+    presence_detected: true,
     scenario: 0 as ScenarioType,
   })
   const [isPredicting, setIsPredicting] = useState(false)
@@ -229,12 +225,14 @@ export default function AdminAIPage() {
                   <span className="font-medium">{metrics.model_loaded ? "Modèle chargé" : "Modèle non chargé"}</span>
                 </div>
 
-                {metrics.accuracy !== undefined && (
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <span className="text-sm text-muted-foreground">Précision</span>
-                    <span className="font-medium">{(metrics.accuracy * 100).toFixed(1)}%</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                  <span className="text-sm text-muted-foreground">Précision</span>
+                  <span className="font-medium">
+                    {typeof metrics.accuracy === "number" && metrics.accuracy >= 0
+                      ? `${(metrics.accuracy * 100).toFixed(1)}%`
+                      : "Non disponible"}
+                  </span>
+                </div>
 
                 {metrics.scenarios && Array.isArray(metrics.scenarios) && (
                   <div>
@@ -332,29 +330,6 @@ export default function AdminAIPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="c-ambient">Luminosité ambiante (lux)</Label>
-                <Input
-                  id="c-ambient"
-                  type="number"
-                  min="0"
-                  value={classifyForm.ambient_light_level}
-                  onChange={(e) =>
-                    setClassifyForm({ ...classifyForm, ambient_light_level: Number.parseInt(e.target.value) })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="c-temp">Température (°C)</Label>
-                <Input
-                  id="c-temp"
-                  type="number"
-                  value={classifyForm.temperature}
-                  onChange={(e) => setClassifyForm({ ...classifyForm, temperature: Number.parseInt(e.target.value) })}
-                />
-              </div>
-
               <Button type="submit" className="w-full" disabled={isClassifying}>
                 {isClassifying ? "Classification..." : "Classifier"}
               </Button>
@@ -418,49 +393,25 @@ export default function AdminAIPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="p-ambient">Luminosité ambiante (lux)</Label>
+                <Label htmlFor="p-lux">Luminosité ambiante (lux)</Label>
                 <Input
-                  id="p-ambient"
+                  id="p-lux"
                   type="number"
                   min="0"
-                  value={predictForm.ambient_light_lux}
+                  value={predictForm.lux_value}
                   onChange={(e) =>
-                    setPredictForm({ ...predictForm, ambient_light_lux: Number.parseInt(e.target.value) })
+                    setPredictForm({ ...predictForm, lux_value: Number(e.target.value) || 0 })
                   }
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="p-pref">Préférence moyenne utilisateur (%)</Label>
-                <Input
-                  id="p-pref"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={predictForm.user_preference_avg}
-                  onChange={(e) =>
-                    setPredictForm({ ...predictForm, user_preference_avg: Number.parseInt(e.target.value) })
-                  }
+              <div className="flex items-center justify-between">
+                <Label htmlFor="p-presence">Présence détectée</Label>
+                <Switch
+                  id="p-presence"
+                  checked={predictForm.presence_detected}
+                  onCheckedChange={(v) => setPredictForm({ ...predictForm, presence_detected: v })}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="p-room">Type de pièce</Label>
-                <Select
-                  value={predictForm.room_type}
-                  onValueChange={(v) => setPredictForm({ ...predictForm, room_type: v })}
-                >
-                  <SelectTrigger id="p-room">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROOM_TYPES.map((room) => (
-                      <SelectItem key={room} value={room}>
-                        {room.charAt(0).toUpperCase() + room.slice(1).replace("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="space-y-2">
@@ -494,25 +445,25 @@ export default function AdminAIPage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Gauge className="h-5 w-5 text-primary" />
-                      <span className="text-2xl font-bold">{Math.round(predictResult.predicted_brightness)}%</span>
+                      <span className="text-2xl font-bold">{predictResult.intensity}%</span>
                     </div>
                     <div
                       className="flex-1 h-4 bg-muted-foreground/20 rounded-full overflow-hidden"
                       role="progressbar"
-                      aria-valuenow={predictResult.predicted_brightness}
+                      aria-valuenow={predictResult.intensity}
                       aria-valuemin={0}
                       aria-valuemax={100}
                     >
                       <div
                         className={cn(
                           "h-full rounded-full transition-all",
-                          predictResult.predicted_brightness > 70
+                          predictResult.intensity > 70
                             ? "bg-warning"
-                            : predictResult.predicted_brightness > 40
+                            : predictResult.intensity > 40
                               ? "bg-secondary"
                               : "bg-info",
                         )}
-                        style={{ width: `${predictResult.predicted_brightness}%` }}
+                        style={{ width: `${predictResult.intensity}%` }}
                       />
                     </div>
                   </div>
@@ -520,6 +471,9 @@ export default function AdminAIPage() {
                     <p className="text-sm text-muted-foreground mt-2">
                       Confiance: {(predictResult.confidence * 100).toFixed(1)}%
                     </p>
+                  )}
+                  {predictResult.method && (
+                    <p className="text-xs text-muted-foreground mt-1">Méthode: {predictResult.method}</p>
                   )}
                 </div>
               )}

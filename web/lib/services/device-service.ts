@@ -26,8 +26,17 @@ export const deviceService = {
     return api.get<DeviceStateResponse>(`/api/devices/${id}/state`, { sync: sync ? "true" : undefined })
   },
 
-  async createDevice(data: Omit<Device, "id" | "state" | "brightness">): Promise<Device> {
+  /** Le backend assigne user_id depuis le JWT, inutile de l’envoyer */
+  async createDevice(data: Omit<Device, "id" | "state" | "brightness" | "user_id">): Promise<Device> {
     return api.post<Device>("/api/devices", data)
+  },
+
+  /** Mise à jour partielle (nom, type, gpio, pilotage par capteur) */
+  async updateDevice(
+    id: number,
+    data: Partial<Pick<Device, "name" | "type" | "gpio_pin" | "controlled_by_sensor_id" | "sensor_rules">>
+  ): Promise<Device> {
+    return api.patch<Device>(`/api/devices/${id}`, data)
   },
 
   async updateState(id: number, state: boolean): Promise<DeviceStateResponse> {

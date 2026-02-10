@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 class LightReadingCreate(BaseModel):
-    """Schéma pour création d'une mesure de luminosité."""
+    """Schéma pour création d'une mesure de luminosité (appel RPi)."""
     lux_value: float = Field(..., ge=0, description="Valeur en lux")
     sensor_type: str = Field(default="BH1750", description="Type de capteur")
 
@@ -32,7 +32,7 @@ class LightReadingResponse(BaseModel):
     measured_at: datetime
 
 
-@router.post("/", response_model=LightReadingResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=LightReadingResponse, status_code=status.HTTP_201_CREATED)
 async def create_light_reading(
     reading_data: LightReadingCreate,
     rpi: RaspberryPi = Depends(verify_raspberry_pi),
@@ -79,7 +79,7 @@ async def create_light_reading(
     }
 
 
-@router.get("/", response_model=List[LightReadingResponse])
+@router.get("", response_model=List[LightReadingResponse])
 async def get_light_readings(
     raspberry_pi_id: Optional[int] = None,
     pagination: PaginationParams = Depends(),

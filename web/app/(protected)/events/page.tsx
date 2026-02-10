@@ -12,21 +12,23 @@ import { formatRelativeTime, formatDate } from "@/lib/formatters"
 import type { SystemEvent, Device } from "@/lib/types"
 import { Calendar, RefreshCw, AlertCircle, Filter, Activity } from "lucide-react"
 
+// Valeurs alignées avec le backend (EventFilterParams)
 const EVENT_TYPES = [
-  { value: "state_change", label: "Changement d'état" },
-  { value: "brightness_change", label: "Changement d'intensité" },
+  { value: "state_changed", label: "Changement d'état" },
+  { value: "brightness_changed", label: "Changement d'intensité" },
   { value: "rule_triggered", label: "Règle déclenchée" },
-  { value: "smart_dimming", label: "Smart Dimming" },
+  { value: "smart_dimming_applied", label: "Smart Dimming" },
   { value: "presence_detected", label: "Présence détectée" },
+  { value: "scenario_changed", label: "Changement de scénario" },
   { value: "system", label: "Système" },
 ]
 
 const SOURCE_TYPES = [
-  { value: "user", label: "Utilisateur" },
+  { value: "manual", label: "Utilisateur" },
   { value: "rule", label: "Règle" },
   { value: "smart_dimming", label: "Smart Dimming" },
-  { value: "api", label: "API" },
-  { value: "sensor", label: "Capteur" },
+  { value: "ai", label: "IA" },
+  { value: "automatic", label: "Automatique" },
 ]
 
 export default function EventsPage() {
@@ -78,16 +80,19 @@ export default function EventsPage() {
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
-      case "state_change":
+      case "state_changed":
         return "bg-primary/10 text-primary"
-      case "brightness_change":
+      case "brightness_changed":
         return "bg-warning/10 text-warning"
       case "rule_triggered":
         return "bg-secondary/10 text-secondary"
+      case "smart_dimming_applied":
       case "smart_dimming":
         return "bg-info/10 text-info"
       case "presence_detected":
         return "bg-accent/10 text-accent"
+      case "scenario_changed":
+      case "system":
       default:
         return "bg-muted text-muted-foreground"
     }
@@ -113,86 +118,79 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-balance">Journal des événements</h1>
-          <p className="text-muted-foreground">Historique complet des activités système</p>
+      {/* Header + Filtres sur une seule ligne compacte */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-balance">Journal des événements</h1>
+            <p className="text-muted-foreground">Historique complet des activités système</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualiser
-        </Button>
+
+        {/* Barre de filtres compacte */}
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/30 px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-medium text-muted-foreground shrink-0">
+            <Filter className="h-4 w-4" />
+            Filtres
+          </span>
+          <Select value={filterDeviceId} onValueChange={setFilterDeviceId}>
+            <SelectTrigger className="w-[180px] h-9">
+              <SelectValue placeholder="Appareil" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les appareils</SelectItem>
+              {devices.map((device) => (
+                <SelectItem key={device.id} value={String(device.id)}>
+                  {device.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterEventType} onValueChange={setFilterEventType}>
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              {EVENT_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterSource} onValueChange={setFilterSource}>
+            <SelectTrigger className="w-[160px] h-9">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les sources</SelectItem>
+              {SOURCE_TYPES.map((source) => (
+                <SelectItem key={source.value} value={source.value}>
+                  {source.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(filterLimit)} onValueChange={(v) => setFilterLimit(Number.parseInt(v))}>
+            <SelectTrigger className="w-[150px] h-9">
+              <SelectValue placeholder="Limite" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+              <SelectItem value="200">200</SelectItem>
+              <SelectItem value="500">500</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Filtres
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Select value={filterDeviceId} onValueChange={setFilterDeviceId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Appareil" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les appareils</SelectItem>
-                {devices.map((device) => (
-                  <SelectItem key={device.id} value={String(device.id)}>
-                    {device.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterEventType} onValueChange={setFilterEventType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Type d'événement" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                {EVENT_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filterSource} onValueChange={setFilterSource}>
-              <SelectTrigger>
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Toutes les sources</SelectItem>
-                {SOURCE_TYPES.map((source) => (
-                  <SelectItem key={source.value} value={source.value}>
-                    {source.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={String(filterLimit)} onValueChange={(v) => setFilterLimit(Number.parseInt(v))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Limite" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="50">50 événements</SelectItem>
-                <SelectItem value="100">100 événements</SelectItem>
-                <SelectItem value="200">200 événements</SelectItem>
-                <SelectItem value="500">500 événements</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Events List */}
+      {/* Liste des événements */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">

@@ -5,15 +5,21 @@ API Flask locale pour exposer les commandes Z-Wave au backend SmartHome Lite.
 Contrat backend (app/services/device_service.py) :
   - GET/POST http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/state
   - POST     http://{rpi.ip_address}:5000/api/devices/{gpio_pin}/brightness
-Sur un RPi Z-Wave, gpio_pin = node_id Z-Wave (ex: 3 pour l'ampoule ABUS).
+  - GET      http://{rpi.ip_address}:5000/api/nodes/{node_id}/sensor
+Sur un RPi Z-Wave, gpio_pin = node_id Z-Wave. Port 5000 = Flask ; capteur lit via Z-Wave JS UI (8091).
 
+Reconnaissance des appareils (device_type, device_name, device_model) : zwave_constants.device_info_from_node.
 Configuration : variables dans sae_s5/.env (pas de .env dans raspberry/).
+
+Note : run_async crée une nouvelle boucle d'événements par requête ; pour une connexion Socket.IO
+persistante et de meilleures perfs, envisager Quart (API compatible Flask).
 """
 
 import asyncio
 import logging
 from pathlib import Path
 from functools import wraps
+from typing import Tuple
 
 # Charger le .env à la racine du projet (sae_s5/.env) avant tout import de config
 _env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -23,7 +29,7 @@ try:
 except ImportError:
     pass
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 
 from config import (
@@ -35,6 +41,7 @@ from config import (
     DEBUG,
     BACKEND_URL,
     BACKEND_HEARTBEAT_INTERVAL,
+    MULTISENSOR7_NODE_ID,
 )
 from zwave_client import ZWaveClient
 
@@ -54,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 def run_async(coro):
     """
-    Exécute une coroutine dans une nouvelle boucle d'événements.
+    Exécute une coroutine dans une nouvelle boucle d'événements (Flask est synchrone).
     Déconnecte le client Z-Wave après chaque requête pour éviter "Event loop is closed".
     """
     loop = asyncio.new_event_loop()
@@ -69,6 +76,11 @@ def run_async(coro):
         loop.close()
 
 
+def _api_error(message: str, status: int = 500) -> Tuple[Response, int]:
+    """Réponse JSON d'erreur normalisée."""
+    return jsonify({"success": False, "error": message}), status
+
+
 def require_api_key(f):
     """Si RASPBERRY_API_KEY est défini, exige le header X-API-Key."""
     @wraps(f)
@@ -77,7 +89,7 @@ def require_api_key(f):
             return f(*args, **kwargs)
         key = request.headers.get("X-API-Key") or request.args.get("api_key")
         if key != API_KEY:
-            return jsonify({"success": False, "error": "Invalid or missing API key"}), 401
+            return _api_error("Invalid or missing API key", 401)
         return f(*args, **kwargs)
     return decorated
 
@@ -93,6 +105,7 @@ def root():
         "health": "/health",
         "api_devices": "/api/devices/<node_id>/state|brightness",
         "api_nodes": "/api/nodes",
+        "api_sensor": "/api/nodes/<node_id>/sensor",
         "zwave_js_ui_url": ZWAVE_JS_UI_URL,
         "zwave_js_ui_ws_url": ZWAVE_JS_UI_WS_URL,
         "zwave_js_ws_url": ZWAVE_JS_WS_URL,
@@ -124,22 +137,36 @@ def set_device_state(device_id):
 
     if request.method == "GET":
         try:
-            state, brightness, from_cache = run_async(
+            # Détecter si ce nœud est un capteur (MultiSensor, etc.) : pas de state/brightness lampe
+            is_sensor = run_async(zwave_client.is_sensor_node(node_id))
+            if is_sensor:
+                return jsonify({
+                    "success": True,
+                    "node_id": node_id,
+                    "sensor": True,
+                    "state": None,
+                    "brightness": None,
+                })
+            state, brightness, from_cache, unknown = run_async(
                 zwave_client.get_state_and_brightness(node_id)
             )
-            return jsonify({
+            payload = {
                 "success": True,
                 "node_id": node_id,
                 "state": state,
                 "brightness": brightness,
-                **({"cached": True} if from_cache else {}),
-            })
+            }
+            if from_cache:
+                payload["cached"] = True
+            if unknown:
+                payload["unknown"] = True  # Lecture impossible, état réel inconnu (ne pas afficher OFF)
+            return jsonify(payload)
         except Exception as e:
             logger.error("get_device_state node %s: %s", device_id, e)
-            return jsonify({"success": False, "error": str(e)}), 500
+            return _api_error(str(e), 500)
 
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
@@ -153,7 +180,7 @@ def set_device_state(device_id):
         })
     except Exception as e:
         logger.error("set_device_state node %s: %s", device_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(str(e), 500)
 
 
 @app.route("/api/devices/<int:device_id>/brightness", methods=["POST"])
@@ -163,16 +190,13 @@ def set_device_brightness(device_id):
     Intensité. Corps: { "brightness": 0-100, "transition": "immediate"|"fade" (optionnel) }
     """
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         brightness = data.get("brightness", 0)
         transition = data.get("transition", "immediate")
         node_id = device_id
 
         if not 0 <= brightness <= 100:
-            return jsonify({
-                "success": False,
-                "error": "Brightness must be between 0 and 100",
-            }), 400
+            return _api_error("Brightness must be between 0 and 100", 400)
 
         duration = "5s" if transition == "fade" else None
         result = run_async(
@@ -217,7 +241,7 @@ def get_node(node_id):
 def set_node_state(node_id):
     """ON/OFF d’un nœud."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         state = data.get("state", False)
         if state:
             result = run_async(zwave_client.turn_on(node_id))
@@ -238,7 +262,7 @@ def set_node_state(node_id):
 def set_node_brightness(node_id):
     """Intensité d’un nœud."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(force=True, silent=True) or {}
         brightness = data.get("brightness", 0)
         if not 0 <= brightness <= 100:
             return jsonify({
@@ -261,19 +285,48 @@ def set_node_brightness(node_id):
 def get_node_current(node_id):
     """État et intensité actuels (une seule lecture)."""
     try:
-        state, brightness, from_cache = run_async(
+        state, brightness, from_cache, unknown = run_async(
             zwave_client.get_state_and_brightness(node_id)
         )
-        return jsonify({
+        payload = {
             "success": True,
             "node_id": node_id,
             "state": state,
             "brightness": brightness,
-            **({"cached": True} if from_cache else {}),
-        })
+        }
+        if from_cache:
+            payload["cached"] = True
+        if unknown:
+            payload["unknown"] = True
+        return jsonify(payload)
     except Exception as e:
         logger.error("get_node_current %s: %s", node_id, e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/nodes/<int:node_id>/sensor", methods=["GET"])
+@require_api_key
+def get_node_sensor(node_id):
+    """
+    Valeurs capteur du nœud (mouvement, température, humidité, luminosité, UV, batterie).
+    device_type / device_name / device_model renseignés si le nœud est reconnu (registre zwave_constants).
+    """
+    logger.info("GET /api/nodes/%s/sensor request received", node_id)
+    try:
+        data = run_async(zwave_client.get_sensor_data(node_id))
+        motion = data.get("motion")
+        temp = data.get("temperature_c")
+        humidity = data.get("humidity")
+        lux = data.get("illuminance_lux")
+        cached = data.get("cached", False)
+        logger.info(
+            "GET /api/nodes/%s/sensor OK: motion=%s temp=%s humidity=%s lux=%s cached=%s",
+            node_id, motion, temp, humidity, lux, cached,
+        )
+        return jsonify({"success": True, **data})
+    except Exception as e:
+        logger.error("get_node_sensor %s: %s", node_id, e)
+        return _api_error(str(e), 500)
 
 
 @app.route("/api/nodes/<int:node_id>/interview", methods=["POST"])
@@ -284,7 +337,7 @@ def interview_node(node_id):
         return jsonify({"success": True, "node_id": node_id, "result": result})
     except Exception as e:
         logger.error("interview_node %s: %s", node_id, e)
-        return jsonify({"success": False, "error": str(e)}), 500
+        return _api_error(str(e), 500)
 
 
 def _backend_heartbeat_loop():
@@ -312,12 +365,53 @@ def _backend_heartbeat_loop():
             logger.debug("Backend heartbeat: %s", e)
 
 
+def _motion_to_backend_loop():
+    """Envoie POST /api/presence au backend à chaque détection de mouvement (front montant)."""
+    import time
+    import urllib.request
+    import urllib.error
+    import json
+    if not BACKEND_URL or not API_KEY or not MULTISENSOR7_NODE_ID:
+        logger.debug("Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant)")
+        return
+    url = f"{BACKEND_URL}/api/presence"
+    interval = 5  # secondes entre deux lectures
+    last_motion = False
+    while True:
+        time.sleep(interval)
+        try:
+            motion = run_async(zwave_client.get_motion_state(MULTISENSOR7_NODE_ID))
+            if motion and not last_motion:
+                # Front montant : envoi au backend
+                data = json.dumps({"sensor_node_id": MULTISENSOR7_NODE_ID}).encode("utf-8")
+                req = urllib.request.Request(
+                    url,
+                    data=data,
+                    method="POST",
+                    headers={
+                        "X-API-Key": API_KEY,
+                        "Content-Type": "application/json",
+                    },
+                )
+                urllib.request.urlopen(req, timeout=10)
+                logger.info("Mouvement détecté (node %s) → backend", MULTISENSOR7_NODE_ID)
+            last_motion = motion
+        except urllib.error.HTTPError as e:
+            logger.debug("Motion→backend HTTP %s: %s", e.code, e.reason)
+        except Exception as e:
+            logger.debug("Motion→backend: %s", e)
+
+
 if __name__ == "__main__":
     import threading
     if BACKEND_URL and API_KEY:
         _heartbeat = threading.Thread(target=_backend_heartbeat_loop, daemon=True)
         _heartbeat.start()
         logger.info("Heartbeat backend démarré (GET %s toutes les %ss)", f"{BACKEND_URL}/api/raspberry-pis/heartbeat", BACKEND_HEARTBEAT_INTERVAL)
+    if BACKEND_URL and API_KEY and MULTISENSOR7_NODE_ID:
+        _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
+        _motion.start()
+        logger.info("Détecteur (node %s) → présence backend démarré", MULTISENSOR7_NODE_ID)
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)

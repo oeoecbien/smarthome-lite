@@ -2,7 +2,7 @@
 Schémas Pydantic pour gestion des appareils.
 """
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Any, Dict, Optional, Literal
 from datetime import datetime
 
 
@@ -11,8 +11,8 @@ class DeviceBase(BaseModel):
     Schéma de base pour un appareil.
     """
     name: str = Field(..., min_length=1, max_length=100, description="Nom de l'appareil")
-    type: Literal["light", "dimmer", "socket"] = Field(..., description="Type d'appareil")
-    gpio_pin: int = Field(..., ge=1, le=40, description="Numéro GPIO (1-40)")
+    type: Literal["light", "dimmer", "socket", "sensor"] = Field(..., description="Type d'appareil")
+    gpio_pin: int = Field(..., ge=1, le=255, description="Numéro GPIO (1-40) ou node_id Z-Wave (1-255) pour sensor")
     raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi contrôleur")
     # Note: user_id est automatiquement défini depuis le token JWT, pas besoin de le passer
 
@@ -37,13 +37,22 @@ class DeviceUpdate(BaseModel):
     Schéma pour mise à jour d'un appareil.
     """
     name: Optional[str] = Field(None, min_length=1, max_length=100)
-    type: Optional[Literal["light", "dimmer", "socket"]] = None
-    gpio_pin: Optional[int] = Field(None, ge=1, le=40)
-    
+    type: Optional[Literal["light", "dimmer", "socket", "sensor"]] = None
+    gpio_pin: Optional[int] = Field(None, ge=1, le=255)
+    controlled_by_sensor_id: Optional[int] = Field(None, description="ID du capteur qui pilote cette lampe (null = désactivé)")
+    sensor_rules: Optional[Dict[str, Any]] = Field(
+        None,
+        description='Règles: motion { on_brightness, off_after_seconds }, illuminance { below_lux, brightness, above_lux }',
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
-                "name": "Lampe Bureau Modifiée"
+                "name": "Lampe Bureau Modifiée",
+                "sensor_rules": {
+                    "motion": {"on_brightness": 80, "off_after_seconds": 300},
+                    "illuminance": {"below_lux": 100, "brightness": 60, "above_lux": 2000},
+                },
             }
         }
 
@@ -85,7 +94,7 @@ class DeviceState(BaseModel):
     Schéma pour changement d'état d'un appareil.
     """
     state: bool = Field(..., description="État ON/OFF")
-    brightness: Optional[int] = Field(None, ge=0, le=100, description="Intensité lumineuse (0-100)")
+    brightness: Optional[int] = Field(None, ge=0, le=99, description="Intensité lumineuse (0-99)")
     
     class Config:
         json_schema_extra = {
@@ -99,6 +108,7 @@ class DeviceState(BaseModel):
 class DeviceBrightness(BaseModel):
     """
     Schéma pour changement d'intensité lumineuse.
+    Le frontend envoie 0-100 ; le backend envoie 0-99 au RPi (compatibilité Z-Wave).
     """
     brightness: int = Field(..., ge=0, le=100, description="Intensité lumineuse (0-100)")
     transition: Optional[int] = Field(None, ge=0, description="Durée de transition en secondes")
@@ -127,6 +137,9 @@ class DeviceWithLocation(BaseModel):
     gpio_pin: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    controlled_by_sensor_id: Optional[int] = None
+    sensor_rules: Optional[Dict[str, Any]] = None
+    controlled_by_sensor_name: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -76,7 +76,80 @@ class ApiClient {
     return response.json()
   }
 
-  async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+  /**
+   * Souscription à un flux Server-Sent Events (GET avec Authorization).
+   * Retourne un objet avec abort() pour fermer la connexion.
+   */
+  subscribeToStream<T = unknown>(
+    endpoint: string,
+    onMessage: (data: T) => void,
+    onError?: (err: Error) => void
+  ): { abort: () => void } {
+    const url = `${this.baseUrl}${endpoint}`
+    const controller = new AbortController()
+    let buffer = ""
+    const processLine = (line: string) => {
+      if (line.startsWith("data:")) {
+        const raw = line.slice(5).trim()
+        if (raw === "[DONE]" || !raw) return
+        try {
+          const data = JSON.parse(raw) as T
+          onMessage(data)
+        } catch {
+          // ignore invalid json
+        }
+      }
+    }
+    const run = async () => {
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: this.getHeaders(),
+          signal: controller.signal,
+        })
+        if (!response.ok) {
+          if (response.status === 401 && typeof window !== "undefined") {
+            localStorage.removeItem("auth_token")
+            localStorage.removeItem("auth_user")
+            window.location.href = "/login"
+            return
+          }
+          const errBody = await response.text()
+          onError?.(new Error(errBody || `HTTP ${response.status}`))
+          return
+        }
+        const reader = response.body?.getReader()
+        if (!reader) {
+          onError?.(new Error("Stream non disponible"))
+          return
+        }
+        const decoder = new TextDecoder()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+          for (const line of lines) processLine(line)
+        }
+        if (buffer) processLine(buffer)
+      } catch (e) {
+        if (e instanceof Error && e.name !== "AbortError") {
+          onError?.(e)
+        }
+      }
+    }
+    run()
+    return {
+      abort: () => controller.abort(),
+    }
+  }
+
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    options?: { timeout?: number }
+  ): Promise<T> {
     const url = new URL(`${this.baseUrl}${endpoint}`)
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -86,8 +159,9 @@ class ApiClient {
       })
     }
 
+    const timeoutMs = options?.timeout ?? this.timeout
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const response = await fetch(url.toString(), {
@@ -135,6 +209,28 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         method: "PUT",
+        headers: this.getHeaders(),
+        body: data ? JSON.stringify(data) : undefined,
+        signal: controller.signal,
+      })
+      return this.handleResponse<T>(response)
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error("La requête a expiré. Vérifiez votre connexion.")
+      }
+      throw error
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
+
+  async patch<T>(endpoint: string, data?: unknown): Promise<T> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: "PATCH",
         headers: this.getHeaders(),
         body: data ? JSON.stringify(data) : undefined,
         signal: controller.signal,

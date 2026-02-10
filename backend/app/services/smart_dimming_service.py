@@ -129,15 +129,31 @@ class SmartDimmingService:
                 scenario = 1  # Night
             logger.debug(f"Scénario par défaut: {scenario} (heure: {hour})")
         
-        # Récupérer les appareils dimmables allumés du même RPi
+        # Récupérer les appareils dimmables allumés du même RPi, non pilotés par un capteur
+        # (les lampes avec controlled_by_sensor_id sont gérées par evaluate_sensor_rules).
+        from datetime import timezone as tz
+        now_utc = datetime.now(tz.utc)
         devices = self.db.query(Device).filter(
             Device.raspberry_pi_id == light_reading.raspberry_pi_id,
-            Device.type == "dimmer",
-            Device.state == True
+            Device.type.in_(["light", "dimmer"]),
+            Device.state == True,
+            Device.controlled_by_sensor_id.is_(None),
+            Device.deleted_at.is_(None),
         ).all()
-        
+        # Exclure les appareils en pause smart dimming ; réinitialiser la pause si expirée
+        eligible = []
+        for d in devices:
+            if d.smart_dimming_paused_until is None:
+                eligible.append(d)
+            elif d.smart_dimming_paused_until <= now_utc:
+                d.smart_dimming_paused_until = None
+                self.db.add(d)
+                eligible.append(d)
+        if eligible:
+            self.db.commit()
+        devices = eligible
         if not devices:
-            logger.info("No dimmable devices active")
+            logger.debug("No dimmable devices eligible for smart dimming (same RPi, on, not sensor-controlled, not paused)")
             return []
         
         adjustments = []
@@ -179,7 +195,12 @@ class SmartDimmingService:
                         reason = f"ML prediction (confidence: {regression_result['confidence']:.2f})"
                         transition = "fade"  # Transition douce pour prédiction ML
                         use_ml_prediction = True
-                        
+                        calc_result = {
+                            "enabled": True,
+                            "target_brightness": target_brightness,
+                            "reason": reason,
+                            "transition": transition,
+                        }
                         logger.debug(
                             f"Utilisation prédiction ML: {target_brightness}% "
                             f"(confiance: {regression_result['confidence']:.2f})"
@@ -212,27 +233,12 @@ class SmartDimmingService:
                 reason = calc_result["reason"]
                 transition = calc_result.get("transition", "immediate")
             
-            # Vérifier si ajustement nécessaire (seuil de 10%)
-            brightness_diff = abs(device.brightness - target_brightness)
-            
-            if brightness_diff < settings.smart_dimming_threshold:
-                logger.debug(
-                    f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
-                )
-                continue
-            
-            previous_brightness = device.brightness
-            
+            # Vérifier si le scénario autorise le smart dimming (ex. Away = désactivé)
             if not calc_result.get("enabled", True):
                 continue
             
-            target_brightness = calc_result["target_brightness"]
-            reason = calc_result["reason"]
-            transition = calc_result.get("transition", "immediate")
-            
-            # Vérifier si ajustement nécessaire (seuil de 10%)
+            # Vérifier si ajustement nécessaire (seuil configurable)
             brightness_diff = abs(device.brightness - target_brightness)
-            
             if brightness_diff < settings.smart_dimming_threshold:
                 logger.debug(
                     f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"

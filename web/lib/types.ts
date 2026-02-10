@@ -9,11 +9,17 @@ export interface User {
   role?: UserRole
 }
 
+/** Règles pilotage par capteur (mouvement + luminosité) */
+export interface SensorRules {
+  motion?: { on_brightness?: number; off_after_seconds?: number }
+  illuminance?: { below_lux?: number; brightness?: number; above_lux?: number }
+}
+
 export interface Device {
   id: number
   user_id: number
   name: string
-  type: "light" | "dimmer" | "socket"
+  type: "light" | "dimmer" | "socket" | "sensor"
   raspberry_pi_id: number
   gpio_pin: number
   /** État ON/OFF (backend renvoie booléen) */
@@ -24,6 +30,12 @@ export interface Device {
   raspberry_pi_name?: string
   /** RPi en ligne = commandes envoyées au vrai hardware */
   raspberry_pi_online?: boolean
+  /** ID du capteur qui pilote cette lampe (lampes uniquement) */
+  controlled_by_sensor_id?: number | null
+  /** Règles : mouvement (allumer / éteindre après X s) et luminosité (seuils lux) */
+  sensor_rules?: SensorRules | null
+  /** Nom du capteur (affichage) */
+  controlled_by_sensor_name?: string | null
 }
 
 export interface Rule {
@@ -58,9 +70,25 @@ export const SCENARIO_LABELS: Record<ScenarioType, string> = {
   3: "Evening",
 }
 
+/** Contexte du scénario actuel (mouvement MultiSensor7, lampes). */
+export interface CurrentScenarioContext {
+  hour: number
+  day_of_week: number
+  presence_detected: boolean
+  light_on: boolean
+  raspberry_pi_id?: number
+  detected_users: number[]
+  detected_usernames: string[]
+  user_count: number
+}
+
 export interface CurrentScenario {
   scenario: ScenarioType
+  scenario_name?: string
   confidence?: number
+  method?: string
+  /** Contexte utilisé pour la classification (présence, lampes, utilisateurs détectés). */
+  context?: CurrentScenarioContext
   features?: Record<string, unknown>
 }
 
@@ -69,8 +97,6 @@ export interface ClassifyRequest {
   day_of_week: number
   presence_detected: boolean
   light_on: boolean
-  ambient_light_level: number
-  temperature?: number
 }
 
 export interface ClassifyResponse {
@@ -79,17 +105,17 @@ export interface ClassifyResponse {
 }
 
 export interface PredictIntensityRequest {
-  ambient_light_lux: number
   hour: number
   day_of_week: number
-  user_preference_avg: number
-  room_type: string
+  lux_value: number
+  presence_detected: boolean
   scenario: ScenarioType
 }
 
 export interface PredictIntensityResponse {
-  predicted_brightness: number
+  intensity: number
   confidence?: number
+  method?: string
 }
 
 export interface ModelMetrics {
@@ -122,17 +148,17 @@ export interface PresenceRecord {
   raspberry_pi_name?: string
   location?: string
   detected_at: string
-  device_mac_address?: string
-  signal_strength?: number
-  user_id?: number
+  sensor_node_id?: number
 }
 
+/** Mesure de luminosité (backend GET /api/light-readings). */
 export interface LightReading {
   id: number
   raspberry_pi_id: number
-  lux: number
-  percentage: number
-  timestamp: string
+  raspberry_pi_name?: string
+  lux_value: number
+  sensor_type?: string
+  measured_at: string
 }
 
 export interface SystemEvent {
@@ -153,4 +179,34 @@ export interface AuthResponse {
 export interface RuleTestResult {
   matched: boolean
   reason?: string
+}
+
+/** Données capteur d'un nœud Z-Wave (ex. Aeotec MultiSensor 7). Réponse normalisée backend (getValue / cache driver). */
+export interface ZwaveSensorData {
+  success?: boolean
+  device_id?: number | null
+  node_id: number
+  motion: boolean
+  temperature_c: number | null
+  humidity: number | null
+  illuminance_lux: number | null
+  ultraviolet: number | null
+  battery_percent: number | null
+  device_type: string | null
+  device_name: string | null
+  device_model: string | null
+  cached?: boolean | null
+  unknown?: boolean | null
+}
+
+/** Appareil Z-Wave connu par le backend (registre). */
+export interface ZwaveKnownDevice {
+  manufacturer_id: number
+  manufacturer_name: string
+  product_type: number
+  product_id: number
+  model: string
+  name: string
+  full_name: string
+  sensor_capabilities: string[]
 }

@@ -52,10 +52,11 @@ async def get_smart_dimming_status(
     
     today_count = query_adjustments.count()
     
-    # Obtenir les appareils actifs (dimmables allumés)
+    # Obtenir les appareils actifs (dimmables allumés, types light et dimmer)
     query_devices = db.query(Device.id).filter(
-        Device.type == "dimmer",
-        Device.state == True
+        Device.type.in_(["light", "dimmer"]),
+        Device.state == True,
+        Device.deleted_at.is_(None),
     )
     
     # Filtrer par les devices de l'utilisateur si ce n'est pas un admin
@@ -167,8 +168,8 @@ async def pause_smart_dimming_for_device(
     - Admins: tous les appareils
     """
     from app.models import Device
-    from datetime import datetime, timedelta
-    
+    from datetime import datetime, timedelta, timezone
+
     device = db.query(Device).filter(Device.id == device_id).first()
     if not device:
         raise HTTPException(status_code=404, detail="Appareil introuvable")
@@ -177,17 +178,16 @@ async def pause_smart_dimming_for_device(
     if current_user.role != "admin" and device.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Pour l'instant, on utilise un champ dans la config ou on pourrait
-    # ajouter un champ `smart_dimming_paused_until` dans le modèle Device
-    # Pour cette version, on retourne simplement un message de confirmation
-    
-    # TODO: Implémenter la pause réelle avec un champ dans Device ou une table séparée
-    pause_until = datetime.now() + timedelta(minutes=30)
-    
+    pause_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+    device.smart_dimming_paused_until = pause_until
+    db.add(device)
+    db.commit()
+    db.refresh(device)
+
     return {
         "device_id": device_id,
         "device_name": device.name,
         "paused": True,
         "paused_until": pause_until.isoformat(),
-        "message": f"Smart Dimming mis en pause pour {device.name} jusqu'à {pause_until.strftime('%H:%M')}"
+        "message": f"Smart Dimming mis en pause pour {device.name} pendant 30 minutes"
     }

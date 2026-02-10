@@ -12,7 +12,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Fichier .env : priorité à la racine du projet (sae_s5/.env) pour partage avec le RPi
 _env_root = Path(__file__).resolve().parent.parent.parent / ".env"
-_env_file = str(_env_root) if _env_root.exists() else ".env"
+_env_backend = Path(__file__).resolve().parent.parent / ".env"
+_env_file = str(_env_root) if _env_root.exists() else (str(_env_backend) if _env_backend.exists() else ".env")
+
+
+# Luminosité max des lampes (jamais 100 pour éviter usure / contraintes matérielles)
+BRIGHTNESS_MAX = 99
 
 
 class Settings(BaseSettings):
