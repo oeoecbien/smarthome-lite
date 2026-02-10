@@ -99,7 +99,7 @@ export default function AdminZwaveSensorsPage() {
   const [raspberryPis, setRaspberryPis] = useState<RaspberryPi[]>([])
   const [knownDevices, setKnownDevices] = useState<ZwaveKnownDevice[]>([])
   const [selectedRpiId, setSelectedRpiId] = useState<string>("")
-  const [nodeId, setNodeId] = useState<string>("5")
+  const [nodeId, setNodeId] = useState<string>("")
   const [sensorData, setSensorData] = useState<ZwaveSensorData | null>(null)
   const [sensorError, setSensorError] = useState<string | null>(null)
   const [lastUpdateMs, setLastUpdateMs] = useState<number | null>(null)
@@ -284,9 +284,9 @@ export default function AdminZwaveSensorsPage() {
         {/* Lecture capteur + flux temps réel */}
         <Card>
           <CardHeader>
-            <CardTitle>Capteur en direct</CardTitle>
+            <CardTitle>Dashboard capteur en direct</CardTitle>
             <CardDescription>
-              Choisissez le Raspberry Pi et le node ID Z-Wave (ex. 5 pour MultiSensor 7). Le flux se met à jour toutes les 5 secondes.
+              Choisissez le Raspberry Pi et le node ID Z-Wave (modifiable). Valeurs en temps réel, flux toutes les 5 secondes.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -306,6 +306,41 @@ export default function AdminZwaveSensorsPage() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>Capteur enregistré (optionnel)</Label>
+              <Select
+                value={
+                  selectedRpiId && nodeId && sensorDevices.some(
+                    (d) => d.raspberry_pi_id === Number(selectedRpiId) && d.gpio_pin === Number(nodeId)
+                  )
+                    ? `rpi-${selectedRpiId}-node-${nodeId}`
+                    : "__manual__"
+                }
+                onValueChange={(value) => {
+                  if (value === "__manual__") {
+                    setNodeId("")
+                    return
+                  }
+                  const match = value.match(/^rpi-(\d+)-node-(\d+)$/)
+                  if (match) {
+                    setSelectedRpiId(match[1])
+                    setNodeId(match[2])
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Saisie manuelle du node ID" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__manual__">Saisie manuelle du node ID</SelectItem>
+                  {sensorDevices.map((d) => (
+                    <SelectItem key={d.id} value={`rpi-${d.raspberry_pi_id}-node-${d.gpio_pin}`}>
+                      {d.name} (RPi #{d.raspberry_pi_id}, node {d.gpio_pin})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="node-id">Node ID Z-Wave (1–255)</Label>
               <Input
                 id="node-id"
@@ -314,7 +349,7 @@ export default function AdminZwaveSensorsPage() {
                 max={255}
                 value={nodeId}
                 onChange={(e) => setNodeId(e.target.value)}
-                placeholder="5"
+                placeholder="ex. 5"
               />
             </div>
 
@@ -362,7 +397,8 @@ export default function AdminZwaveSensorsPage() {
             )}
 
             {sensorData && (
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                {/* En-tête device (type Z-Wave JS UI) */}
                 <div className="flex flex-wrap items-center gap-2">
                   {(sensorData.device_name || sensorData.device_model) && (
                     <p className="text-sm font-medium text-muted-foreground">
@@ -380,50 +416,64 @@ export default function AdminZwaveSensorsPage() {
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-muted-foreground" />
-                    <span>Mouvement</span>
+
+                {/* Binary Sensor v2 — Motion (CC 48) */}
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Binary Sensor v2</p>
+                  <div className="flex flex-wrap items-baseline gap-2 text-sm">
+                    <span className="text-muted-foreground font-mono">
+                      [{sensorData.node_id}-48-0-Motion]
+                    </span>
+                    <span className="text-muted-foreground">Sensor state (Motion)</span>
                     <span className={sensorData.motion ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                      {sensorData.motion ? "Oui" : "Non"}
+                      {String(sensorData.motion)}
                     </span>
                   </div>
-                  {sensorData.temperature_c != null && (
-                    <div className="flex items-center gap-2">
-                      <Thermometer className="h-4 w-4 text-muted-foreground" />
-                      <span>Température</span>
-                      <span>{sensorData.temperature_c} °C</span>
-                    </div>
-                  )}
-                  {sensorData.humidity != null && (
-                    <div className="flex items-center gap-2">
-                      <Droplets className="h-4 w-4 text-muted-foreground" />
-                      <span>Humidité</span>
-                      <span>{sensorData.humidity} %</span>
-                    </div>
-                  )}
-                  {sensorData.illuminance_lux != null && (
-                    <div className="flex items-center gap-2">
-                      <Sun className="h-4 w-4 text-muted-foreground" />
-                      <span>Luminosité</span>
-                      <span>{sensorData.illuminance_lux} lux</span>
-                    </div>
-                  )}
-                  {sensorData.ultraviolet != null && (
-                    <div className="flex items-center gap-2">
-                      <Gauge className="h-4 w-4 text-muted-foreground" />
-                      <span>UV</span>
-                      <span>{sensorData.ultraviolet}</span>
-                    </div>
-                  )}
-                  {sensorData.battery_percent != null && (
-                    <div className="flex items-center gap-2">
-                      <Battery className="h-4 w-4 text-muted-foreground" />
-                      <span>Batterie</span>
-                      <span>{sensorData.battery_percent} %</span>
-                    </div>
-                  )}
                 </div>
+
+                {/* Multilevel Sensor v11 — température, luminosité, humidité, UV (CC 49) */}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Multilevel Sensor v11</p>
+                  <ul className="space-y-1.5 text-sm">
+                    {sensorData.temperature_c != null && (
+                      <li className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-muted-foreground font-mono">[{sensorData.node_id}-49-0-Air temperature]</span>
+                        <span className="text-muted-foreground">Air temperature</span>
+                        <span>{sensorData.temperature_c} °C</span>
+                      </li>
+                    )}
+                    {sensorData.illuminance_lux != null && (
+                      <li className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-muted-foreground font-mono">[{sensorData.node_id}-49-0-Illuminance]</span>
+                        <span className="text-muted-foreground">Illuminance</span>
+                        <span>{sensorData.illuminance_lux} Lux</span>
+                      </li>
+                    )}
+                    {sensorData.humidity != null && (
+                      <li className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-muted-foreground font-mono">[{sensorData.node_id}-49-0-Humidity]</span>
+                        <span className="text-muted-foreground">Humidity</span>
+                        <span>{sensorData.humidity} %</span>
+                      </li>
+                    )}
+                    {sensorData.ultraviolet != null && (
+                      <li className="flex flex-wrap items-baseline gap-2">
+                        <span className="text-muted-foreground font-mono">[{sensorData.node_id}-49-0-Ultraviolet]</span>
+                        <span className="text-muted-foreground">Ultraviolet</span>
+                        <span>{sensorData.ultraviolet}</span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Batterie (CC 128) */}
+                {sensorData.battery_percent != null && (
+                  <div className="space-y-1 text-sm">
+                    <span className="text-muted-foreground font-mono">[{sensorData.node_id}-128-0-level]</span>
+                    <span className="text-muted-foreground">Battery</span>
+                    <span>{sensorData.battery_percent} %</span>
+                  </div>
+                )}
               </div>
             )}
 
