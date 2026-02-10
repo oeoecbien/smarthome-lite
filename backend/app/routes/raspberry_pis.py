@@ -199,11 +199,16 @@ SENSOR_STREAM_INTERVAL_SEC = 5
 
 
 async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[str, None]:
-    """Génère des événements SSE avec les données capteur toutes les SENSOR_STREAM_INTERVAL_SEC secondes."""
+    """
+    Génère des événements SSE avec les données capteur.
+    Cadence : un événement toutes les 5 s (sleep = 5 - durée_fetch pour viser 5 s entre deux envois).
+    """
+    import time
     from app.database import SessionLocal
     logger.info("Sensor stream started: rpi_id=%s node_id=%s", rpi_id, node_id)
     try:
         while True:
+            t0 = time.monotonic()
             try:
                 db = SessionLocal()
                 try:
@@ -224,8 +229,11 @@ async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[
             except Exception as e:
                 logger.warning("Sensor stream error: rpi_id=%s node_id=%s err=%s", rpi_id, node_id, e)
                 yield f"data: {json.dumps({'error': str(e), 'success': False})}\n\n"
+            elapsed = time.monotonic() - t0
+            wait = max(0.0, SENSOR_STREAM_INTERVAL_SEC - elapsed)
             try:
-                await asyncio.sleep(SENSOR_STREAM_INTERVAL_SEC)
+                if wait > 0:
+                    await asyncio.sleep(wait)
             except asyncio.CancelledError:
                 break
     except asyncio.CancelledError:
