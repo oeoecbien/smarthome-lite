@@ -1,15 +1,18 @@
 import { api } from "@/lib/api"
+import type { ZwaveSensorData, ZwaveKnownDevice } from "@/lib/types"
 
 export interface RaspberryPi {
   id: number
   name: string
   location?: string
-  ip_address: string
+  ip_address: string | null
   api_key: string
   is_online: boolean
   created_at: string
   updated_at?: string
   device_count?: number
+  /** Debug admin: IDs des appareils connectés à ce RPi */
+  device_ids?: number[]
 }
 
 export interface AvailableRaspberryPi {
@@ -55,5 +58,36 @@ export const raspberryPiService = {
 
   async deleteRaspberryPi(id: number): Promise<void> {
     return api.delete(`/api/raspberry-pis/${id}`)
+  },
+
+  /** Données capteur d'un nœud Z-Wave sur ce RPi. Lecture lente (7× getValue 10s) : timeout 95s. */
+  async getNodeSensor(rpiId: number, nodeId: number): Promise<ZwaveSensorData> {
+    return api.get<ZwaveSensorData>(`/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor`, undefined, {
+      timeout: 95_000,
+    })
+  },
+
+  /**
+   * Flux temps réel des données capteur (Server-Sent Events).
+   * Retourne une fonction pour fermer la connexion.
+   */
+  subscribeNodeSensorStream(
+    rpiId: number,
+    nodeId: number,
+    onData: (data: ZwaveSensorData & { error?: string }) => void,
+    onError?: (err: Error) => void
+  ): { abort: () => void } {
+    return api.subscribeToStream<ZwaveSensorData & { error?: string }>(
+      `/api/raspberry-pis/${rpiId}/nodes/${nodeId}/sensor/stream`,
+      onData,
+      onError
+    )
+  },
+}
+
+/** Service admin pour les appareils Z-Wave connus (registre backend). */
+export const zwaveService = {
+  async getKnownDevices(): Promise<ZwaveKnownDevice[]> {
+    return api.get<ZwaveKnownDevice[]>("/api/admin/zwave-devices")
   },
 }

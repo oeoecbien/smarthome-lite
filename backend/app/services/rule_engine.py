@@ -135,7 +135,7 @@ class RuleEngine:
             return self._evaluate_time_condition(condition)
         
         elif condition_type == "presence":
-            return self._evaluate_presence_condition(condition, trigger_data)
+            return self._evaluate_presence_condition(condition, trigger_event, trigger_data)
         
         elif condition_type == "light":
             return self._evaluate_light_condition(condition, trigger_data)
@@ -182,31 +182,23 @@ class RuleEngine:
     def _evaluate_presence_condition(
         self,
         condition: Dict[str, Any],
+        trigger_event: Optional[str],
         trigger_data: Optional[Dict[str, Any]]
     ) -> bool:
-        """Évalue une condition de présence."""
+        """Évalue une condition de présence (mouvement MultiSensor7)."""
         expected_presence = condition.get("value", False)
-        
-        # Si l'événement déclencheur est une détection de présence
+
+        # Si l'événement déclencheur est une détection de mouvement
         if trigger_event == "presence_detected":
-            return expected_presence == True
-        
-        # Sinon, vérifier dans la base de données (5 dernières minutes)
+            return expected_presence is True
+
+        # Sinon, vérifier dans la base (5 dernières minutes)
         five_minutes_ago = datetime.now() - timedelta(minutes=5)
-        presence = self.db.query(Presence).filter(
-            Presence.detected_at >= five_minutes_ago
-        ).first()
-        
+        query = self.db.query(Presence).filter(Presence.detected_at >= five_minutes_ago)
+        if trigger_data and trigger_data.get("raspberry_pi_id") is not None:
+            query = query.filter(Presence.raspberry_pi_id == trigger_data["raspberry_pi_id"])
+        presence = query.first()
         actual_presence = presence is not None
-        
-        # Filtrer par localisation si spécifié
-        if trigger_data and "raspberry_pi_id" in trigger_data:
-            presence = self.db.query(Presence).filter(
-                Presence.raspberry_pi_id == trigger_data["raspberry_pi_id"],
-                Presence.detected_at >= five_minutes_ago
-            ).first()
-            actual_presence = presence is not None
-        
         return actual_presence == expected_presence
     
     def _evaluate_light_condition(
