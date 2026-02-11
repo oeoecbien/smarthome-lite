@@ -372,7 +372,10 @@ def _motion_to_backend_loop():
     import urllib.error
     import json
     if not BACKEND_URL or not API_KEY or not MULTISENSOR7_NODE_ID:
-        logger.debug("Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant)")
+        logger.info(
+            "Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant). "
+            "Vérifiez le .env pour enregistrer les présences dans la table presence."
+        )
         return
     url = f"{BACKEND_URL}/api/presence"
     interval = 5  # secondes entre deux lectures
@@ -412,6 +415,9 @@ if __name__ == "__main__":
         _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
         _motion.start()
         logger.info("Détecteur (node %s) → présence backend démarré", MULTISENSOR7_NODE_ID)
+    else:
+        _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
+        _motion.start()
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)
