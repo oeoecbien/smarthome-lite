@@ -2,7 +2,7 @@
 Schémas Pydantic pour gestion des Raspberry Pi.
 """
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 import re
 
@@ -17,16 +17,15 @@ class RaspberryPiBase(BaseModel):
     
     @validator("ip_address")
     def validate_ip_address(cls, v):
-        """Vérifie le format de l'adresse IPv4."""
+        """Vérifie le format de l'adresse IPv4 (None accepté pour les réponses)."""
+        if v is None:
+            return v
         pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
         if not re.match(pattern, v):
             raise ValueError("Format d'adresse IPv4 invalide")
-        
-        # Vérification des octets (0-255)
         octets = v.split(".")
         if not all(0 <= int(octet) <= 255 for octet in octets):
             raise ValueError("Les octets doivent être entre 0 et 255")
-        
         return v
 
 
@@ -52,7 +51,8 @@ class RaspberryPiUpdate(BaseModel):
     location: Optional[str] = Field(None, min_length=1, max_length=100)
     ip_address: Optional[str] = None
     is_online: Optional[bool] = None
-    
+    api_key: Optional[str] = Field(None, min_length=1, description="Nouvelle clé API (ex. celle du .env du RPi, RASPBERRY_API_KEY)")
+
     @validator("ip_address")
     def validate_ip_address(cls, v):
         """Vérifie le format de l'adresse IPv4."""
@@ -80,6 +80,7 @@ class RaspberryPiUpdate(BaseModel):
 class RaspberryPiResponse(RaspberryPiBase):
     """
     Schéma de réponse pour un Raspberry Pi.
+    ip_address peut être None si pas encore renseigné (ex. avant premier heartbeat).
     """
     id: int
     api_key: str
@@ -87,6 +88,8 @@ class RaspberryPiResponse(RaspberryPiBase):
     created_at: datetime
     updated_at: datetime
     device_count: Optional[int] = Field(None, description="Nombre d'appareils connectés")
+    device_ids: Optional[List[int]] = Field(None, description="IDs des appareils connectés (debug admin)")
+    ip_address: Optional[str] = None  # override base: nullable en base
     
     class Config:
         from_attributes = True

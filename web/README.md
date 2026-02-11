@@ -98,21 +98,15 @@ yarn install
 
 ### Variables d'Environnement
 
-Créer un fichier `.env.local` à la racine du dossier `web` :
+L’URL du backend est lue depuis le **fichier `.env` à la racine du projet** (sae_s5/.env), via la variable **`BACKEND_URL`** (ex. `BACKEND_URL=http://10.109.150.75:8000`). Next charge ce fichier au démarrage et expose la valeur au client. Aucun `.env.local` dans `web/` n’est nécessaire.
 
-```env
-# URL du backend FastAPI
-NEXT_PUBLIC_API_URL=http://localhost:8000
+Le timeout des requêtes API utilise **`API_TIMEOUT`** dans le même `.env` (optionnel, défaut 10000 ms).
 
-# URL alternative pour développement
-# NEXT_PUBLIC_API_URL=http://10.109.150.75:8000
-```
-
-**Note** : Les variables d'environnement préfixées par `NEXT_PUBLIC_` sont accessibles côté client.
+**En cas d’erreur « Backend injoignable » :** vérifier que le backend tourne (uvicorn), que `BACKEND_URL` dans le `.env` racine pointe bien vers l’API (sur la même machine, `BACKEND_URL=http://localhost:8000` suffit). Après toute modification du `.env`, **redémarrer le serveur Next** (les variables sont lues au démarrage).
 
 ### Configuration API
 
-Le client API est configuré dans `lib/api.ts`. Par défaut, il utilise `NEXT_PUBLIC_API_URL` ou `http://localhost:8000`.
+Le client API (`lib/api.ts`) utilise l’URL injectée par `next.config.mjs` depuis `BACKEND_URL`.
 
 ## Développement
 
@@ -244,7 +238,7 @@ L'application utilise le nouveau App Router de Next.js avec :
 ### Client API
 
 Le client API (`lib/api.ts`) :
-- **Base URL** : Configuré via `NEXT_PUBLIC_API_URL`
+- **Base URL** : Configuré via `BACKEND_URL` dans le `.env` racine
 - **Headers** : Ajout automatique du token JWT dans `Authorization: Bearer {token}`
 - **Gestion d'erreurs** : Interception des erreurs 401 (redirection login)
 - **Types** : Types TypeScript générés depuis les schémas backend
@@ -296,13 +290,13 @@ CMD ["npm", "start"]
 
 ### Variables d'Environnement en Production
 
-Assurer que `NEXT_PUBLIC_API_URL` pointe vers le backend en production.
+Assurer que `BACKEND_URL` dans le `.env` racine pointe vers le backend en production.
 
 ## Dépannage
 
 ### Erreur de connexion au backend
 
-- Vérifier que `NEXT_PUBLIC_API_URL` est correct
+- Vérifier que `BACKEND_URL` (`.env` racine) est correct
 - Vérifier que le backend est accessible depuis le navigateur
 - Vérifier les CORS dans le backend
 

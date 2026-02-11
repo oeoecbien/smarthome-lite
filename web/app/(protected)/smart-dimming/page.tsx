@@ -8,11 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { ScenarioChip } from "@/components/scenario-chip"
 import { smartDimmingService } from "@/lib/services/smart-dimming-service"
+import { getApiBaseUrl } from "@/lib/api"
 import { deviceService } from "@/lib/services/device-service"
 import { formatRelativeTime } from "@/lib/formatters"
 import type { SmartDimmingStatus, SmartDimmingAdjustment, Device } from "@/lib/types"
 import { SunDim, RefreshCw, AlertCircle, Pause, ArrowRight, Lightbulb, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
 
 export default function SmartDimmingPage() {
   const [status, setStatus] = useState<SmartDimmingStatus | null>(null)
@@ -21,6 +23,7 @@ export default function SmartDimmingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isToggling, setIsToggling] = useState(false)
   const [pausingDevice, setPausingDevice] = useState<number | null>(null)
+  const [isSimulating, setIsSimulating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Filters
@@ -79,6 +82,41 @@ export default function SmartDimmingPage() {
     }
   }
 
+  const handleSimulate = async () => {
+    if (!status?.enabled) return
+    setIsSimulating(true)
+    setError(null)
+    try {
+      const firstActiveRpiId = status.active_devices?.length
+        ? devices.find((d) => status.active_devices?.includes(d.id))?.raspberry_pi_id
+        : undefined
+      const res = await smartDimmingService.simulateReading(firstActiveRpiId, 600)
+      await fetchData()
+      if (res.adjustments_count > 0) {
+        toast({ title: "Simulation", description: `${res.adjustments_count} ajustement(s) effectué(s).` })
+      } else {
+        toast({
+          title: "Simulation",
+          description: "Aucun ajustement (intensité déjà proche de la cible ou scénario Away).",
+          variant: "default",
+        })
+      }
+    } catch (err) {
+      console.error("Simulate reading failed:", err)
+      const msg = err instanceof Error ? err.message : "Échec de la simulation"
+      const isBackendUnreachable = msg.includes("Impossible de joindre le backend")
+      toast({
+        variant: "destructive",
+        title: "Simulation",
+        description: isBackendUnreachable
+          ? `Backend injoignable à ${getApiBaseUrl()}. Vérifiez : 1) le backend tourne (uvicorn), 2) BACKEND_URL dans le .env racine (sae_s5/.env), 3) redémarrez Next après modification du .env. Sur la même machine, essayez BACKEND_URL=http://localhost:8000.`
+          : msg,
+      })
+    } finally {
+      setIsSimulating(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -105,10 +143,20 @@ export default function SmartDimmingPage() {
           <h1 className="text-2xl font-semibold text-balance">Smart Dimming</h1>
           <p className="text-muted-foreground">Ajustement automatique de l&apos;intensité lumineuse</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleSimulate}
+            disabled={!status?.enabled || isSimulating || (status?.active_devices?.length ?? 0) === 0}
+          >
+            {isSimulating ? "Simulation…" : "Simuler une mesure"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Status Cards */}

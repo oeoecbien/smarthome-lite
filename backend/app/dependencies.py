@@ -513,10 +513,10 @@ class EventFilterParams:
             start_date: Date de début (format ISO 8601)
             end_date: Date de fin (format ISO 8601)
         """
-        # Validation des types d'événements
+        # Validation des types d'événements (aligné avec le modèle Event et le frontend)
         valid_event_types = [
             "state_changed", "brightness_changed", "presence_detected",
-            "rule_triggered", "scenario_changed", "smart_dimming_applied"
+            "rule_triggered", "scenario_changed", "smart_dimming_applied", "system"
         ]
         if event_type and event_type not in valid_event_types:
             raise HTTPException(

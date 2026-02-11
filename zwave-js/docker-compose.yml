@@ -1,0 +1,27 @@
+services:
+  zwave-js:
+    container_name: zwave-js
+    image: zwavejs/zwave-js-ui:latest
+    restart: unless-stopped
+    tty: true
+    stop_signal: SIGINT
+    environment:
+      - SOCKET_PORT=8091
+    networks:
+      - zwave
+    # Si erreur "no such file or directory" : sur le RPi faire "ls /dev/ttyUSB* /dev/ttyACM*"
+    # et remplacer ttyUSB0 par le périphérique affiché (ex. ttyACM0). Sans dongle : commenter tout le bloc "devices:".
+    devices:
+      - /dev/ttyUSB0:/dev/zwave
+    volumes:
+      - zwave-config:/usr/src/app/store
+    ports:
+      - "8091:8091"  # Port pour l'interface web
+      - "3000:3000"  # Port pour le serveur WebSocket Z-Wave JS (Home Assistant)
+
+networks:
+  zwave:
+    driver: bridge
+
+volumes:
+  zwave-config:

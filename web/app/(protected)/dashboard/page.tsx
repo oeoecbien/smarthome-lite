@@ -23,8 +23,11 @@ import {
   Power,
   ChevronRight,
   AlertCircle,
+  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "@/hooks/use-toast"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 interface DashboardData {
   devices: Device[]
@@ -34,7 +37,12 @@ interface DashboardData {
   events: SystemEvent[]
 }
 
+function isControllableDevice(device: Device): boolean {
+  return device.type === "light" || device.type === "dimmer" || device.type === "socket"
+}
+
 export default function DashboardPage() {
+  const isAdmin = useIsAdmin()
   const [data, setData] = useState<DashboardData>({
     devices: [],
     rules: [],
@@ -44,6 +52,7 @@ export default function DashboardPage() {
   })
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [togglingDeviceId, setTogglingDeviceId] = useState<number | null>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -70,6 +79,31 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const handleDeviceToggle = useCallback(
+    async (device: Device, newState: boolean) => {
+      if (!isControllableDevice(device)) return
+      setTogglingDeviceId(device.id)
+      try {
+        await deviceService.updateState(device.id, newState)
+        await fetchData()
+        toast({
+          title: "Appareil mis à jour",
+          description: `${device.name} a été ${newState ? "allumé" : "éteint"}.`,
+        })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erreur lors de la mise à jour"
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: msg,
+        })
+      } finally {
+        setTogglingDeviceId(null)
+      }
+    },
+    [fetchData],
+  )
+
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 5000)
@@ -95,7 +129,7 @@ export default function DashboardPage() {
   }
 
   const activeRules = data.rules.filter((r) => r.enabled).length
-  const onlineDevices = data.devices.filter((d) => d.state === "ON").length
+  const onlineDevices = data.devices.filter((d) => d.state === true || d.state === "ON").length
 
   return (
     <div className="space-y-6">
@@ -184,7 +218,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium">Appareils</CardTitle>
-            <Link href="/devices">
+            <Link href={isAdmin ? "/admin/devices" : "/devices"}>
               <Button variant="ghost" size="sm">
                 Voir tout
                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -196,42 +230,50 @@ export default function DashboardPage() {
               <p className="text-center text-muted-foreground py-8">Aucun appareil configuré</p>
             ) : (
               <div className="space-y-3">
-                {data.devices.map((device) => (
-                  <div
-                    key={device.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2 rounded-full",
-                          device.state === "ON" ? "bg-secondary/20 text-secondary" : "bg-muted-foreground/20",
+                {data.devices.map((device) => {
+                  const isOn = device.state === true || device.state === "ON"
+                  const controllable = isControllableDevice(device)
+                  const isToggling = togglingDeviceId === device.id
+                  return (
+                    <div
+                      key={device.id}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {controllable && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeviceToggle(device, !isOn)}
+                            disabled={isToggling}
+                            className={cn(
+                              "p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50",
+                              isOn ? "bg-secondary/20 text-secondary hover:bg-secondary/30" : "bg-muted-foreground/20 hover:bg-muted-foreground/30",
+                            )}
+                            aria-label={isOn ? `Éteindre ${device.name}` : `Allumer ${device.name}`}
+                          >
+                            {isToggling ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Power className="h-4 w-4" />
+                            )}
+                          </button>
                         )}
-                      >
-                        <Power className="h-4 w-4" />
+                        <div>
+                          <p className="font-medium text-sm">{device.name}</p>
+                          <p className="text-xs text-muted-foreground">{device.location || device.type}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{device.name}</p>
-                        <p className="text-xs text-muted-foreground">{device.location || device.type}</p>
+                      <div className="flex items-center gap-2">
+                        {controllable && device.brightness !== null && device.brightness !== undefined && (
+                          <span className="text-xs text-muted-foreground">{device.brightness}%</span>
+                        )}
+                        {!controllable && (
+                          <span className="text-xs text-muted-foreground">{device.type}</span>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {device.brightness !== null && (
-                        <span className="text-xs text-muted-foreground">{device.brightness}%</span>
-                      )}
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded-full text-xs font-medium",
-                          device.state === "ON"
-                            ? "bg-secondary/20 text-secondary"
-                            : "bg-muted-foreground/20 text-muted-foreground",
-                        )}
-                      >
-                        {device.state}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </CardContent>

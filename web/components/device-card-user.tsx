@@ -1,18 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
-import { Lightbulb, Plug, SunDim, Loader2, MapPin } from "lucide-react"
+import type { DeviceStatePatch } from "./device-card"
+import { Lightbulb, Plug, SunDim, Loader2, MapPin, Wifi, WifiOff, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
 interface DeviceCardUserProps {
   device: Device
   onUpdate: () => void
+  onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
 }
 
 const deviceIcons = {
@@ -21,21 +24,29 @@ const deviceIcons = {
   socket: Plug,
 }
 
-export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
+export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCardUserProps) {
   const [isUpdating, setIsUpdating] = useState(false)
-  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 100)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
   const [isDragging, setIsDragging] = useState(false)
 
+  useEffect(() => {
+    const b = device.brightness ?? 99
+    if (!isDragging) setLocalBrightness(b)
+  }, [device.brightness, isDragging])
+
   const Icon = deviceIcons[device.type] || Lightbulb
-  const isOn = device.state === "ON"
+  const isOn = device.state === true || device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
+  const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
     if (isUpdating) return
     
     setIsUpdating(true)
     try {
-      await deviceService.updateState(device.id, checked ? "ON" : "OFF")
+      const res = await deviceService.updateState(device.id, checked)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Appareil mis à jour",
@@ -65,6 +76,22 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
     }
   }
 
+  const handleSyncFromRpi = async () => {
+    if (isSyncing) return
+    setIsSyncing(true)
+    try {
+      const res = await deviceService.getDeviceState(device.id, true)
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
+      onUpdate()
+      toast({ title: "État synchronisé", description: `État de ${device.name} rafraîchi depuis le Raspberry Pi.` })
+    } catch {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire l'état depuis le RPi (hors ligne ou timeout)." })
+      onUpdate()
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   const handleBrightnessChange = (value: number[]) => {
     setLocalBrightness(value[0])
   }
@@ -75,7 +102,8 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
 
     setIsUpdating(true)
     try {
-      await deviceService.updateBrightness(device.id, value[0])
+      const res = await deviceService.updateBrightness(device.id, value[0])
+      onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
         title: "Intensité mise à jour",
@@ -93,7 +121,7 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
         friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
       }
       
-      setLocalBrightness(device.brightness ?? 100)
+      setLocalBrightness(device.brightness ?? 99)
       toast({
         variant: "destructive",
         title: "Erreur",
@@ -143,12 +171,28 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
                     {device.location}
                   </span>
                 )}
+                {rpiOnline !== undefined && (
+                  <span className={cn("text-xs flex items-center gap-1", rpiOnline ? "text-green-600" : "text-muted-foreground")} title={rpiOnline ? "Raspberry Pi en ligne" : "Raspberry Pi hors ligne"}>
+                    {rpiOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                    {rpiOnline ? "RPi en ligne" : "RPi hors ligne"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Toggle */}
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={handleSyncFromRpi}
+              disabled={isSyncing}
+              title="Synchroniser l'état depuis le Raspberry Pi"
+              aria-label="Synchroniser état RPi"
+            >
+              {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            </Button>
             {isUpdating ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
@@ -167,12 +211,12 @@ export function DeviceCardUser({ device, onUpdate }: DeviceCardUserProps) {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Intensité</span>
-              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 100)}%</span>
+              <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 99)}%</span>
             </div>
             <Slider
-              value={[isDragging ? localBrightness : (device.brightness ?? 100)]}
+              value={[isDragging ? localBrightness : (device.brightness ?? 99)]}
               min={0}
-              max={100}
+              max={99}
               step={1}
               onValueChange={handleBrightnessChange}
               onValueCommit={handleBrightnessCommit}

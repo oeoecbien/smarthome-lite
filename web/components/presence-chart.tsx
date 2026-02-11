@@ -32,7 +32,7 @@ export function PresenceChart({ data }: PresenceChartProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Détections par heure</CardTitle>
-        <CardDescription>Répartition des détections Bluetooth sur 24h</CardDescription>
+        <CardDescription>Répartition des détections de mouvement (MultiSensor7) sur 24h</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">

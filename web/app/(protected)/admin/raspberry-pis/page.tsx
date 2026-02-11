@@ -41,6 +41,7 @@ export default function AdminRaspberryPisPage() {
     ip_address: "",
   })
   const [isOnline, setIsOnline] = useState(false)
+  const [newApiKey, setNewApiKey] = useState("")
 
   useEffect(() => {
     if (!isAdmin) {
@@ -103,11 +104,13 @@ export default function AdminRaspberryPisPage() {
         location: formData.location || undefined,
         ip_address: formData.ip_address,
         is_online: isOnline,
+        ...(newApiKey.trim() ? { api_key: newApiKey.trim() } : {}),
       }
       await raspberryPiService.updateRaspberryPi(editingRpi.id, updateData)
       setIsDialogOpen(false)
       setFormData({ name: "", location: "", ip_address: "" })
       setIsOnline(false)
+      setNewApiKey("")
       setEditingRpi(null)
       fetchRaspberryPis()
       toast({
@@ -187,6 +190,7 @@ export default function AdminRaspberryPisPage() {
     setEditingRpi(null)
     setFormData({ name: "", location: "", ip_address: "" })
     setIsOnline(false)
+    setNewApiKey("")
     setIsDialogOpen(true)
   }
 
@@ -198,6 +202,7 @@ export default function AdminRaspberryPisPage() {
       ip_address: rpi.ip_address,
     })
     setIsOnline(rpi.is_online)
+    setNewApiKey("")
     setIsDialogOpen(true)
   }
 
@@ -286,12 +291,20 @@ export default function AdminRaspberryPisPage() {
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">IP:</span>
-                    <span className="font-mono">{rpi.ip_address}</span>
+                    <span className="font-mono">{rpi.ip_address ?? "—"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Appareils:</span>
                     <span>{rpi.device_count ?? 0}</span>
                   </div>
+                  {rpi.device_ids && rpi.device_ids.length > 0 && (
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-muted-foreground shrink-0">IDs appareils:</span>
+                      <span className="font-mono text-xs break-all" title="IDs pour debug">
+                        {rpi.device_ids.join(", ")}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Clé API:</span>
                     <Button
@@ -340,6 +353,7 @@ export default function AdminRaspberryPisPage() {
           setEditingRpi(null)
           setFormData({ name: "", location: "", ip_address: "" })
           setIsOnline(false)
+          setNewApiKey("")
         }
       }}>
         <DialogContent>
@@ -383,18 +397,38 @@ export default function AdminRaspberryPisPage() {
                   placeholder="192.168.1.100"
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Le backend utilise cette adresse pour vérifier si le RPi est en ligne (ping GET / sur le port 5000). 
+                  Si <em>is_online</em> reste à false, vérifiez que l’IP correspond bien à celle du RPi (ex. 10.109.150.133).
+                </p>
               </div>
               {editingRpi && (
-                <div className="flex items-center justify-between space-x-2 py-2">
-                  <Label htmlFor="is_online" className="flex-1">
-                    Statut en ligne
-                  </Label>
-                  <Switch
-                    id="is_online"
-                    checked={isOnline}
-                    onCheckedChange={setIsOnline}
-                  />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="new_api_key">Nouvelle clé API (optionnel)</Label>
+                    <Input
+                      id="new_api_key"
+                      type="password"
+                      autoComplete="off"
+                      value={newApiKey}
+                      onChange={(e) => setNewApiKey(e.target.value)}
+                      placeholder="Ex: smarthome2025 (celle du .env du RPi)"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Renseignez la clé définie dans RASPBERRY_API_KEY sur le RPi pour que heartbeat et appels backend correspondent.
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between space-x-2 py-2">
+                    <Label htmlFor="is_online" className="flex-1">
+                      Statut en ligne
+                    </Label>
+                    <Switch
+                      id="is_online"
+                      checked={isOnline}
+                      onCheckedChange={setIsOnline}
+                    />
+                  </div>
+                </>
               )}
             </div>
             <DialogFooter>
@@ -406,6 +440,7 @@ export default function AdminRaspberryPisPage() {
                   setEditingRpi(null)
                   setFormData({ name: "", location: "", ip_address: "" })
                   setIsOnline(false)
+                  setNewApiKey("")
                 }} 
                 disabled={isCreating || isUpdating}
               >

@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Users, Sun, Calendar, LogOut, Menu, X, Shield, Bluetooth } from "lucide-react"
+import { Home, Lightbulb, Settings2, Brain, SunDim, Sun, Calendar, LogOut, Menu, X, Shield, Activity, Radio } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
@@ -22,9 +22,17 @@ const navItems = [
 
 const adminNavItems = [
   { href: "/admin", label: "Administration", icon: Shield },
-  { href: "/admin/presence", label: "Présence Bluetooth", icon: Bluetooth },
+  { href: "/admin/presence", label: "Présence (mouvement)", icon: Activity },
   { href: "/admin/light-readings", label: "Luminosité", icon: Sun },
+  { href: "/admin/zwave-sensors", label: "Capteurs Z-Wave", icon: Radio },
 ]
+
+/** Pour un admin, les chemins "utilisateur" sont remplacés par la version admin. */
+const adminHrefMap: Record<string, string> = {
+  "/devices": "/admin/devices",
+  "/rules": "/admin/rules",
+  "/ai": "/admin/ai",
+}
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user, logout, checkAuth } = useAuth()
@@ -105,11 +113,12 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
-              const isActive = pathname === item.href
+              const href = (isAdmin && adminHrefMap[item.href]) ? adminHrefMap[item.href] : item.href
+              const isActive = pathname === href
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                     isActive

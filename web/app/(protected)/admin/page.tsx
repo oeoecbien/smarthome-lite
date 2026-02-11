@@ -16,6 +16,7 @@ import {
   SunDim,
   ArrowRight,
   Server,
+  Radio,
 } from "lucide-react"
 
 const adminSections = [
@@ -25,6 +26,13 @@ const adminSections = [
     href: "/admin/raspberry-pis",
     icon: Cpu,
     color: "text-blue-500",
+  },
+  {
+    title: "Capteurs Z-Wave",
+    description: "Données des capteurs Z-Wave (Aeotec MultiSensor 7, mouvement, température, etc.)",
+    href: "/admin/zwave-sensors",
+    icon: Radio,
+    color: "text-cyan-500",
   },
   {
     title: "Gestion Appareils",
