@@ -125,16 +125,19 @@ class DeviceBrightness(BaseModel):
 class DeviceWithLocation(BaseModel):
     """
     Schéma de réponse pour un appareil avec informations de localisation.
+    Inclut des champs debug (raspberry_pi_id, user_id, created_at, updated_at) utiles pour l'admin.
     """
     id: int
     name: str
     type: str
     state: bool
     brightness: int
+    raspberry_pi_id: int
     raspberry_pi_name: str
     location: str
     raspberry_pi_online: bool
     gpio_pin: Optional[int] = None
+    user_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     controlled_by_sensor_id: Optional[int] = None

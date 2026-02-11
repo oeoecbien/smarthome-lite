@@ -5,13 +5,14 @@ Routes pour le système Smart Dimming.
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.dependencies import get_current_user, User
 from app.services.smart_dimming_service import SmartDimmingService
 from app.schemas.smart_dimming import SmartDimmingStatus, SmartDimmingAdjustmentResponse, SmartDimmingAdjustmentFrontendResponse
-from app.config import settings
+from app.utils.system_settings_helper import set_smart_dimming_enabled
+from app.models import Device, LightReading, RaspberryPi
 
 router = APIRouter()
 
@@ -19,6 +20,12 @@ router = APIRouter()
 class SmartDimmingEnableRequest(BaseModel):
     """Requête pour activer/désactiver le Smart Dimming."""
     enabled: bool
+
+
+class SimulateReadingRequest(BaseModel):
+    """Corps optionnel pour simuler une mesure (déclenche le Smart Dimming)."""
+    raspberry_pi_id: Optional[int] = Field(None, description="RPi à utiliser (défaut: premier RPi avec lampe allumée)")
+    lux_value: float = Field(default=400, ge=0, le=2000, description="Valeur en lux (défaut 400 pour forcer un écart)")
 
 
 @router.get("/status", response_model=SmartDimmingStatus)
@@ -34,11 +41,11 @@ async def get_smart_dimming_status(
     service = SmartDimmingService(db)
     stats = service.get_statistics()
     
-    # Compter les ajustements aujourd'hui
-    from datetime import datetime, timedelta
+    # Compter les ajustements aujourd'hui (UTC pour cohérence avec adjusted_at en BDD)
+    from datetime import datetime, timedelta, timezone
     from app.models import SmartDimmingAdjustment, Device
-    
-    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     query_adjustments = db.query(SmartDimmingAdjustment).filter(
         SmartDimmingAdjustment.adjusted_at >= today_start
     )
@@ -104,12 +111,14 @@ async def get_adjustments(
         user_device_ids = {d[0] for d in db.query(Device.id).filter(Device.user_id == current_user.id).all()}
         adjustments = [adj for adj in adjustments if adj.device_id in user_device_ids]
     
+    from datetime import datetime, timezone
+
     result = []
     for adj in adjustments:
         # Récupérer le nom de l'appareil
         device = db.query(Device).filter(Device.id == adj.device_id).first()
         device_name = device.name if device else "Unknown"
-        
+
         # Récupérer la luminosité si disponible
         light_level = None
         if adj.light_reading_id:
@@ -119,7 +128,10 @@ async def get_adjustments(
             ).first()
             if reading:
                 light_level = reading.lux_value
-        
+
+        # Toujours renvoyer un timestamp string (évite null côté frontend)
+        ts = (adj.adjusted_at or datetime.now(timezone.utc)).isoformat()
+
         result.append({
             "id": adj.id,
             "device_id": adj.device_id,
@@ -128,10 +140,80 @@ async def get_adjustments(
             "brightness_before": adj.previous_brightness,
             "brightness_after": adj.applied_brightness,
             "reason": adj.reason,
-            "timestamp": adj.adjusted_at.isoformat() if adj.adjusted_at else None
+            "timestamp": ts
         })
     
     return result
+
+
+@router.post("/simulate-reading")
+async def simulate_light_reading(
+    body: Optional[SimulateReadingRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Simule une mesure de luminosité pour déclencher le Smart Dimming (sans capteur).
+    Utilisable par tout utilisateur connecté pour son propre RPi / ses appareils.
+    Si raspberry_pi_id est omis, utilise le premier RPi sur lequel l'utilisateur a une lampe dimmable allumée.
+    """
+    req = body or SimulateReadingRequest()
+    raspberry_pi_id = req.raspberry_pi_id
+    lux_value = req.lux_value
+
+    if raspberry_pi_id is not None:
+        rpi = db.query(RaspberryPi).filter(RaspberryPi.id == raspberry_pi_id).first()
+        if not rpi:
+            raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+        if current_user.role != "admin":
+            has_device = (
+                db.query(Device.id)
+                .filter(
+                    Device.raspberry_pi_id == raspberry_pi_id,
+                    Device.user_id == current_user.id,
+                    Device.deleted_at.is_(None),
+                )
+                .first()
+            )
+            if not has_device:
+                raise HTTPException(status_code=403, detail="Accès refusé à ce Raspberry Pi")
+    else:
+        # Trouver le premier RPi avec une lampe dimmable allumée appartenant à l'utilisateur
+        q = (
+            db.query(Device.raspberry_pi_id)
+            .filter(
+                Device.type.in_(["light", "dimmer"]),
+                Device.state == True,
+                Device.controlled_by_sensor_id.is_(None),
+                Device.deleted_at.is_(None),
+            )
+        )
+        if current_user.role != "admin":
+            q = q.filter(Device.user_id == current_user.id)
+        first = q.first()
+        if not first:
+            raise HTTPException(
+                status_code=400,
+                detail="Aucune lampe dimmable allumée trouvée. Allumez une lampe (non pilotée par capteur) puis réessayez.",
+            )
+        raspberry_pi_id = first[0]
+
+    reading = LightReading(
+        raspberry_pi_id=raspberry_pi_id,
+        lux_value=lux_value,
+        sensor_type="simulated",
+    )
+    db.add(reading)
+    db.commit()
+    db.refresh(reading)
+    service = SmartDimmingService(db)
+    adjustments = await service.process_light_reading(reading)
+    return {
+        "light_reading_id": reading.id,
+        "lux_value": reading.lux_value,
+        "adjustments_count": len(adjustments),
+        "adjustments": adjustments,
+    }
 
 
 @router.put("/enable")
@@ -141,12 +223,10 @@ async def enable_smart_dimming(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Active ou désactive le Smart Dimming globalement.
+    Active ou désactive le Smart Dimming globalement (persisté en BDD).
     """
-    # Mettre à jour la configuration (dans un vrai système, on pourrait stocker en BDD)
-    # Pour l'instant, on utilise juste la config
-    settings.smart_dimming_enabled = request.enabled
-    
+    set_smart_dimming_enabled(db, request.enabled)
+
     return {
         "enabled": request.enabled,
         "message": f"Smart Dimming {'activé' if request.enabled else 'désactivé'}"

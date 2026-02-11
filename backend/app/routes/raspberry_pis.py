@@ -98,11 +98,14 @@ async def get_raspberry_pis(
     
     result = []
     for rpi in raspberry_pis:
-        # Compter les appareils
-        device_count = db.query(func.count(Device.id)).filter(
-            Device.raspberry_pi_id == rpi.id
-        ).scalar()
-        
+        # Appareils connectés (IDs pour debug admin)
+        devices_on_rpi = db.query(Device.id).filter(
+            Device.raspberry_pi_id == rpi.id,
+            Device.deleted_at.is_(None),
+        ).order_by(Device.id).all()
+        device_ids = [row[0] for row in devices_on_rpi]
+        device_count = len(device_ids)
+
         result.append({
             "id": rpi.id,
             "name": rpi.name,
@@ -112,7 +115,8 @@ async def get_raspberry_pis(
             "is_online": rpi.is_online,
             "created_at": rpi.created_at,
             "updated_at": rpi.updated_at,
-            "device_count": device_count
+            "device_count": device_count,
+            "device_ids": device_ids,
         })
     
     return result

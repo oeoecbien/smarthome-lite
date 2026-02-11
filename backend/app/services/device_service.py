@@ -384,9 +384,13 @@ class DeviceService:
                 "state": d.state,
                 "brightness": min(100, max(0, d.brightness)),
                 "gpio_pin": d.gpio_pin,
+                "raspberry_pi_id": d.raspberry_pi_id,
                 "raspberry_pi_name": d.raspberry_pi.name,
                 "location": d.raspberry_pi.location,
                 "raspberry_pi_online": d.raspberry_pi.is_online,
+                "user_id": d.user_id,
+                "created_at": d.created_at,
+                "updated_at": d.updated_at,
             }
             if d.controlled_by_sensor_id is not None:
                 row["controlled_by_sensor_id"] = d.controlled_by_sensor_id

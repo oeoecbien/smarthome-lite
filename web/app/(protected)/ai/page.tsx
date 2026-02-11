@@ -1,44 +1,20 @@
 "use client"
 
-import type React from "react"
-
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { ScenarioChip } from "@/components/scenario-chip"
 import { AdminOnly } from "@/components/admin-only"
 import { aiService } from "@/lib/services/ai-service"
+import type { CurrentScenario, ModelMetrics } from "@/lib/types"
+import { Brain, RefreshCw, AlertCircle, Cpu, CheckCircle, XCircle } from "lucide-react"
 import { useIsAdmin } from "@/hooks/use-is-admin"
-import type {
-  CurrentScenario,
-  ClassifyRequest,
-  ClassifyResponse,
-  PredictIntensityRequest,
-  PredictIntensityResponse,
-  ModelMetrics,
-  ScenarioType,
-} from "@/lib/types"
-import { SCENARIO_LABELS } from "@/lib/types"
-import { Brain, RefreshCw, AlertCircle, Cpu, SunDim, CheckCircle, XCircle, Gauge } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Lundi" },
-  { value: 1, label: "Mardi" },
-  { value: 2, label: "Mercredi" },
-  { value: 3, label: "Jeudi" },
-  { value: 4, label: "Vendredi" },
-  { value: 5, label: "Samedi" },
-  { value: 6, label: "Dimanche" },
-]
 
 export default function AIPage() {
   const isAdmin = useIsAdmin()
+  const router = useRouter()
   // Current scenario
   const [scenario, setScenario] = useState<CurrentScenario | null>(null)
   const [isLoadingScenario, setIsLoadingScenario] = useState(true)
@@ -46,27 +22,6 @@ export default function AIPage() {
   // Model metrics
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null)
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true)
-
-  // Classification (API: hour, day_of_week, presence_detected, light_on)
-  const [classifyForm, setClassifyForm] = useState<ClassifyRequest>({
-    hour: new Date().getHours(),
-    day_of_week: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1, // Lun=0 … Dim=6
-    presence_detected: true,
-    light_on: false,
-  })
-  const [isClassifying, setIsClassifying] = useState(false)
-  const [classifyResult, setClassifyResult] = useState<ClassifyResponse | null>(null)
-
-  // Prédiction d'intensité (API: hour, day_of_week, lux_value, presence_detected, scenario)
-  const [predictForm, setPredictForm] = useState<PredictIntensityRequest>({
-    hour: new Date().getHours(),
-    day_of_week: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
-    lux_value: 300,
-    presence_detected: true,
-    scenario: 0 as ScenarioType,
-  })
-  const [isPredicting, setIsPredicting] = useState(false)
-  const [predictResult, setPredictResult] = useState<PredictIntensityResponse | null>(null)
 
   const [error, setError] = useState<string | null>(null)
 
@@ -97,36 +52,18 @@ export default function AIPage() {
     fetchMetrics()
   }, [fetchScenario, fetchMetrics])
 
-  const handleClassify = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsClassifying(true)
-    setClassifyResult(null)
-    setError(null)
-
-    try {
-      const result = await aiService.classify(classifyForm)
-      setClassifyResult(result)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la classification")
-    } finally {
-      setIsClassifying(false)
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin/ai")
     }
-  }
+  }, [isAdmin, router])
 
-  const handlePredict = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsPredicting(true)
-    setPredictResult(null)
-    setError(null)
-
-    try {
-      const result = await aiService.predictIntensity(predictForm)
-      setPredictResult(result)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la prédiction")
-    } finally {
-      setIsPredicting(false)
-    }
+  if (isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Redirection..." />
+      </div>
+    )
   }
 
   return (
@@ -179,11 +116,11 @@ export default function AIPage() {
                 {scenario.scenario === 3 && "Mode Soirée - Ambiance lumineuse"}
               </p>
               <AdminOnly>
-                {scenario.features && (
+                {scenario.context && (
                   <div className="mt-4">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Features utilisées:</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Contexte utilisé (heure, présence, lampe):</p>
                     <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
-                      {JSON.stringify(scenario.features, null, 2)}
+                      {JSON.stringify(scenario.context, null, 2)}
                     </pre>
                   </div>
                 )}
@@ -259,223 +196,6 @@ export default function AIPage() {
             )}
           </CardContent>
         </Card>
-      </AdminOnly>
-
-      {/* Classification & Prediction Forms - Admin Only */}
-      <AdminOnly>
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Classification Form */}
-          <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Brain className="h-5 w-5 text-primary" />
-              Classification manuelle
-            </CardTitle>
-            <CardDescription>Testez la classification avec des données personnalisées</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleClassify} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="c-hour">Heure (0-23)</Label>
-                  <Input
-                    id="c-hour"
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={classifyForm.hour}
-                    onChange={(e) => setClassifyForm({ ...classifyForm, hour: Number.parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="c-day">Jour de la semaine</Label>
-                  <Select
-                    value={String(classifyForm.day_of_week)}
-                    onValueChange={(v) => setClassifyForm({ ...classifyForm, day_of_week: Number.parseInt(v) })}
-                  >
-                    <SelectTrigger id="c-day">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAYS_OF_WEEK.map((day) => (
-                        <SelectItem key={day.value} value={String(day.value)}>
-                          {day.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="c-presence">Présence détectée</Label>
-                <Switch
-                  id="c-presence"
-                  checked={classifyForm.presence_detected}
-                  onCheckedChange={(v) => setClassifyForm({ ...classifyForm, presence_detected: v })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="c-light">Lumière allumée</Label>
-                <Switch
-                  id="c-light"
-                  checked={classifyForm.light_on}
-                  onCheckedChange={(v) => setClassifyForm({ ...classifyForm, light_on: v })}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isClassifying}>
-                {isClassifying ? "Classification..." : "Classifier"}
-              </Button>
-
-              {classifyResult && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-2">Résultat:</p>
-                  <div className="flex items-center justify-between">
-                    <ScenarioChip scenario={classifyResult.scenario} />
-                    <span className="text-sm font-medium">
-                      Confiance: {(classifyResult.confidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Prediction Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <SunDim className="h-5 w-5 text-primary" />
-              Prédiction d&apos;intensité
-            </CardTitle>
-            <CardDescription>Prédisez l&apos;intensité lumineuse optimale</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePredict} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="p-hour">Heure (0-23)</Label>
-                  <Input
-                    id="p-hour"
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={predictForm.hour}
-                    onChange={(e) => setPredictForm({ ...predictForm, hour: Number.parseInt(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="p-day">Jour de la semaine</Label>
-                  <Select
-                    value={String(predictForm.day_of_week)}
-                    onValueChange={(v) => setPredictForm({ ...predictForm, day_of_week: Number.parseInt(v) })}
-                  >
-                    <SelectTrigger id="p-day">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DAYS_OF_WEEK.map((day) => (
-                        <SelectItem key={day.value} value={String(day.value)}>
-                          {day.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="p-lux">Luminosité ambiante (lux)</Label>
-                <Input
-                  id="p-lux"
-                  type="number"
-                  min="0"
-                  value={predictForm.lux_value}
-                  onChange={(e) =>
-                    setPredictForm({ ...predictForm, lux_value: Number(e.target.value) || 0 })
-                  }
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <Label htmlFor="p-presence">Présence détectée</Label>
-                <Switch
-                  id="p-presence"
-                  checked={predictForm.presence_detected}
-                  onCheckedChange={(v) => setPredictForm({ ...predictForm, presence_detected: v })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="p-scenario">Scénario</Label>
-                <Select
-                  value={String(predictForm.scenario)}
-                  onValueChange={(v) =>
-                    setPredictForm({ ...predictForm, scenario: Number.parseInt(v) as ScenarioType })
-                  }
-                >
-                  <SelectTrigger id="p-scenario">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(SCENARIO_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isPredicting}>
-                {isPredicting ? "Prédiction..." : "Prédire l'intensité"}
-              </Button>
-
-              {predictResult && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-3">Résultat:</p>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Gauge className="h-5 w-5 text-primary" />
-                      <span className="text-2xl font-bold">{predictResult.intensity}%</span>
-                    </div>
-                    <div
-                      className="flex-1 h-4 bg-muted-foreground/20 rounded-full overflow-hidden"
-                      role="progressbar"
-                      aria-valuenow={predictResult.intensity}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    >
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all",
-                          predictResult.intensity > 70
-                            ? "bg-warning"
-                            : predictResult.intensity > 40
-                              ? "bg-secondary"
-                              : "bg-info",
-                        )}
-                        style={{ width: `${predictResult.intensity}%` }}
-                      />
-                    </div>
-                  </div>
-                  {predictResult.confidence !== undefined && (
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Confiance: {(predictResult.confidence * 100).toFixed(1)}%
-                    </p>
-                  )}
-                  {predictResult.method && (
-                    <p className="text-xs text-muted-foreground mt-1">Méthode: {predictResult.method}</p>
-                  )}
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
-        </div>
       </AdminOnly>
     </div>
   )

@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch"
 import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
-import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw, Pencil, Radio } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Trash2, Loader2, MapPin, Wifi, WifiOff, RefreshCw, Pencil, Radio, Bug } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
@@ -22,6 +22,8 @@ interface DeviceCardProps {
   onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
   /** Édition (nom, type, pilotage par capteur) — affiche le bouton Modifier */
   onEdit?: (device: Device) => void
+  /** Afficher le bloc debug (ID appareil, RPi, user_id, dates) — pour l’admin */
+  showDebug?: boolean
 }
 
 const deviceIcons = {
@@ -31,7 +33,17 @@ const deviceIcons = {
   sensor: Radio,
 }
 
-export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit }: DeviceCardProps) {
+function formatDebugDate(s: string | null | undefined): string {
+  if (!s) return "—"
+  try {
+    const d = new Date(s)
+    return d.toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+  } catch {
+    return String(s)
+  }
+}
+
+export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit, showDebug }: DeviceCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
@@ -284,6 +296,30 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit
             </span>
           )}
         </div>
+
+        {/* Debug (admin) */}
+        {showDebug && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
+              <Bug className="h-3.5 w-3.5" />
+              Debug
+            </p>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono text-muted-foreground">
+              <dt>ID appareil</dt>
+              <dd>{device.id}</dd>
+              <dt>ID RPi</dt>
+              <dd>{device.raspberry_pi_id}</dd>
+              <dt>user_id</dt>
+              <dd>{device.user_id ?? "—"}</dd>
+              <dt>GPIO</dt>
+              <dd>{device.gpio_pin}</dd>
+              <dt>Créé le</dt>
+              <dd>{formatDebugDate(device.created_at)}</dd>
+              <dt>Modifié le</dt>
+              <dd>{formatDebugDate(device.updated_at)}</dd>
+            </dl>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

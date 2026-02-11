@@ -5,12 +5,14 @@ export interface RaspberryPi {
   id: number
   name: string
   location?: string
-  ip_address: string
+  ip_address: string | null
   api_key: string
   is_online: boolean
   created_at: string
   updated_at?: string
   device_count?: number
+  /** Debug admin: IDs des appareils connectés à ce RPi */
+  device_ids?: number[]
 }
 
 export interface AvailableRaspberryPi {

@@ -4,6 +4,7 @@ import type React from "react"
 import { Suspense } from "react"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,6 +44,7 @@ interface NewDeviceForm {
 
 function DevicesContent() {
   const isAdmin = useIsAdmin()
+  const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([])
   const [raspberryPis, setRaspberryPis] = useState<AvailableRaspberryPi[]>([])
@@ -55,6 +57,13 @@ function DevicesContent() {
   const [editForm, setEditForm] = useState<Partial<Device> & { sensor_rules?: SensorRules }>({})
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+
+  // Admin : rediriger vers la page admin appareils
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin/devices")
+    }
+  }, [isAdmin, router])
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -242,6 +251,14 @@ function DevicesContent() {
         <AlertCircle className="h-12 w-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
         <Button onClick={fetchDevices}>Réessayer</Button>
+      </div>
+    )
+  }
+
+  if (isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Redirection..." />
       </div>
     )
   }

@@ -130,6 +130,7 @@ class ModelMetricsResponse(BaseModel):
     accuracy: Optional[float] = None
     method: str
     features_count: int
+    features: Optional[List[str]] = None
     scenarios: list[str]
 
 
@@ -182,7 +183,8 @@ async def get_model_metrics(
         "model_path": model_path,
         "accuracy": accuracy,
         "method": method,
-        "features_count": 4,  # hour, day_of_week, presence_detected, light_on
+        "features_count": 4,
+        "features": ["hour", "day_of_week", "presence_detected", "light_on"],
         "scenarios": ["Day", "Night", "Away", "Evening"]
     }
 
