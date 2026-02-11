@@ -1,5 +1,4 @@
 // SmartHome Lite Type Definitions
-
 export type UserRole = "user" | "admin"
 
 export interface User {
@@ -9,7 +8,6 @@ export interface User {
   role?: UserRole
 }
 
-/** Règles pilotage par capteur (mouvement + luminosité) */
 export interface SensorRules {
   motion?: { on_brightness?: number; off_after_seconds?: number }
   illuminance?: { below_lux?: number; brightness?: number; above_lux?: number }
@@ -22,19 +20,13 @@ export interface Device {
   type: "light" | "dimmer" | "socket" | "sensor"
   raspberry_pi_id: number
   gpio_pin: number
-  /** État ON/OFF (backend renvoie booléen) */
   state: boolean | "ON" | "OFF"
   brightness: number | null
   location?: string
-  /** Nom du RPi (liste appareils) */
   raspberry_pi_name?: string
-  /** RPi en ligne = commandes envoyées au vrai hardware */
   raspberry_pi_online?: boolean
-  /** ID du capteur qui pilote cette lampe (lampes uniquement) */
   controlled_by_sensor_id?: number | null
-  /** Règles : mouvement (allumer / éteindre après X s) et luminosité (seuils lux) */
   sensor_rules?: SensorRules | null
-  /** Nom du capteur (affichage) */
   controlled_by_sensor_name?: string | null
 }
 
@@ -70,7 +62,6 @@ export const SCENARIO_LABELS: Record<ScenarioType, string> = {
   3: "Evening",
 }
 
-/** Contexte du scénario actuel (mouvement MultiSensor7, lampes). */
 export interface CurrentScenarioContext {
   hour: number
   day_of_week: number
@@ -87,7 +78,6 @@ export interface CurrentScenario {
   scenario_name?: string
   confidence?: number
   method?: string
-  /** Contexte utilisé pour la classification (présence, lampes, utilisateurs détectés). */
   context?: CurrentScenarioContext
   features?: Record<string, unknown>
 }
@@ -151,7 +141,6 @@ export interface PresenceRecord {
   sensor_node_id?: number
 }
 
-/** Mesure de luminosité (backend GET /api/light-readings). */
 export interface LightReading {
   id: number
   raspberry_pi_id: number
@@ -179,9 +168,12 @@ export interface AuthResponse {
 export interface RuleTestResult {
   matched: boolean
   reason?: string
+  condition_met?: boolean
+  action_executed?: boolean
+  message?: string
+  error?: string
 }
 
-/** Données capteur d'un nœud Z-Wave (ex. Aeotec MultiSensor 7). Réponse normalisée backend (getValue / cache driver). */
 export interface ZwaveSensorData {
   success?: boolean
   device_id?: number | null
@@ -199,7 +191,6 @@ export interface ZwaveSensorData {
   unknown?: boolean | null
 }
 
-/** Appareil Z-Wave connu par le backend (registre). */
 export interface ZwaveKnownDevice {
   manufacturer_id: number
   manufacturer_name: string
