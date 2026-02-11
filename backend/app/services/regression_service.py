@@ -112,8 +112,8 @@ class RegressionService:
                 # Prédiction
                 intensity = float(self.model.predict(features)[0])
                 
-                # Clamp entre 0 et 100
-                intensity = max(0, min(100, int(intensity)))
+                # Clamp entre 0 et 99 (lampe jamais à 100)
+                intensity = max(0, min(99, int(intensity)))
                 
                 # Pour un Random Forest, on peut estimer la confiance via la variance
                 # des prédictions des arbres individuels
@@ -188,8 +188,8 @@ class RegressionService:
         if presence_detected:
             intensity += 10 if scenario == 0 else (5 if scenario == 1 else 15)
         
-        # Clamp entre 0 et 100
-        intensity = max(0, min(100, int(intensity)))
+        # Clamp entre 0 et 99 (lampe jamais à 100)
+        intensity = max(0, min(99, int(intensity)))
         
         logger.debug(
             f"Prédiction fallback: {intensity}% "

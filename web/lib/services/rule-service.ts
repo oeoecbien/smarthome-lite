@@ -23,6 +23,24 @@ export const ruleService = {
   },
 
   async testRule(id: number): Promise<RuleTestResult> {
-    return api.post<RuleTestResult>(`/api/rules/${id}/test`)
+    const res = await api.post<{
+      condition_met?: boolean
+      action_executed?: boolean
+      message?: string
+      error?: string
+    }>(`/api/rules/${id}/test`)
+    const matched = res.condition_met === true && res.action_executed === true
+    const reason =
+      res.message ??
+      res.error ??
+      (matched ? "Condition satisfaite et action exécutée" : "Condition non satisfaite")
+    return {
+      matched,
+      reason,
+      condition_met: res.condition_met,
+      action_executed: res.action_executed,
+      message: res.message,
+      error: res.error,
+    }
   },
 }

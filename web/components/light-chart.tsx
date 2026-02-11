@@ -11,19 +11,22 @@ interface LightChartProps {
 
 export function LightChart({ data }: LightChartProps) {
   const chartData = useMemo(() => {
-    // Take last 50 readings and reverse to show oldest first
     return [...data]
       .slice(0, 50)
       .reverse()
-      .map((reading, index) => ({
-        index,
-        lux: reading.lux,
-        percentage: reading.percentage,
-        time: new Date(reading.timestamp).toLocaleTimeString("fr-FR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      }))
+      .map((reading, index) => {
+        const lux = reading.lux_value
+        const percentage = Math.min(100, Math.round((lux / 65535) * 100))
+        return {
+          index,
+          lux,
+          percentage,
+          time: new Date(reading.measured_at).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }
+      })
   }, [data])
 
   return (

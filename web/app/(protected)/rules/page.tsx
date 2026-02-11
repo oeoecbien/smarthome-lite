@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,6 +64,7 @@ const EMPTY_FORM: RuleFormData = {
 
 export default function RulesPage() {
   const isAdmin = useIsAdmin()
+  const router = useRouter()
   const [rules, setRules] = useState<Rule[]>([])
   const [filteredRules, setFilteredRules] = useState<Rule[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -93,6 +95,12 @@ export default function RulesPage() {
   useEffect(() => {
     fetchRules()
   }, [fetchRules])
+
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin/rules")
+    }
+  }, [isAdmin, router])
 
   // Apply filters
   useEffect(() => {
@@ -211,6 +219,14 @@ export default function RulesPage() {
   }
 
   const enabledCount = rules.filter((r) => r.enabled).length
+
+  if (isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Redirection..." />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

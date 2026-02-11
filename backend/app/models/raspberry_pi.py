@@ -25,7 +25,7 @@ class RaspberryPi(Base):
         
     Relations:
         devices: Liste des appareils connectés à ce Raspberry Pi
-        presence_detections: Historique des détections de présence via Bluetooth
+        presence_detections: Historique des détections de mouvement (MultiSensor7)
         light_readings: Historique des mesures de luminosité
     """
     __tablename__ = "raspberry_pis"

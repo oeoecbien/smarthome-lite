@@ -1,16 +1,19 @@
 """
 Configuration de l'API Raspberry Z-Wave (serveur Flask sur le RPi).
 
+Ports (cohérence capteur / lampes) :
+- 5000 : API Flask (backend appelle http://<rpi>:5000/api/nodes/<node_id>/sensor)
+- 8091 : Z-Wave JS UI — HTTP (get node) + Socket.IO (getValue). Lecture capteur = 8091 uniquement.
+- 3000 : Z-Wave JS Server WebSocket (setValue lampes + lecture état nœuds pour capteur).
+
 Lit les variables depuis os.environ (chargé depuis sae_s5/.env à la racine).
-Ne pas utiliser API_HOST / API_PORT du .env : ce sont les variables du backend (FastAPI).
-Sur le RPi on utilise uniquement : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_*,
-BACKEND_URL, RASPBERRY_API_KEY, BACKEND_HEARTBEAT_INTERVAL, ZWAVE_DEBUG.
+Sur le RPi : ZWAVE_API_HOST, ZWAVE_API_PORT, ZWAVE_JS_UI_URL, ZWAVE_JS_WS_URL,
+BACKEND_URL, RASPBERRY_API_KEY, BACKEND_HEARTBEAT_INTERVAL, ZWAVE_DEBUG, MULTISENSOR7_NODE_ID.
 """
 import os
 
-# Z-Wave JS UI (zwave-js/docker-compose.yml : SOCKET_PORT=8091, interface web Socket.IO)
+# Z-Wave JS UI : HTTP + Socket.IO (port 8091). Lecture capteur = get_node HTTP puis getValue Socket.IO.
 ZWAVE_JS_UI_URL = os.environ.get("ZWAVE_JS_UI_URL", "http://localhost:8091").rstrip("/")
-
 
 def _default_ws_url(http_url: str) -> str:
     """Dérive ws://host:3000 depuis http://host:8091 (même host, port 3000)."""
@@ -19,7 +22,6 @@ def _default_ws_url(http_url: str) -> str:
     host = p.hostname or "localhost"
     scheme = "wss" if p.scheme == "https" else "ws"
     return f"{scheme}://{host}:3000"
-
 
 # Z-Wave JS Server WebSocket (port 3000, protocole zwave-js-server) — prioritaire pour setValue
 ZWAVE_JS_WS_URL = os.environ.get("ZWAVE_JS_WS_URL", "").strip() or _default_ws_url(ZWAVE_JS_UI_URL)
@@ -42,3 +44,8 @@ BACKEND_HEARTBEAT_INTERVAL = int(os.environ.get("BACKEND_HEARTBEAT_INTERVAL", "3
 
 # Debug (évite conflit avec DEBUG du backend)
 DEBUG = os.environ.get("ZWAVE_DEBUG", os.environ.get("FLASK_DEBUG", "true")).lower() in ("1", "true", "yes")
+
+# Détecteur de mouvement Z-Wave (MultiSense / MultiSensor 7) : node_id. 0 = désactivé.
+# Pour que la lampe réagisse : enregistrer ce capteur côté backend (POST /api/raspberry-pis/{id}/register-sensor)
+# puis lier la lampe au capteur (controlled_by_sensor_id + sensor_rules).
+MULTISENSOR7_NODE_ID = int(os.environ.get("MULTISENSOR7_NODE_ID", "0"))

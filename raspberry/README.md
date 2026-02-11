@@ -42,7 +42,8 @@ Variables utilisées (dans `sae_s5/.env`) :
 | `ZWAVE_JS_WS_URL` | **WebSocket** zwave-js-server (port **3000**) — utilisé en priorité pour `setValue` (ON/OFF, brightness). Voir [zwave-js-server](https://github.com/zwave-js/zwave-js-server). | Dérivé de `ZWAVE_JS_UI_URL` → `ws://host:3000` |
 | `ZWAVE_API_HOST` | Interface d’écoute Flask | `0.0.0.0` |
 | `ZWAVE_API_PORT` | Port de l’API (backend appelle ce port) | `5000` |
-| `RASPBERRY_API_KEY` | Optionnel : clé pour header `X-API-Key` sur `/api/devices/*` | - |
+| `RASPBERRY_API_KEY` | Optionnel : clé pour header `X-API-Key` sur `/api/devices/*` et `/api/presence` | - |
+| `MULTISENSOR7_NODE_ID` | Node ID Z-Wave du capteur de mouvement (ex. Aeotec MultiSensor 7). `0` = désactivé. | `0` |
 | `ZWAVE_DEBUG` | Mode debug (ou `FLASK_DEBUG`) | `true` |
 
 **Pourquoi le WebSocket (port 3000) ?** Le conteneur Z-Wave JS UI expose le port **3000** avec le protocole [zwave-js-server](https://github.com/zwave-js/zwave-js-server) (WebSocket brut, commande `node.set_value`). Les commandes d’écriture (luminosité, ON/OFF) passent par ce WebSocket en priorité ; si indisponible, le client utilise Socket.IO (port 8091).
@@ -150,17 +151,37 @@ Appareil testé : **ABUS Security Center Bulb** (SHLM10010), node_id **3**.
 
 Cette lampe n’utilise **que la plage 0–99** (pas de valeur 255 pour « ON »). Le client Z-Wave (`zwave_client.py`) envoie donc **99** pour « allumer à fond » et mappe 0–100 % du backend vers 0–99 pour `targetValue`. Les réponses `currentValue` (0–99) sont converties en 0–100 pour l’API.
 
+## Détection de mouvement (MultiSensor7)
+
+Si un **MultiSensor7** (ou autre capteur Z-Wave avec CC 48 Binary Sensor) est sur le réseau, l’API Flask peut interroger son état et envoyer une détection de mouvement au backend à chaque **front montant** (mouvement détecté).
+
+### Prérequis
+
+- **Z-Wave** : le capteur (ex. Aeotec MultiSensor 7) est inclus dans le réseau et interrogé (Z-Wave JS UI).
+- **Backend** : le RPi est enregistré dans **Administration → Raspberry Pis** avec la clé API (`RASPBERRY_API_KEY`).
+- **.env** : `BACKEND_URL`, `RASPBERRY_API_KEY` et **`MULTISENSOR7_NODE_ID`** (node_id du capteur, ex. 5). Si `MULTISENSOR7_NODE_ID=0` ou non défini, la détection mouvement est désactivée.
+
+### Comportement
+
+Au démarrage de `api_flask_zwave.py`, un thread en arrière-plan :
+
+1. Toutes les 5 secondes, lit l’état du nœud (Binary Sensor CC 48).
+2. Si l’état passe de « pas de mouvement » à « mouvement », envoie `POST {BACKEND_URL}/api/presence` avec `{"sensor_node_id": <node_id>}` et le header `X-API-Key`.
+
+Le backend enregistre la présence en BDD (table `presence`), déclenche les règles (ex. « si présence → allumer la lampe ») et l’IA utilise cette présence pour le scénario (Day / Away / etc.).
+
 ## Fichiers
 
 | Fichier | Rôle |
 |---------|------|
-| `api_flask_zwave.py` | Serveur Flask, routes `/api/devices/...` et `/api/nodes/...` |
+| `api_flask_zwave.py` | Serveur Flask, routes `/api/devices/...` et `/api/nodes/...`, thread motion → backend |
 | `config.py` | Lecture des variables (depuis `sae_s5/.env`), alignée zwave-js et backend |
-| `zwave_client.py` | Client Socket.IO vers Z-Wave JS UI (port 8091) |
-| `requirements.txt` | Dépendances Python |
+| `zwave_client.py` | Client Socket.IO vers Z-Wave JS UI (port 8091), lecture mouvement CC 48 |
+| `requirements.txt` | Dépendances Python (Flask, python-socketio, aiohttp, …) |
 
 ## Dépannage
 
 - **Timeout / connexion refusée** : Z-Wave JS UI doit écouter sur `http://localhost:8091` sur le même RPi que cette API. Vérifier `docker compose ps` et les ports dans `zwave-js/docker-compose.yml`.
 - **Backend ne reçoit pas de réponse** : API Flask en `0.0.0.0:5000`, pare-feu du RPi autorisant le port 5000 depuis l’IP du backend.
 - **Nœud non reconnu** : Dans Z-Wave JS UI, vérifier que le nœud est interviewé et supporte Multilevel Switch (CC 38) pour dimmers.
+- **« Raspberry Pi RPI Salon not responding » (500 sur PUT /api/devices/7/state)** : Le backend appelle l’API Flask du RPi à l’adresse enregistrée (Admin → Raspberry Pis). Vérifier que **`api_flask_zwave.py` tourne bien sur la machine dont l’IP est enregistrée** (ex. 10.109.150.133). Si vous lancez Flask sur une autre machine (ex. votre PC), soit mettre à jour l’IP du RPi dans l’admin, soit lancer Flask sur le RPi (SSH sur 10.109.150.133 puis `python api_flask_zwave.py`). Vérifier aussi que le port 5000 est accessible depuis le serveur backend (pare-feu, réseau).

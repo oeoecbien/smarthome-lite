@@ -90,14 +90,14 @@ class SmartDimmingConfig(BaseModel):
     Schéma pour configuration du Smart Dimming.
     """
     enabled: bool = Field(..., description="Activer/désactiver le Smart Dimming")
-    min_brightness: int = Field(default=10, ge=0, le=100, description="Intensité minimale (0-100)")
-    max_brightness: int = Field(default=100, ge=0, le=100, description="Intensité maximale (0-100)")
+    min_brightness: int = Field(default=10, ge=0, le=99, description="Intensité minimale (0-99)")
+    max_brightness: int = Field(default=99, ge=0, le=99, description="Intensité maximale (0-99)")
     
     class Config:
         json_schema_extra = {
             "example": {
                 "enabled": True,
                 "min_brightness": 10,
-                "max_brightness": 100
+                "max_brightness": 99
             }
         }

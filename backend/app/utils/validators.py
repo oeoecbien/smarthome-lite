@@ -93,28 +93,17 @@ def validate_gpio_pin_available(
 
 def validate_brightness_range(brightness: int) -> Tuple[bool, Optional[str]]:
     """
-    Vérifie qu'une valeur de luminosité est dans la plage valide (0-100).
-    
-    Cette validation complète celle de Pydantic en ajoutant des messages
-    d'erreur plus explicites pour l'utilisateur final.
+    Vérifie qu'une valeur de luminosité est dans la plage valide (0-99).
+    La lampe n'utilise jamais 100 en luminosité (max 99).
     
     Args:
         brightness (int): Valeur de luminosité à valider
         
     Returns:
         tuple[bool, str | None]: (is_valid, error_message)
-        
-    Exemple:
-        >>> is_valid, error = validate_brightness_range(75)
-        >>> print(is_valid)
-        True
-        
-        >>> is_valid, error = validate_brightness_range(150)
-        >>> print(error)
-        L'intensité lumineuse doit être entre 0 et 100 (reçu: 150)
     """
-    if not 0 <= brightness <= 100:
-        return False, f"L'intensité lumineuse doit être entre 0 et 100 (reçu: {brightness})"
+    if not 0 <= brightness <= 99:
+        return False, f"L'intensité lumineuse doit être entre 0 et 99 (reçu: {brightness})"
     return True, None
 
 

@@ -439,7 +439,7 @@ Les paramètres de smart dimming sont définis dans `app/config.py` via la propr
 
 - **Mode Day (0)** : Seuil haut 500 lux → intensité 20%, seuil bas 200 lux → intensité 70%
 - **Mode Evening (3)** : Seuil haut 200 lux → intensité 30%, seuil bas 50 lux → intensité 75%
-- **Mode Night (1)** : Smart dimming désactivé, intensité fixe 20-30%
+- **Mode Night (1)** : Smart dimming actif, intensité 20-30% (seuils lux 0-50)
 - **Mode Away (2)** : Smart dimming désactivé, lampes éteintes
 
 ## API Documentation

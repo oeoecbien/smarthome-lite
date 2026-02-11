@@ -15,7 +15,7 @@ from app.dependencies import get_current_user, PaginationParams, EventFilterPara
 router = APIRouter()
 
 
-@router.get("/", response_model=List[EventResponse])
+@router.get("", response_model=List[EventResponse])
 async def get_events(
     pagination: PaginationParams = Depends(),
     filters: EventFilterParams = Depends(),

@@ -28,7 +28,7 @@ class TestRegressionService:
         assert "intensity" in result
         assert "confidence" in result
         assert "method" in result
-        assert 0 <= result["intensity"] <= 100
+        assert 0 <= result["intensity"] <= 99
     
     def test_predict_intensity_fallback(self):
         """Test que le fallback fonctionne si le modèle n'est pas disponible."""
@@ -43,5 +43,5 @@ class TestRegressionService:
         )
         
         assert result["intensity"] >= 0
-        assert result["intensity"] <= 100
+        assert result["intensity"] <= 99
         assert result["method"] in ["ml", "fallback"]

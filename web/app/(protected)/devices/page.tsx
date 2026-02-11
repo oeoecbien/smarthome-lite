@@ -4,6 +4,7 @@ import type React from "react"
 import { Suspense } from "react"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,18 +24,19 @@ import { AdminOnly } from "@/components/admin-only"
 import { deviceService } from "@/lib/services/device-service"
 import { raspberryPiService, type AvailableRaspberryPi } from "@/lib/services/raspberry-pi-service"
 import { useIsAdmin } from "@/hooks/use-is-admin"
-import type { Device } from "@/lib/types"
-import { Plus, RefreshCw, Search, AlertCircle, Lightbulb, Filter } from "lucide-react"
+import type { Device, SensorRules } from "@/lib/types"
+import { Plus, RefreshCw, Search, AlertCircle, Lightbulb, Filter, Pencil } from "lucide-react"
 
-const DEVICE_TYPES = [
+const DEVICE_TYPES_BASE = [
   { value: "light", label: "Lumière" },
   { value: "dimmer", label: "Variateur" },
   { value: "socket", label: "Prise" },
 ]
+const DEVICE_TYPES_WITH_SENSOR = [...DEVICE_TYPES_BASE, { value: "sensor", label: "Capteur (Z-Wave)" }]
 
 interface NewDeviceForm {
   name: string
-  type: "light" | "dimmer" | "socket"
+  type: "light" | "dimmer" | "socket" | "sensor"
   raspberry_pi_id: number
   gpio_pin: number
   location: string
@@ -42,6 +44,7 @@ interface NewDeviceForm {
 
 function DevicesContent() {
   const isAdmin = useIsAdmin()
+  const router = useRouter()
   const [devices, setDevices] = useState<Device[]>([])
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([])
   const [raspberryPis, setRaspberryPis] = useState<AvailableRaspberryPi[]>([])
@@ -50,6 +53,17 @@ function DevicesContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null)
+  const [editForm, setEditForm] = useState<Partial<Device> & { sensor_rules?: SensorRules }>({})
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
+  // Admin : rediriger vers la page admin appareils
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin/devices")
+    }
+  }, [isAdmin, router])
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -68,7 +82,13 @@ function DevicesContent() {
   const fetchDevices = useCallback(async () => {
     try {
       const data = await deviceService.getDevices()
-      setDevices(data)
+      setDevices((prev) => {
+        if (prev.length === 0) return data
+        const byId = new Map(data.map((d) => [d.id, d]))
+        const keptOrder = prev.map((d) => byId.get(d.id) ?? d).filter((d) => byId.has(d.id))
+        const added = data.filter((d) => !prev.some((p) => p.id === d.id))
+        return [...keptOrder, ...added]
+      })
       setError(null)
     } catch {
       setError("Erreur lors du chargement des appareils")
@@ -164,6 +184,59 @@ function DevicesContent() {
     }
   }
 
+  const openEdit = (device: Device) => {
+    setEditingDevice(device)
+    setEditForm({
+      name: device.name,
+      type: device.type,
+      gpio_pin: device.gpio_pin ?? undefined,
+      controlled_by_sensor_id: device.controlled_by_sensor_id ?? undefined,
+      sensor_rules: device.sensor_rules ?? undefined,
+    })
+    setEditError(null)
+  }
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingDevice) return
+    const maxPin = editForm.type === "sensor" ? 255 : 40
+    const rawPin = editForm.gpio_pin ?? editingDevice.gpio_pin
+    const gpioPin = typeof rawPin === "number" && rawPin >= 1 && rawPin <= maxPin ? rawPin : editingDevice.gpio_pin
+    if (gpioPin == null || gpioPin < 1 || gpioPin > maxPin) {
+      setEditError(
+        editForm.type === "sensor"
+          ? "Node ID invalide. Saisir un nombre entre 1 et 255 (node Z-Wave)."
+          : "Broche invalide. Saisir un nombre entre 1 et 40."
+      )
+      return
+    }
+    setIsSavingEdit(true)
+    setEditError(null)
+    try {
+      const updated = await deviceService.updateDevice(editingDevice.id, {
+        name: editForm.name,
+        type: editForm.type,
+        gpio_pin: gpioPin,
+        controlled_by_sensor_id: editForm.controlled_by_sensor_id ?? null,
+        sensor_rules: editForm.sensor_rules ?? null,
+      })
+      setDevices((prev) => prev.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)))
+      setEditingDevice(null)
+      fetchDevices()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Erreur lors de la mise à jour")
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
+  /** Mise à jour immédiate d'un appareil dans la liste (état/brillance) pour que l'UI réagisse sans attendre le refetch */
+  const handleDeviceUpdated = (deviceId: number, patch: { state?: boolean; brightness?: number }) => {
+    setDevices((prev) =>
+      prev.map((d) => (d.id === deviceId ? { ...d, ...patch } : d))
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -178,6 +251,14 @@ function DevicesContent() {
         <AlertCircle className="h-12 w-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
         <Button onClick={fetchDevices}>Réessayer</Button>
+      </div>
+    )
+  }
+
+  if (isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Redirection..." />
       </div>
     )
   }
@@ -226,7 +307,7 @@ function DevicesContent() {
                     <Label htmlFor="type">Type</Label>
                     <Select
                       value={formData.type}
-                      onValueChange={(value: "light" | "dimmer" | "socket") =>
+                      onValueChange={(value: "light" | "dimmer" | "socket" | "sensor") =>
                         setFormData({ ...formData, type: value })
                       }
                     >
@@ -234,7 +315,7 @@ function DevicesContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {DEVICE_TYPES.map((type) => (
+                        {(isAdmin ? DEVICE_TYPES_WITH_SENSOR : DEVICE_TYPES_BASE).map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
                           </SelectItem>
@@ -274,13 +355,15 @@ function DevicesContent() {
                         id="gpio"
                         type="number"
                         min="1"
-                        max="40"
+                        max={formData.type === "sensor" ? 255 : 40}
                         value={formData.gpio_pin}
                         onChange={(e) => setFormData({ ...formData, gpio_pin: Number.parseInt(e.target.value) || 17 })}
                         required
                       />
                       <p className="text-xs text-muted-foreground">
-                        Sur un RPi Z-Wave : node_id du nœud (ex. 3 pour une ampoule). Sinon numéro GPIO (1–40).
+                        {formData.type === "sensor"
+                          ? "Node ID Z-Wave (1–255), ex. 5 pour MultiSensor 7."
+                          : "Sur un RPi Z-Wave : node_id du nœud (ex. 3 pour une ampoule). Sinon numéro GPIO (1–40)."}
                       </p>
                     </div>
                   </div>
@@ -308,6 +391,214 @@ function DevicesContent() {
           </Dialog>
         </div>
       </div>
+
+      {/* Edit device dialog */}
+      <Dialog open={!!editingDevice} onOpenChange={(open) => !open && setEditingDevice(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Modifier l&apos;appareil</DialogTitle>
+            <DialogDescription>
+              Nom, type, broche et pilotage par capteur (mouvement + luminosité).
+            </DialogDescription>
+          </DialogHeader>
+          {editingDevice && (
+            <form onSubmit={handleSaveEdit}>
+              <div className="space-y-4 py-4">
+                {editError && (
+                  <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{editError}</div>
+                )}
+                <div className="space-y-2">
+                  <Label>Nom</Label>
+                  <Input
+                    value={editForm.name ?? ""}
+                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={editForm.type ?? "light"}
+                    onValueChange={(v: Device["type"]) => setEditForm((f) => ({ ...f, type: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEVICE_TYPES_WITH_SENSOR.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Broche / Node ID</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={editForm.type === "sensor" ? 255 : 40}
+                    value={editForm.gpio_pin ?? editingDevice?.gpio_pin ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value === "" ? undefined : Number(e.target.value)
+                      setEditForm((f) => ({ ...f, gpio_pin: v }))
+                    }}
+                    placeholder={editForm.type === "sensor" ? "1–255 (node Z-Wave)" : "1–40"}
+                  />
+                </div>
+                {(editForm.type === "light" || editForm.type === "dimmer") && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Piloté par le capteur</Label>
+                      <Select
+                        value={editForm.controlled_by_sensor_id ? String(editForm.controlled_by_sensor_id) : "none"}
+                        onValueChange={(v) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            controlled_by_sensor_id: v === "none" ? null : Number(v),
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Aucun" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Aucun</SelectItem>
+                          {devices
+                            .filter((d) => d.type === "sensor")
+                            .map((d) => (
+                              <SelectItem key={d.id} value={String(d.id)}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {editForm.controlled_by_sensor_id != null && editForm.controlled_by_sensor_id > 0 && (
+                      <div className="rounded-lg border p-3 space-y-3 text-sm">
+                        <Label>Règles capteur</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-muted-foreground">Mouvement : intensité</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={editForm.sensor_rules?.motion?.on_brightness ?? 80}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  sensor_rules: {
+                                    ...f.sensor_rules,
+                                    motion: {
+                                      ...f.sensor_rules?.motion,
+                                      on_brightness: Number(e.target.value) || 80,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Éteindre après (s)</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={editForm.sensor_rules?.motion?.off_after_seconds ?? 300}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  sensor_rules: {
+                                    ...f.sensor_rules,
+                                    motion: {
+                                      ...f.sensor_rules?.motion,
+                                      off_after_seconds: Number(e.target.value) || 300,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Si luminosité &lt; (lux)</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={editForm.sensor_rules?.illuminance?.below_lux ?? 100}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  sensor_rules: {
+                                    ...f.sensor_rules,
+                                    illuminance: {
+                                      ...f.sensor_rules?.illuminance,
+                                      below_lux: Number(e.target.value) || 100,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">→ intensité</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={editForm.sensor_rules?.illuminance?.brightness ?? 60}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  sensor_rules: {
+                                    ...f.sensor_rules,
+                                    illuminance: {
+                                      ...f.sensor_rules?.illuminance,
+                                      brightness: Number(e.target.value) || 60,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Si luminosité &gt; (lux) → éteindre</span>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={editForm.sensor_rules?.illuminance?.above_lux ?? 2000}
+                              onChange={(e) =>
+                                setEditForm((f) => ({
+                                  ...f,
+                                  sensor_rules: {
+                                    ...f.sensor_rules,
+                                    illuminance: {
+                                      ...f.sensor_rules?.illuminance,
+                                      above_lux: Number(e.target.value) || 2000,
+                                    },
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditingDevice(null)} disabled={isSavingEdit}>
+                  Annuler
+                </Button>
+                <Button type="submit" disabled={isSavingEdit}>
+                  {isSavingEdit ? "Enregistrement..." : "Enregistrer"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -341,7 +632,7 @@ function DevicesContent() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les types</SelectItem>
-              {DEVICE_TYPES.map((type) => (
+              {(isAdmin ? DEVICE_TYPES_WITH_SENSOR : DEVICE_TYPES_BASE).map((type) => (
                 <SelectItem key={type.value} value={type.value}>
                   {type.label}
                 </SelectItem>
@@ -374,9 +665,21 @@ function DevicesContent() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDevices.map((device) =>
             isAdmin ? (
-              <DeviceCard key={device.id} device={device} onUpdate={fetchDevices} onDelete={handleDelete} />
+              <DeviceCard
+                key={device.id}
+                device={device}
+                onUpdate={fetchDevices}
+                onDelete={handleDelete}
+                onDeviceUpdated={handleDeviceUpdated}
+                onEdit={openEdit}
+              />
             ) : (
-              <DeviceCardUser key={device.id} device={device} onUpdate={fetchDevices} />
+              <DeviceCardUser
+                key={device.id}
+                device={device}
+                onUpdate={fetchDevices}
+                onDeviceUpdated={handleDeviceUpdated}
+              />
             ),
           )}
         </div>
