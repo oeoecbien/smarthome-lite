@@ -28,6 +28,9 @@ export interface Device {
   controlled_by_sensor_id?: number | null
   sensor_rules?: SensorRules | null
   controlled_by_sensor_name?: string | null
+  /** Debug admin: dates de création / mise à jour */
+  created_at?: string | null
+  updated_at?: string | null
 }
 
 export interface Rule {

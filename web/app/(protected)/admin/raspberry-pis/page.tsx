@@ -291,12 +291,20 @@ export default function AdminRaspberryPisPage() {
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">IP:</span>
-                    <span className="font-mono">{rpi.ip_address}</span>
+                    <span className="font-mono">{rpi.ip_address ?? "—"}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Appareils:</span>
                     <span>{rpi.device_count ?? 0}</span>
                   </div>
+                  {rpi.device_ids && rpi.device_ids.length > 0 && (
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="text-muted-foreground shrink-0">IDs appareils:</span>
+                      <span className="font-mono text-xs break-all" title="IDs pour debug">
+                        {rpi.device_ids.join(", ")}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Clé API:</span>
                     <Button

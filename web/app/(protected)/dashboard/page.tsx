@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 interface DashboardData {
   devices: Device[]
@@ -41,6 +42,7 @@ function isControllableDevice(device: Device): boolean {
 }
 
 export default function DashboardPage() {
+  const isAdmin = useIsAdmin()
   const [data, setData] = useState<DashboardData>({
     devices: [],
     rules: [],
@@ -216,7 +218,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg font-medium">Appareils</CardTitle>
-            <Link href="/devices">
+            <Link href={isAdmin ? "/admin/devices" : "/devices"}>
               <Button variant="ghost" size="sm">
                 Voir tout
                 <ChevronRight className="h-4 w-4 ml-1" />

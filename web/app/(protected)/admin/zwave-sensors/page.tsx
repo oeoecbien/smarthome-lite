@@ -488,7 +488,7 @@ export default function AdminZwaveSensorsPage() {
                       Ce capteur est enregistré : <strong>{existingSensorDevice.name}</strong>
                     </span>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href="/devices">
+                      <Link href="/admin/devices">
                         Voir / Modifier l&apos;appareil <ExternalLink className="h-3 w-3 ml-1" />
                       </Link>
                     </Button>

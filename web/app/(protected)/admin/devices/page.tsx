@@ -361,7 +361,7 @@ export default function AdminDevicesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredDevices.map((device) => (
-            <DeviceCard key={device.id} device={device} onUpdate={fetchData} onDelete={handleDelete} />
+            <DeviceCard key={device.id} device={device} onUpdate={fetchData} onDelete={handleDelete} showDebug />
           ))}
         </div>
       )}

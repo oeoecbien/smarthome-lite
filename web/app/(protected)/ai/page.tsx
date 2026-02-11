@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -9,8 +10,11 @@ import { AdminOnly } from "@/components/admin-only"
 import { aiService } from "@/lib/services/ai-service"
 import type { CurrentScenario, ModelMetrics } from "@/lib/types"
 import { Brain, RefreshCw, AlertCircle, Cpu, CheckCircle, XCircle } from "lucide-react"
+import { useIsAdmin } from "@/hooks/use-is-admin"
 
 export default function AIPage() {
+  const isAdmin = useIsAdmin()
+  const router = useRouter()
   // Current scenario
   const [scenario, setScenario] = useState<CurrentScenario | null>(null)
   const [isLoadingScenario, setIsLoadingScenario] = useState(true)
@@ -47,6 +51,20 @@ export default function AIPage() {
     fetchScenario()
     fetchMetrics()
   }, [fetchScenario, fetchMetrics])
+
+  useEffect(() => {
+    if (isAdmin) {
+      router.replace("/admin/ai")
+    }
+  }, [isAdmin, router])
+
+  if (isAdmin) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <LoadingSpinner size="lg" text="Redirection..." />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
