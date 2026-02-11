@@ -46,6 +46,13 @@ interface SmartHomeApi {
         @Body request: DeviceStateRequest // <-- On envoie l'objet JSON complet ici
     ): ApiDevice
 
+    @GET("api/devices/{device_id}/sensor")
+    suspend fun getSensor(
+        @Header("Authorization") token: String,
+        @Path("device_id") deviceId: Int
+    ): ApiSensor
+
+
     @GET("api/auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserResponse
 }

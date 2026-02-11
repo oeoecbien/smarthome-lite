@@ -15,7 +15,7 @@ import kotlinx.coroutines.isActive
 
 class SmartHomeViewModel : ViewModel() {
 
-    var lamps = mutableStateOf<List<SmartLamp>>(emptyList())
+    var devices = mutableStateOf<List<SmartDevice>>(emptyList())
         private set
 
     var errorMessage = mutableStateOf<String?>(null)
@@ -45,25 +45,30 @@ class SmartHomeViewModel : ViewModel() {
     private var refreshJob: Job? = null
 
     // Fonction fictive pour simuler l'update (à connecter à l'API plus tard)
-    fun updateLamp(lamp: SmartLamp) {
+    fun updateDevice(device: SmartDevice) {
+        // Pour l'instant on ne gère que les lampes
+        if (device !is SmartLight) return
+
         // 1. Mise à jour immédiate de l'écran (pour que ce soit fluide visuellement)
-        val currentList = lamps.value.toMutableList()
-        val index = currentList.indexOfFirst { it.id == lamp.id }
+        val currentList = devices.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == device.id }
 
         if (index == -1) return
 
         // On sauvegarde l'ancienne version pour pouvoir annuler en cas d'erreur
-        val oldLamp = currentList[index]
+        val oldDevice = currentList[index]
 
         // On applique la nouvelle valeur
-        currentList[index] = lamp
-        lamps.value = currentList
+        currentList[index] = device
+        devices.value = currentList
 
         // 2. Appel API DIRECT (Sans attente, sans délai)
-        sendUpdateToApi(lamp, oldLamp)
+        if (oldDevice is SmartLight) {
+            sendUpdateToApi(device, oldDevice)
+        }
     }
 
-    private fun sendUpdateToApi(newLamp: SmartLamp, oldLamp: SmartLamp) {
+    private fun sendUpdateToApi(newLamp: SmartLight, oldLamp: SmartLight) {
         viewModelScope.launch {
             try {
                 if (token == null) return@launch
@@ -96,11 +101,11 @@ class SmartHomeViewModel : ViewModel() {
             } catch (e: Exception) {
                 e.printStackTrace()
                 // ROLLBACK : En cas d'erreur, on remet l'ancienne valeur
-                val currentList = lamps.value.toMutableList()
+                val currentList = devices.value.toMutableList()
                 val idx = currentList.indexOfFirst { it.id == newLamp.id }
                 if (idx != -1) {
                     currentList[idx] = oldLamp
-                    lamps.value = currentList
+                    devices.value = currentList
                 }
                 errorMessage.value = "Erreur : ${e.localizedMessage}"
             }
@@ -147,15 +152,43 @@ class SmartHomeViewModel : ViewModel() {
 
         val apiDevices = RetrofitInstance.api.getDevices(token!!)
 
-        // On met à jour la liste
-        lamps.value = apiDevices.map { device ->
-            SmartLamp(
-                id = device.id,
-                name = device.name,
-                isOn = device.state, // Utilise bien .state (ton fix précédent)
-                brightness = (device.brightness ?: 0) / 100f // Utilise bien le /100f
-            )
+        val deviceList = mutableListOf<SmartDevice>()
+
+        for (device in apiDevices) {
+            if (device.type.equals("sensor", ignoreCase = true)) {
+                // C'est un capteur -> On récupère ses détails
+                try {
+                    val sensorData = RetrofitInstance.api.getSensor(token!!, device.id)
+                    deviceList.add(
+                        SmartSensor(
+                            id = device.id,
+                            name = device.name,
+                            temperature = sensorData.temperature_c ?: 0f,
+                            humidity = sensorData.humidity ?: 0,
+                            illuminance = sensorData.illuminance_lux ?: 0,
+                            motion = sensorData.motion ?: false,
+                            battery = sensorData.battery_percent ?: 0
+                        )
+                    )
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    // Si erreur capteur, ou peut-être on l'ignore ou on l'ajoute comme simple device inconnu
+                }
+            } else {
+                // C'est une lumière (par défaut)
+                deviceList.add(
+                    SmartLight(
+                        id = device.id,
+                        name = device.name,
+                        isOn = device.state,
+                        brightness = (device.brightness ?: 0) / 100f
+                    )
+                )
+            }
         }
+
+        // On met à jour la liste
+        devices.value = deviceList
     }
 
     private fun startAutoRefresh() {
@@ -194,7 +227,7 @@ class SmartHomeViewModel : ViewModel() {
         token = null
         currentUsername = ""
         currentEmail = ""
-        lamps.value = emptyList()
+        devices.value = emptyList()
         errorMessage.value = null
 
         isLoggedIn = false

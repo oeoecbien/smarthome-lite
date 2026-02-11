@@ -1,5 +1,6 @@
 package com.example.smarthome
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,17 +30,25 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RenderEffect
+import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,9 +61,9 @@ import com.example.smarthome.ui.theme.TextGreen
 
 @Composable
 fun LampControlScreen(
-    lamp: SmartLamp,
+    lamp: SmartLight,
     onBack: () -> Unit,
-    onUpdate: (SmartLamp) -> Unit
+    onUpdate: (SmartLight) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -201,98 +211,84 @@ fun PowerControlCard(isOn: Boolean, onToggle: (Boolean) -> Unit) {
     }
 }
 
+
+
 @Composable
 fun VerticalNeonSlider(
     brightness: Float,
     isEnabled: Boolean,
-    onBrightnessChange: (Float) -> Unit
+    onBrightnessChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    neonColor: Color = Color(0xFF00F5FF)
 ) {
-    // Hauteur totale du slider
-    val barHeight = 300.dp
-    val barWidth = 60.dp
-    val liftOffset = 4.dp // ajuste ici si besoin
+    val animatedBrightness by animateFloatAsState(
+        targetValue = brightness.coerceIn(0f, 1f),
+        label = "brightness_animation"
+    )
 
-
-    // Pour gérer le Drag (glissement) manuellement
-    // BoxWithConstraints nous permet de connaître la hauteur en pixels pour les calculs
     BoxWithConstraints(
-        modifier = Modifier
-            .height(barHeight)
-            .width(barWidth),
+        modifier = modifier
+            .width(70.dp)
+            .height(240.dp)
+            .alpha(if (isEnabled) 1f else 0.35f),
         contentAlignment = Alignment.BottomCenter
     ) {
-        val maxHeightPx = constraints.maxHeight.toFloat()
 
-        // --- 1. LE FOND (Track sombre) ---
+        val heightPx = constraints.maxHeight.toFloat()
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(40.dp))
-                .background(MaterialTheme.colorScheme.tertiary)
-                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(40.dp))
-        )
+                .clip(RoundedCornerShape(35.dp))
+                .background(Color(0xFF050505))
+                .pointerInput(isEnabled) {
+                    if (!isEnabled) return@pointerInput
 
-        // --- 2. LA BARRE REMPLIE (Bleu Néon) ---
-        // On calcule la hauteur de la barre bleue en fonction de la luminosité
-        val fillHeight = maxHeightPx * brightness
-
-        // Dégradé pour l'effet "Glow"
-        val neonBrush = Brush.verticalGradient(
-            colors = listOf(NeonBlueGlow, NeonBlue)
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = -liftOffset)
-                // Conversion de la hauteur calculée (pixels) en DP
-                .height(with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() })
-                .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp, topStart = 10.dp, topEnd = 10.dp))
-                .background(
-                    if (isEnabled) neonBrush else SolidColor(Color.Gray)
-                )
-        )
-        // --- 3. LE ROND (Thumb) ---
-        // On le positionne dynamiquement
-        Box(
-            modifier = Modifier
-                .offset(y = -with(androidx.compose.ui.platform.LocalDensity.current) { fillHeight.toDp() - (barWidth/2) }) // Centrer le rond sur le haut de la barre
-                .size(barWidth - 10.dp) // Un peu plus petit que la largeur totale
-                .clip(CircleShape)
-                .background(Color.White)
-                .shadow(10.dp, CircleShape, spotColor = NeonBlue) // L'ombre bleue
+                    detectVerticalDragGestures { change, _ ->
+                        val newValue = 1f - (change.position.y / heightPx)
+                        onBrightnessChange(newValue.coerceIn(0f, 1f))
+                    }
+                }
         ) {
-            // Petit point au centre du rond blanc (optionnel, pour le style)
+
+            // 🌫️ Halo flou large
             Box(
                 modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(Color.LightGray)
-                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .fillMaxHeight(animatedBrightness)
+                    .align(Alignment.BottomCenter)
+                    .blur(40.dp)
+                    .background(neonColor.copy(alpha = 0.9f))
+            )
+
+            // ✨ Glow intermédiaire
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(animatedBrightness)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                neonColor.copy(alpha = 0.7f),
+                                neonColor
+                            )
+                        ),
+                        shape = RoundedCornerShape(35.dp)
+                    )
+            )
+
+            // 💎 Centre lumineux
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(animatedBrightness)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Color.White.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(35.dp)
+                    )
             )
         }
-
-        // --- 4. GESTION DU TOUCHER (Invisible, par dessus tout) ---
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(40.dp))
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { offset ->
-                            // Gère le clic initial (saut direct à la position)
-                            val newBrightness = ((maxHeightPx - offset.y) / maxHeightPx).coerceIn(0f, 1f)
-                            if (isEnabled) onBrightnessChange(newBrightness)
-                        },
-                        onVerticalDrag = { change, _ -> // CORRECTION : "onVerticalDrag" au lieu de "onDrag"
-                            change.consume() // Important : on consomme l'événement
-
-                            // Gère le glissement
-                            val newBrightness = ((maxHeightPx - change.position.y) / maxHeightPx).coerceIn(0f, 1f)
-                            if (isEnabled) onBrightnessChange(newBrightness)
-                        }
-                    )
-                }
-        )
     }
 }

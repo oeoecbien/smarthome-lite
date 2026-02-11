@@ -103,7 +103,7 @@ fun SmartHomeApp(
     // Hoisted state for Lamp detail navigation
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
     // Observe lamps to get the name for the title
-    val lamps by viewModel.lamps
+    val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
 
     NavigationSuiteScaffold(
@@ -132,7 +132,7 @@ fun SmartHomeApp(
                 TopAppBar(
                     title = {
                         val titleText = if (selectedLampId != null) {
-                            lamps.find { it.id == selectedLampId }?.name ?: "Détail"
+                            devices.find { it.id == selectedLampId }?.name ?: "Détail"
                         } else {
                             currentDestination.label
                         }
@@ -187,55 +187,6 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
 }
 
 @Composable
-fun LampCard(lamp: SmartLamp, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .height(160.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (lamp.isOn) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
-            ) {
-                // Utilisation d'une icône standard pour éviter les erreurs de dépendances
-                Icon(
-                    imageVector = Icons.Filled.Lightbulb, // Tu peux mettre Icons.Filled.Lightbulb si tu as la lib extended
-                    contentDescription = "Lampe",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
-            }
-
-            Column {
-                Text(
-                    text = lamp.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (lamp.isOn) "Allumée • ${(lamp.brightness * 100).toInt()}%" else "Éteinte",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
 fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFF2979FF),
     unfocusedBorderColor = Color(0xFF2A3245),
@@ -258,7 +209,7 @@ fun HomeScreen(
     selectedLampId: Int?,
     onLampSelect: (Int?) -> Unit
 ) {
-    val lamps by viewModel.lamps
+    val devices by viewModel.devices
     val error by viewModel.errorMessage
     // Local state removed, using hoisted state passed via parameters
 
@@ -275,30 +226,7 @@ fun HomeScreen(
                 // 1. En-tête (Profil + Notif)
                 HeaderSection(name = "${viewModel.currentUsername},")
 
-                /*
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 2. Status Chips (3 Lights On, Temp, etc.)
-                StatusChipsSection()
-
-                 */
-
                 Spacer(modifier = Modifier.height(24.dp))
-
-                /*
-                // 3. Section Scènes
-                Text(
-                    text = "Mes scènes",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ScenesRow()
-
-                Spacer(modifier = Modifier.height(24.dp))
-                 */
 
                 // 4. Section Devices (Grille)
                 Text(
@@ -311,22 +239,33 @@ fun HomeScreen(
 
                 // Grille intelligente
                 DeviceGrid(
-                    lamps = lamps,
+                    devices = devices,
                     onLampClick = { onLampSelect(it.id) },
+                    onSensorClick = { onLampSelect(it.id) }, // Réutilise le même ID state
                     onToggleLamp = { lamp, newState ->
-                        viewModel.updateLamp(lamp.copy(isOn = newState))
+                         viewModel.updateDevice(lamp.copy(isOn = newState))
                     }
                 )
             }
         } else {
-            // --- VUE DÉTAIL (Code précédent) ---
-            val activeLamp = lamps.find { it.id == lampId }
-            if (activeLamp != null) {
-                LampControlScreen(
-                    lamp = activeLamp,
-                    onBack = { onLampSelect(null) },
-                    onUpdate = { viewModel.updateLamp(it) }
-                )
+            // --- VUE DÉTAIL ---
+            val activeDevice = devices.find { it.id == lampId }
+            if (activeDevice != null) {
+                when (activeDevice) {
+                    is SmartLight -> {
+                        LampControlScreen(
+                            lamp = activeDevice,
+                            onBack = { onLampSelect(null) },
+                            onUpdate = { viewModel.updateDevice(it) }
+                        )
+                    }
+                    is SmartSensor -> {
+                         SensorControlScreen(
+                            sensor = activeDevice,
+                            onBack = { onLampSelect(null) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -410,7 +349,7 @@ fun StatusChip(icon: ImageVector, label: String, color: Color, textColor: Color)
             .clip(RoundedCornerShape(30.dp))
             .background(color)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(icon, contentDescription = null, tint = textColor, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(8.dp))
@@ -450,9 +389,10 @@ fun SceneCard(name: String, icon: ImageVector, backgroundColor: Color) {
 
 @Composable
 fun DeviceGrid(
-    lamps: List<SmartLamp>,
-    onLampClick: (SmartLamp) -> Unit,
-    onToggleLamp: (SmartLamp, Boolean) -> Unit
+    devices: List<SmartDevice>,
+    onLampClick: (SmartLight) -> Unit,
+    onSensorClick: (SmartSensor) -> Unit,
+    onToggleLamp: (SmartLight, Boolean) -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -460,22 +400,35 @@ fun DeviceGrid(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.height(400.dp) // Hauteur fixe ou weight(1f)
     ) {
-        // --- LAMPES (Depuis l'API) ---
-        items(lamps.size) { index ->
-            val lamp = lamps[index]
-            DeviceCard(
-                name = lamp.name,
-                status = if (lamp.isOn) "On • ${(lamp.brightness * 100).toInt()}%" else "Off",
-                isOn = lamp.isOn,
-                icon = Icons.Default.Lightbulb, // Tu peux varier selon le nom
-                onClick = { onLampClick(lamp) },
-                onToggle = { onToggleLamp(lamp, it) }
-            )
-        }
+        // --- LAMPES & CAPTEURS (Depuis l'API) ---
+        items(devices.size, span = { index ->
+            val device = devices[index]
+            if (device is SmartSensor) {
+                GridItemSpan(2) // Le thermostat prend toute la largeur
+            } else {
+                GridItemSpan(1)
+            }
+        }) { index ->
+            val device = devices[index]
 
-        // --- THERMOSTAT (Fictif, prend 2 colonnes) ---
-        item(span = { GridItemSpan(2) }) {
-            ThermostatCard()
+            when (device) {
+                is SmartSensor -> {
+                     ThermostatCard(
+                        sensor = device,
+                        onClick = { onSensorClick(device) }
+                     )
+                }
+                is SmartLight -> {
+                    DeviceCard(
+                        name = device.name,
+                        status = if (device.isOn) "On • ${(device.brightness * 100).toInt()}%" else "Off",
+                        isOn = device.isOn,
+                        icon = Icons.Default.Lightbulb, // Tu peux varier selon le nom
+                        onClick = { onLampClick(device) },
+                        onToggle = { onToggleLamp(device, it) }
+                    )
+                }
+            }
         }
     }
 }
@@ -551,15 +504,18 @@ fun DeviceCard(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
-fun ThermostatCard() {
+fun ThermostatCard(
+    sensor: SmartSensor,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.tertiary)
+            .clickable { onClick() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -576,15 +532,14 @@ fun ThermostatCard() {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text("Thermostat", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                Text("Heating to 23°C", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
+                Text(sensor.name, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text("Humidity: ${sensor.humidity}%", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
             }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = {}) { Icon(Icons.Default.Remove, null, tint = MaterialTheme.colorScheme.primary) } // Utilise une icône '-'
-            Text("21°", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = {}) { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) }
+            // Affichage de la température
+            Text("${sensor.temperature}°", color = MaterialTheme.colorScheme.primary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
