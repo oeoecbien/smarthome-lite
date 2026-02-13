@@ -4,6 +4,7 @@ Configure FastAPI, les middlewares, et enregistre toutes les routes.
 """
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 import logging
 import time
 
@@ -15,9 +16,10 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings, validate_production_config
 from app.database import engine, Base, init_db, SessionLocal
-from app.models import Device, RaspberryPi, LightReading
+from app.models import Device, RaspberryPi, LightReading, Presence
 from app.services.device_service import DeviceService
 from app.services.smart_dimming_service import SmartDimmingService
+from app.services.rule_engine import RuleEngine
 
 logging.basicConfig(
     level=settings.log_level,
@@ -181,6 +183,34 @@ async def lifespan(app: FastAPI):
                             svc = DeviceService(db)
                             data = await svc.get_sensor_data_from_rpi(rpi, node_id)
                             await svc.evaluate_sensor_rules(sensor.id, data)
+                            # Si mouvement détecté : enregistrer en table presence (même logique que POST /api/presence)
+                            if data.get("motion") is True:
+                                five_seconds_ago = datetime.now(timezone.utc) - timedelta(seconds=5)
+                                recent = (
+                                    db.query(Presence)
+                                    .filter(
+                                        Presence.raspberry_pi_id == rpi.id,
+                                        Presence.detected_at >= five_seconds_ago,
+                                    )
+                                    .first()
+                                )
+                                if not recent:
+                                    presence = Presence(
+                                        raspberry_pi_id=rpi.id,
+                                        sensor_node_id=node_id,
+                                    )
+                                    db.add(presence)
+                                    db.commit()
+                                    db.refresh(presence)
+                                    logger.info("Présence enregistrée (motion capteur node %s, rpi_id=%s)", node_id, rpi.id)
+                                    try:
+                                        rule_engine = RuleEngine(db)
+                                        await rule_engine.evaluate_rules(
+                                            trigger_event="presence_detected",
+                                            trigger_data={"raspberry_pi_id": rpi.id, "location": rpi.location},
+                                        )
+                                    except Exception as re:
+                                        logger.debug("Règles presence_detected: %s", re)
                             # Si le capteur expose une luminosité (Z-Wave MultiSensor, etc.),
                             # l'utiliser aussi pour le Smart Dimming global.
                             lux = data.get("illuminance_lux")

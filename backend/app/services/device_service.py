@@ -124,8 +124,11 @@ class DeviceService:
         endpoint: str,
         data: dict,
     ) -> dict:
-        """Envoie une commande POST au RPi (ex: state, brightness)."""
-        return await self._request_rpi(rpi, "POST", endpoint, json=data)
+        """Envoie une commande POST au RPi (ex: state, brightness). En cas de timeout (RPi occupé par une lecture capteur), on ne marque pas le RPi hors ligne."""
+        return await self._request_rpi(
+            rpi, "POST", endpoint, json=data,
+            dont_mark_offline_on_timeout=True,
+        )
 
     async def get_sensor_data_from_rpi(
         self,
