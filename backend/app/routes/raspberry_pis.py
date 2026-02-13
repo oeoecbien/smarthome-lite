@@ -84,6 +84,7 @@ async def get_available_raspberry_pis(
     ]
 
 
+@router.get("", response_model=List[RaspberryPiResponse], include_in_schema=False)
 @router.get("/", response_model=List[RaspberryPiResponse])
 async def get_raspberry_pis(
     db: Session = Depends(get_db),
