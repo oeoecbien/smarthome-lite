@@ -1,25 +1,29 @@
 """
-Routes pour la détection de présence (utilisées par Raspberry Pi).
+Routes pour la détection de présence (mouvement MultiSensor7).
+Utilisées par le Raspberry Pi (Z-Wave) pour enregistrer les détections de mouvement.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+import logging
+from datetime import datetime, timedelta
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from datetime import datetime
 
 from app.database import get_db
-from app.models import Presence, RaspberryPi
-from app.dependencies import verify_raspberry_pi, get_current_user, require_admin, User, PaginationParams
+from app.models import Presence, RaspberryPi, Device
+from app.dependencies import verify_raspberry_pi, require_admin, User, PaginationParams
 from app.services.rule_engine import RuleEngine
+from app.services.device_service import DeviceService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class PresenceCreate(BaseModel):
-    """Schéma pour création d'une détection de présence."""
-    device_mac_address: Optional[str] = None  # Adresse MAC du device Bluetooth
-    signal_strength: Optional[int] = None  # RSSI en dBm
+    """Schéma pour création d'une détection de mouvement (MultiSensor7)."""
+    sensor_node_id: Optional[int] = None  # Node ID Z-Wave du capteur (ex: MultiSensor7)
 
 
 class PresenceResponse(BaseModel):
@@ -29,11 +33,10 @@ class PresenceResponse(BaseModel):
     raspberry_pi_name: str
     location: str
     detected_at: datetime
-    device_mac_address: Optional[str] = None
-    signal_strength: Optional[int] = None
-    user_id: Optional[int] = None
+    sensor_node_id: Optional[int] = None
 
 
+@router.post("", response_model=PresenceResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=PresenceResponse, status_code=status.HTTP_201_CREATED)
 async def create_presence(
     request: PresenceCreate,
@@ -41,103 +44,95 @@ async def create_presence(
     db: Session = Depends(get_db)
 ):
     """
-    Enregistre une nouvelle détection de présence Bluetooth (appelé par Raspberry Pi).
-    
-    Cette route déclenche automatiquement l'évaluation des règles.
-    
-    Args:
-        request: Données de détection (device_mac_address, signal_strength)
+    Enregistre une détection de mouvement (appelé par le RPi quand le détecteur Z-Wave signale un mouvement).
+
+    Si le détecteur est enregistré comme Device (type sensor) avec gpio_pin = sensor_node_id,
+    les règles capteur→lampe (sensor_rules) sont appliquées (allumage, extinction après X s).
+    Les règles génériques (presence_detected) sont aussi évaluées.
     """
-    # Vérifier qu'il n'y a pas eu de détection récente pour cette MAC (anti-rebond 5 secondes)
-    from datetime import timedelta
+    # Anti-rebond : ne pas enregistrer si une détection a déjà eu lieu dans les 5 dernières secondes (même RPi)
     five_seconds_ago = datetime.now() - timedelta(seconds=5)
-    
-    query = db.query(Presence).filter(
-        Presence.raspberry_pi_id == rpi.id,
-        Presence.detected_at >= five_seconds_ago
+    recent = (
+        db.query(Presence)
+        .filter(
+            Presence.raspberry_pi_id == rpi.id,
+            Presence.detected_at >= five_seconds_ago,
+        )
+        .first()
     )
-    
-    # Si une MAC est fournie, filtrer aussi par MAC
-    if request.device_mac_address:
-        query = query.filter(Presence.device_mac_address == request.device_mac_address.upper())
-    
-    recent_presence = query.first()
-    
-    if recent_presence:
-        # Retourner la détection existante (anti-rebond)
+    if recent:
         return {
-            "id": recent_presence.id,
-            "raspberry_pi_id": recent_presence.raspberry_pi_id,
+            "id": recent.id,
+            "raspberry_pi_id": recent.raspberry_pi_id,
             "raspberry_pi_name": rpi.name,
-            "location": rpi.location,
-            "detected_at": recent_presence.detected_at,
-            "device_mac_address": recent_presence.device_mac_address,
-            "signal_strength": recent_presence.signal_strength,
-            "user_id": recent_presence.user_id
+            "location": rpi.location or "",
+            "detected_at": recent.detected_at,
+            "sensor_node_id": recent.sensor_node_id,
         }
-    
-    # Essayer de mapper la MAC à un utilisateur (si table bluetooth_devices existe)
-    user_id = None
-    if request.device_mac_address:
-        try:
-            from app.models import BluetoothDevice
-            bluetooth_device = db.query(BluetoothDevice).filter(
-                BluetoothDevice.mac_address == request.device_mac_address.upper()
-            ).first()
-            if bluetooth_device:
-                user_id = bluetooth_device.user_id
-        except Exception:
-            # Table n'existe pas encore, continuer sans mapping
-            pass
-    
-    # Créer la détection
+
     presence = Presence(
         raspberry_pi_id=rpi.id,
-        device_mac_address=request.device_mac_address.upper() if request.device_mac_address else None,
-        signal_strength=request.signal_strength,
-        user_id=user_id
+        sensor_node_id=request.sensor_node_id,
     )
-    
     db.add(presence)
     db.commit()
     db.refresh(presence)
-    
-    # Déclencher l'évaluation des règles
+
+    # Si le détecteur est enregistré comme Device (type sensor), appliquer les règles capteur → lampe
+    sensor_node_id = request.sensor_node_id
+    if sensor_node_id is not None:
+        sensor_device = (
+            db.query(Device)
+            .filter(
+                Device.raspberry_pi_id == rpi.id,
+                Device.gpio_pin == sensor_node_id,
+                Device.type == "sensor",
+                Device.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if sensor_device:
+            try:
+                device_service = DeviceService(db)
+                await device_service.evaluate_sensor_rules(
+                    sensor_device.id,
+                    {"motion": True},
+                )
+                logger.info(
+                    "Règles capteur→lampe appliquées pour le détecteur (device_id=%s, node_id=%s)",
+                    sensor_device.id,
+                    sensor_node_id,
+                )
+            except Exception as e:
+                logger.warning("evaluate_sensor_rules après présence: %s", e)
+
+    # Règles génériques (presence_detected)
     try:
         rule_engine = RuleEngine(db)
         trigger_data = {
             "raspberry_pi_id": rpi.id,
             "location": rpi.location,
-            "device_mac_address": request.device_mac_address,
-            "user_id": user_id
         }
         executed_rules = await rule_engine.evaluate_rules(
             trigger_event="presence_detected",
             trigger_data=trigger_data
         )
-        
         if executed_rules:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"Règles exécutées après détection de présence: {len(executed_rules)}")
+            logger.info("Règles exécutées après détection de mouvement: %s", len(executed_rules))
     except Exception as e:
-        # Ne pas faire échouer l'enregistrement si les règles échouent
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Erreur lors de l'évaluation des règles: {e}")
-    
+        logger.error("Erreur lors de l'évaluation des règles: %s", e)
+
     return {
         "id": presence.id,
         "raspberry_pi_id": presence.raspberry_pi_id,
         "raspberry_pi_name": rpi.name,
-        "location": rpi.location,
+        "location": rpi.location or "",
         "detected_at": presence.detected_at,
-        "device_mac_address": presence.device_mac_address,
-        "signal_strength": presence.signal_strength,
-        "user_id": presence.user_id
+        "sensor_node_id": presence.sensor_node_id,
     }
 
 
+@router.get("", response_model=List[PresenceResponse], include_in_schema=False)
 @router.get("/", response_model=List[PresenceResponse])
 async def get_presence_history(
     raspberry_pi_id: Optional[int] = None,
@@ -146,37 +141,28 @@ async def get_presence_history(
     admin_user: User = Depends(require_admin)
 ):
     """
-    Récupère l'historique des détections de présence (uniquement pour les admins).
-    
-    La détection de présence Bluetooth est une fonctionnalité technique utilisée
-    pour l'automatisation en arrière-plan. Les utilisateurs normaux n'ont pas
-    besoin d'accéder à ces données.
+    Récupère l'historique des détections de mouvement (admins uniquement).
     """
     query = db.query(Presence)
-    
     if raspberry_pi_id:
         query = query.filter(Presence.raspberry_pi_id == raspberry_pi_id)
-    
-    presences = query.order_by(
-        Presence.detected_at.desc()
-    ).offset(pagination.skip).limit(pagination.limit).all()
-    
+
+    presences = (
+        query.order_by(Presence.detected_at.desc())
+        .offset(pagination.skip)
+        .limit(pagination.limit)
+        .all()
+    )
+
     result = []
     for presence in presences:
-        rpi = db.query(RaspberryPi).filter(
-            RaspberryPi.id == presence.raspberry_pi_id
-        ).first()
-        
+        rpi = db.query(RaspberryPi).filter(RaspberryPi.id == presence.raspberry_pi_id).first()
         result.append({
             "id": presence.id,
             "raspberry_pi_id": presence.raspberry_pi_id,
             "raspberry_pi_name": rpi.name if rpi else "Unknown",
             "location": rpi.location if rpi else "Unknown",
             "detected_at": presence.detected_at,
-            "device_mac_address": presence.device_mac_address,
-            "signal_strength": presence.signal_strength,
-            "user_id": presence.user_id
+            "sensor_node_id": presence.sensor_node_id,
         })
-    
     return result
-

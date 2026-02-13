@@ -11,35 +11,22 @@ import { PresenceChart } from "@/components/presence-chart"
 import { presenceService } from "@/lib/services/presence-service"
 import { formatRelativeTime, formatDate } from "@/lib/formatters"
 import type { PresenceRecord } from "@/lib/types"
-import { RefreshCw, AlertCircle, Filter, UserCheck, Clock, Bluetooth } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { RefreshCw, AlertCircle, Filter, UserCheck, Clock, Activity } from "lucide-react"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
 export default function PresencePage() {
   const isAdmin = useIsAdmin()
   const router = useRouter()
-
-  useEffect(() => {
-    if (!isAdmin) {
-      router.push("/dashboard")
-    }
-  }, [isAdmin, router])
-
-  if (!isAdmin) {
-    return null
-  }
   const [records, setRecords] = useState<PresenceRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Filters
   const [filterRpiId, setFilterRpiId] = useState<string>("")
   const [filterLimit, setFilterLimit] = useState<number>(100)
 
   const fetchData = useCallback(async () => {
     try {
       const data = await presenceService.getPresenceHistory(
-        filterRpiId ? Number.parseInt(filterRpiId) : undefined,
+        filterRpiId ? Number.parseInt(filterRpiId, 10) : undefined,
         filterLimit,
       )
       setRecords(data)
@@ -52,10 +39,21 @@ export default function PresencePage() {
   }, [filterRpiId, filterLimit])
 
   useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  useEffect(() => {
+    if (!isAdmin) return
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [fetchData])
+  }, [isAdmin, fetchData])
+
+  if (!isAdmin) {
+    return null
+  }
 
   if (isLoading) {
     return (
@@ -82,7 +80,6 @@ export default function PresencePage() {
     return new Date(r.detected_at) >= today
   }).length
   const lastDetection = records[0] // Les records sont déjà triés par date décroissante
-  const uniqueDevices = new Set(records.filter(r => r.device_mac_address).map(r => r.device_mac_address)).size
 
   return (
     <div className="space-y-6">
@@ -90,7 +87,7 @@ export default function PresencePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-balance">Historique de présence</h1>
-          <p className="text-muted-foreground">Détections Bluetooth des devices à proximité</p>
+          <p className="text-muted-foreground">Détections de mouvement (MultiSensor7 Z-Wave)</p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData}>
           <RefreshCw className="h-4 w-4 mr-2" />
@@ -99,7 +96,7 @@ export default function PresencePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -125,20 +122,6 @@ export default function PresencePage() {
                   {lastDetection ? formatRelativeTime(lastDetection.detected_at) : "Aucune"}
                 </p>
                 <p className="text-sm text-muted-foreground">Dernière détection</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-accent/10">
-                <Bluetooth className="h-6 w-6 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{uniqueDevices}</p>
-                <p className="text-sm text-muted-foreground">Devices Bluetooth uniques</p>
               </div>
             </div>
           </CardContent>
@@ -181,52 +164,40 @@ export default function PresencePage() {
         </CardHeader>
         <CardContent>
           {records.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Aucun enregistrement</p>
+            <div className="text-center text-muted-foreground py-8 space-y-2">
+              <p>Aucun enregistrement de présence.</p>
+              <p className="text-sm">
+                Les détections apparaissent lorsque le Raspberry Pi envoie un mouvement au backend (POST
+                /api/presence), par exemple après une détection du MultiSensor7 Z-Wave.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {records.map((record) => {
-                const hasMac = !!record.device_mac_address
-                return (
-                  <div
-                    key={record.id}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-lg border",
-                      hasMac ? "bg-secondary/10 border-secondary/20" : "bg-muted/50 border-border",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className={cn("w-2 h-2 rounded-full", hasMac ? "bg-secondary" : "bg-muted-foreground")} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Détection Bluetooth</span>
-                          {record.location && (
-                            <span className="text-xs text-muted-foreground">• {record.location}</span>
-                          )}
-                        </div>
-                        {record.device_mac_address && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-mono text-muted-foreground">{record.device_mac_address}</span>
-                            {record.signal_strength && (
-                              <span className="text-xs text-muted-foreground">
-                                ({record.signal_strength} dBm)
-                              </span>
-                            )}
-                            {record.user_id && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                                Utilisateur #{record.user_id}
-                              </span>
-                            )}
-                          </div>
+              {records.map((record) => (
+                <div
+                  key={record.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 border-border"
+                >
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Mouvement détecté</span>
+                        {record.location && (
+                          <span className="text-xs text-muted-foreground">• {record.location}</span>
+                        )}
+                        {record.sensor_node_id != null && (
+                          <span className="text-xs text-muted-foreground">(node {record.sensor_node_id})</span>
                         )}
                       </div>
                     </div>
-                    <div className="text-right ml-4">
-                      <p className="text-xs text-muted-foreground">{formatRelativeTime(record.detected_at)}</p>
-                      <p className="text-xs text-muted-foreground/60">{formatDate(record.detected_at)}</p>
-                    </div>
                   </div>
-                )
-              })}
+                  <div className="text-right ml-4">
+                    <p className="text-xs text-muted-foreground">{formatRelativeTime(record.detected_at)}</p>
+                    <p className="text-xs text-muted-foreground/60">{formatDate(record.detected_at)}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

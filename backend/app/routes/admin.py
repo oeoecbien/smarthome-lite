@@ -5,15 +5,27 @@ Routes d'administration - Accessibles uniquement aux administrateurs
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_admin, User
-from app.models import Device, User as UserModel, Event, SmartDimmingAdjustment, RaspberryPi
+from app.models import Device, User as UserModel, Event, SmartDimmingAdjustment, RaspberryPi, LightReading, Presence
+from app.services.smart_dimming_service import SmartDimmingService
 
 router = APIRouter()
 
+
+class SimulateLightReadingRequest(BaseModel):
+    """Corps pour simuler une mesure de luminosité (test Smart Dimming)."""
+    raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi (lieu de la mesure)")
+    lux_value: float = Field(..., ge=0, description="Valeur en lux (ex: 50, 300, 600)")
+
+class SimulatePresenceRequest(BaseModel):
+    """Corps pour simuler une détection de présence (test page admin/presence)."""
+    raspberry_pi_id: int = Field(..., description="ID du Raspberry Pi")
+    sensor_node_id: Optional[int] = Field(None, description="Node ID Z-Wave du capteur (ex: MultiSensor7)")
 
 @router.get("/stats")
 async def get_admin_stats(
@@ -104,6 +116,77 @@ async def get_all_users(
         }
         for user in users
     ]
+
+
+@router.post("/smart-dimming/simulate-reading")
+async def simulate_light_reading(
+    body: SimulateLightReadingRequest,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Simule une mesure de luminosité pour tester le Smart Dimming sans RPi ni capteur.
+    Crée une LightReading puis appelle process_light_reading (même logique que POST /api/light-readings).
+    Prérequis : Smart Dimming activé, au moins une lampe dimmable allumée sur ce RPi (non pilotée par capteur).
+    """
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == body.raspberry_pi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+    reading = LightReading(
+        raspberry_pi_id=body.raspberry_pi_id,
+        lux_value=body.lux_value,
+        sensor_type="simulated",
+    )
+    db.add(reading)
+    db.commit()
+    db.refresh(reading)
+    service = SmartDimmingService(db)
+    adjustments = await service.process_light_reading(reading)
+    return {
+        "light_reading_id": reading.id,
+        "lux_value": reading.lux_value,
+        "adjustments_count": len(adjustments),
+        "adjustments": adjustments,
+    }
+
+
+@router.post("/presence/simulate")
+async def simulate_presence(
+    body: SimulatePresenceRequest,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(require_admin),
+):
+    """
+    Simule une détection de présence (une ligne en table presence).
+    Utile pour tester la page admin/presence sans avoir le RPi qui envoie POST /api/presence.
+    """
+    rpi = db.query(RaspberryPi).filter(RaspberryPi.id == body.raspberry_pi_id).first()
+    if not rpi:
+        raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
+    presence = Presence(
+        raspberry_pi_id=body.raspberry_pi_id,
+        sensor_node_id=body.sensor_node_id,
+    )
+    db.add(presence)
+    db.commit()
+    db.refresh(presence)
+    return {
+        "id": presence.id,
+        "raspberry_pi_id": presence.raspberry_pi_id,
+        "raspberry_pi_name": rpi.name,
+        "location": rpi.location or "",
+        "detected_at": presence.detected_at.isoformat() if presence.detected_at else None,
+        "sensor_node_id": presence.sensor_node_id,
+    }
+
+
+@router.get("/zwave-devices")
+async def get_zwave_known_devices(admin_user: User = Depends(require_admin)):
+    """
+    Liste des appareils Z-Wave connus par le backend (ex. Aeotec MultiSensor 7 ZWA024).
+    """
+    from app.zwave_devices import list_known_devices
+    return list_known_devices()
 
 
 # Note: Les endpoints /api/admin/devices/all et /api/admin/events/all ont été supprimés

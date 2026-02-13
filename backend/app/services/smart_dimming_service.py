@@ -5,11 +5,12 @@ Service Smart Dimming - Adaptation dynamique de l'intensité lumineuse
 import logging
 from typing import Dict, Optional, List
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from app.config import settings
 from app.models import Device, LightReading, SmartDimmingAdjustment, Event
 from app.services.device_service import DeviceService
+from app.utils.system_settings_helper import get_smart_dimming_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,7 @@ class SmartDimmingService:
         Returns:
             Liste des ajustements effectués
         """
-        if not settings.smart_dimming_enabled:
+        if not get_smart_dimming_enabled(self.db):
             logger.info("Smart dimming globally disabled")
             return []
         
@@ -119,7 +120,6 @@ class SmartDimmingService:
         else:
             # Scénario par défaut si AIService non disponible
             # 0=Day, 1=Night, 2=Away, 3=Evening
-            from datetime import datetime
             hour = datetime.now().hour
             if 6 <= hour < 18:
                 scenario = 0  # Day
@@ -129,15 +129,29 @@ class SmartDimmingService:
                 scenario = 1  # Night
             logger.debug(f"Scénario par défaut: {scenario} (heure: {hour})")
         
-        # Récupérer les appareils dimmables allumés du même RPi
+        # Récupérer les appareils dimmables du même RPi (allumés ou éteints), non pilotés par un capteur.
+        # Inclure les lampes éteintes permet au Smart Dimming de les allumer si la luminosité cible > 0.
+        now_utc = datetime.now(timezone.utc)
         devices = self.db.query(Device).filter(
             Device.raspberry_pi_id == light_reading.raspberry_pi_id,
-            Device.type == "dimmer",
-            Device.state == True
+            Device.type.in_(["light", "dimmer"]),
+            Device.controlled_by_sensor_id.is_(None),
+            Device.deleted_at.is_(None),
         ).all()
-        
+        # Exclure les appareils en pause smart dimming ; réinitialiser la pause si expirée
+        eligible = []
+        for d in devices:
+            if d.smart_dimming_paused_until is None:
+                eligible.append(d)
+            elif d.smart_dimming_paused_until <= now_utc:
+                d.smart_dimming_paused_until = None
+                self.db.add(d)
+                eligible.append(d)
+        if eligible:
+            self.db.commit()
+        devices = eligible
         if not devices:
-            logger.info("No dimmable devices active")
+            logger.debug("No dimmable devices eligible for smart dimming (same RPi, not sensor-controlled, not paused)")
             return []
         
         adjustments = []
@@ -150,13 +164,11 @@ class SmartDimmingService:
             
             if self.regression_service:
                 try:
-                    from datetime import datetime
                     now = datetime.now()
                     hour = now.hour
                     day_of_week = now.weekday()
-                    
+
                     # Vérifier la présence dans les 5 dernières minutes
-                    from datetime import timedelta
                     five_minutes_ago = now - timedelta(minutes=5)
                     from app.models import Presence
                     presence_detected = self.db.query(Presence).filter(
@@ -179,7 +191,12 @@ class SmartDimmingService:
                         reason = f"ML prediction (confidence: {regression_result['confidence']:.2f})"
                         transition = "fade"  # Transition douce pour prédiction ML
                         use_ml_prediction = True
-                        
+                        calc_result = {
+                            "enabled": True,
+                            "target_brightness": target_brightness,
+                            "reason": reason,
+                            "transition": transition,
+                        }
                         logger.debug(
                             f"Utilisation prédiction ML: {target_brightness}% "
                             f"(confiance: {regression_result['confidence']:.2f})"
@@ -212,74 +229,68 @@ class SmartDimmingService:
                 reason = calc_result["reason"]
                 transition = calc_result.get("transition", "immediate")
             
-            # Vérifier si ajustement nécessaire (seuil de 10%)
-            brightness_diff = abs(device.brightness - target_brightness)
-            
-            if brightness_diff < settings.smart_dimming_threshold:
-                logger.debug(
-                    f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
-                )
-                continue
-            
-            previous_brightness = device.brightness
-            
+            # Vérifier si le scénario autorise le smart dimming (ex. Away = désactivé)
             if not calc_result.get("enabled", True):
                 continue
             
-            target_brightness = calc_result["target_brightness"]
-            reason = calc_result["reason"]
-            transition = calc_result.get("transition", "immediate")
+            # Lampe éteinte : n'allumer que si la cible > 0
+            if not device.state and target_brightness <= 0:
+                continue
             
-            # Vérifier si ajustement nécessaire (seuil de 10%)
+            # Vérifier si ajustement nécessaire (seuil). Si la lampe est éteinte et cible > 0, on allume (pas de seuil).
             brightness_diff = abs(device.brightness - target_brightness)
-            
-            if brightness_diff < settings.smart_dimming_threshold:
+            if device.state and brightness_diff < settings.smart_dimming_threshold:
                 logger.debug(
                     f"Device {device.id} - Difference too small ({brightness_diff}%), skipping"
                 )
                 continue
             
             previous_brightness = device.brightness
-            
-            # Appliquer l'ajustement via le service device
+            device_id = device.id
+            device_name = device.name
+            applied_brightness = target_brightness
+            adjustment_reason = reason
+
+            # Appliquer l'ajustement via le service device (envoi commande au RPi)
             try:
                 await self.device_service.set_device_brightness(
-                    device.id,
+                    device_id,
                     target_brightness,
                     source="smart_dimming_ml" if use_ml_prediction else "smart_dimming",
                     transition=transition
                 )
-                
-                # Enregistrer l'ajustement
-                adjustment = SmartDimmingAdjustment(
-                    device_id=device.id,
-                    light_reading_id=light_reading.id,
-                    scenario=scenario,
-                    previous_brightness=previous_brightness,
-                    target_brightness=target_brightness,
-                    applied_brightness=target_brightness,
-                    reason=reason
-                )
-                
-                self.db.add(adjustment)
-                self.db.commit()
-                
-                adjustments.append({
-                    "device_id": device.id,
-                    "device_name": device.name,
-                    "previous_brightness": previous_brightness,
-                    "target_brightness": target_brightness,
-                    "reason": reason,
-                    "scenario": scenario
-                })
-                
                 logger.info(
-                    f"[OK] Smart dimming: {device.name} adjusted "
+                    f"[OK] Smart dimming: {device_name} adjusted "
                     f"{previous_brightness}% → {target_brightness}% ({reason})"
                 )
-                
             except Exception as e:
-                logger.error(f"Failed to adjust device {device.id}: {e}")
+                self.db.rollback()
+                logger.error(f"Failed to adjust device {device_id}: {e}")
+                applied_brightness = previous_brightness
+                adjustment_reason = f"{reason} (commande RPi en échec: {e})"
+
+            # Toujours enregistrer l'ajustement (tentative) pour traçabilité, même si le RPi a échoué
+            adjustment = SmartDimmingAdjustment(
+                device_id=device_id,
+                light_reading_id=light_reading.id,
+                scenario=scenario,
+                previous_brightness=previous_brightness,
+                target_brightness=target_brightness,
+                applied_brightness=applied_brightness,
+                reason=adjustment_reason
+            )
+            self.db.add(adjustment)
+            self.db.commit()
+
+            adjustments.append({
+                "device_id": device_id,
+                "device_name": device_name,
+                "previous_brightness": previous_brightness,
+                "target_brightness": target_brightness,
+                "applied_brightness": applied_brightness,
+                "reason": adjustment_reason,
+                "scenario": scenario
+            })
         
         return adjustments
     
@@ -327,5 +338,5 @@ class SmartDimmingService:
             "adjustments_by_scenario": {
                 scenario: count for scenario, count in adjustments_by_scenario
             },
-            "enabled": settings.smart_dimming_enabled
+            "enabled": get_smart_dimming_enabled(self.db)
         }

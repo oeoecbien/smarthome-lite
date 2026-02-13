@@ -12,7 +12,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Fichier .env : priorité à la racine du projet (sae_s5/.env) pour partage avec le RPi
 _env_root = Path(__file__).resolve().parent.parent.parent / ".env"
-_env_file = str(_env_root) if _env_root.exists() else ".env"
+_env_backend = Path(__file__).resolve().parent.parent / ".env"
+_env_file = str(_env_root) if _env_root.exists() else (str(_env_backend) if _env_backend.exists() else ".env")
+
+
+# Luminosité max des lampes (jamais 100 pour éviter usure / contraintes matérielles)
+BRIGHTNESS_MAX = 99
 
 
 class Settings(BaseSettings):
@@ -66,7 +71,7 @@ class Settings(BaseSettings):
     # Raspberry Pi
     raspberry_pi_protocol: str = Field(default="http")
     raspberry_pi_port: int = Field(default=5000)
-    raspberry_pi_timeout: int = Field(default=5)
+    raspberry_pi_timeout: int = Field(default=15, description="Timeout (s) pour les appels au RPi ; 15s si le RPi est occupé par des lectures capteur lentes")
     raspberry_pi_heartbeat_interval: int = Field(default=60)
     raspberry_pi_offline_threshold: int = Field(default=180)
     # Clé API envoyée au RPi (X-API-Key). À définir si le RPi exige RASPBERRY_API_KEY.

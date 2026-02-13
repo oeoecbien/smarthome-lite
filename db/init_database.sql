@@ -1,7 +1,7 @@
 -- ============================================================================
 -- SmartHome Lite - Script d'Initialisation Base de Données
 -- Version sécurisée avec corrections des failles de sécurité
--- Détection de présence via Bluetooth
+-- Détection de présence via capteur de mouvement MultiSensor7 (Z-Wave)
 -- ============================================================================
 
 -- ============================================================================
@@ -87,11 +87,13 @@ CREATE TABLE IF NOT EXISTS devices (
     state BOOLEAN DEFAULT FALSE NOT NULL,
     brightness INTEGER DEFAULT 0 NOT NULL,
     gpio_pin INTEGER NOT NULL,
+    controlled_by_sensor_id INTEGER NULL REFERENCES devices(id) ON DELETE SET NULL,
+    sensor_rules TEXT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE NULL,
-    CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket')),
-    CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 40),
+    CONSTRAINT check_device_type CHECK (type IN ('light', 'dimmer', 'socket', 'sensor')),
+    CONSTRAINT check_gpio_pin_range CHECK (gpio_pin >= 1 AND gpio_pin <= 255),
     CONSTRAINT check_brightness_range CHECK (brightness >= 0 AND brightness <= 100),
     CONSTRAINT uq_device_raspberry_pi_gpio UNIQUE(raspberry_pi_id, gpio_pin)
 );
@@ -102,11 +104,14 @@ CREATE INDEX IF NOT EXISTS idx_devices_raspberry_pi ON devices(raspberry_pi_id) 
 CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(type) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_devices_state ON devices(state) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_devices_deleted_at ON devices(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_devices_controlled_by_sensor ON devices(controlled_by_sensor_id) WHERE controlled_by_sensor_id IS NOT NULL;
 
 COMMENT ON TABLE devices IS 'Appareils électriques contrôlables';
 COMMENT ON COLUMN devices.user_id IS 'Propriétaire de l''appareil (relation avec users)';
-COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO physique sur le Raspberry Pi (unique par RPi)';
+COMMENT ON COLUMN devices.gpio_pin IS 'Pin GPIO (1-40) ou node_id Z-Wave (1-255) pour type sensor';
 COMMENT ON COLUMN devices.brightness IS 'Intensité lumineuse pour les dimmers (0-100)';
+COMMENT ON COLUMN devices.controlled_by_sensor_id IS 'ID du capteur qui pilote cette lampe (null = désactivé)';
+COMMENT ON COLUMN devices.sensor_rules IS 'Règles JSON: motion (on_brightness, off_after_seconds), illuminance (below_lux, brightness, above_lux)';
 COMMENT ON COLUMN devices.deleted_at IS 'Timestamp de suppression (soft delete)';
 
 -- ----------------------------------------------------------------------------
@@ -121,7 +126,7 @@ CREATE TABLE IF NOT EXISTS light_readings (
     sensor_type VARCHAR(20) NOT NULL DEFAULT 'BH1750',
     measured_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT check_lux_value_range CHECK (lux_value >= 0),
-    CONSTRAINT check_sensor_type CHECK (sensor_type IN ('BH1750', 'LDR'))
+    CONSTRAINT check_sensor_type CHECK (sensor_type IN ('BH1750', 'LDR', 'simulated'))
 );
 
 -- Index pour requêtes temporelles (graphiques, tendances)
@@ -135,38 +140,22 @@ COMMENT ON COLUMN light_readings.lux_value IS 'Intensité lumineuse en lux (0-65
 
 -- ----------------------------------------------------------------------------
 -- Table: presence
--- Description: Historique des détections de présence via Bluetooth
--- SÉCURITÉ: Validation format MAC, déduplication anti-DoS
+-- Description: Historique des détections de présence via capteur de mouvement (MultiSensor7 Z-Wave)
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS presence (
     id SERIAL PRIMARY KEY,
     raspberry_pi_id INTEGER NOT NULL REFERENCES raspberry_pis(id) ON DELETE RESTRICT,
     detected_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    device_mac_address VARCHAR(17),
-    signal_strength INTEGER,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    CONSTRAINT check_mac_format CHECK (
-        device_mac_address IS NULL OR 
-        device_mac_address ~ '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'
-    ),
-    CONSTRAINT check_signal_strength CHECK (signal_strength IS NULL OR (signal_strength >= -100 AND signal_strength <= 0))
+    sensor_node_id INTEGER NULL
 );
 
 -- Index pour recherche par date et par Raspberry Pi
 CREATE INDEX IF NOT EXISTS idx_presence_detected_at ON presence(detected_at DESC);
 CREATE INDEX IF NOT EXISTS idx_presence_raspberry_pi ON presence(raspberry_pi_id);
-CREATE INDEX IF NOT EXISTS idx_presence_mac_address ON presence(device_mac_address);
-CREATE INDEX IF NOT EXISTS idx_presence_user_id ON presence(user_id);
--- Index composite pour requêtes fréquentes
 CREATE INDEX IF NOT EXISTS idx_presence_rpi_detected ON presence(raspberry_pi_id, detected_at DESC);
--- Index pour déduplication (anti-DoS)
-CREATE INDEX IF NOT EXISTS idx_presence_mac_time ON presence(device_mac_address, detected_at DESC) 
-    WHERE device_mac_address IS NOT NULL;
 
-COMMENT ON TABLE presence IS 'Journal des détections Bluetooth';
-COMMENT ON COLUMN presence.device_mac_address IS 'Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF)';
-COMMENT ON COLUMN presence.signal_strength IS 'Force du signal RSSI en dBm (plus élevé = plus proche, -100 à 0)';
-COMMENT ON COLUMN presence.user_id IS 'ID de l''utilisateur associé (si MAC mappée dans bluetooth_devices)';
+COMMENT ON TABLE presence IS 'Journal des détections de mouvement (MultiSensor7 Z-Wave)';
+COMMENT ON COLUMN presence.sensor_node_id IS 'Node ID Z-Wave du capteur de mouvement (ex: MultiSensor7)';
 
 -- ----------------------------------------------------------------------------
 -- Table: rules
@@ -213,7 +202,7 @@ CREATE TABLE IF NOT EXISTS events (
     value VARCHAR(100),
     source VARCHAR(20),
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT check_event_source CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming'))
+    CONSTRAINT check_event_source CHECK (source IS NULL OR source IN ('manual', 'automatic', 'ai', 'system', 'smart_dimming', 'smart_dimming_ml'))
 );
 
 -- Index pour recherche par device, type et date
@@ -282,6 +271,20 @@ COMMENT ON COLUMN smart_dimming_adjustments.target_brightness IS 'Intensité cal
 COMMENT ON COLUMN smart_dimming_adjustments.applied_brightness IS 'Intensité réellement appliquée (peut différer)';
 
 -- ----------------------------------------------------------------------------
+-- Table: system_settings
+-- Description: Paramètres système (ex. smart_dimming_enabled) persistés en BDD
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS system_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+COMMENT ON TABLE system_settings IS 'Paramètres globaux du système (persistance au-delà du .env)';
+COMMENT ON COLUMN system_settings.key IS 'Clé du paramètre (ex: smart_dimming_enabled)';
+COMMENT ON COLUMN system_settings.value IS 'Valeur texte (ex: true, false)';
+
+-- ----------------------------------------------------------------------------
 -- Table: user_preferences
 -- Description: Apprentissage des préférences utilisateur
 -- ----------------------------------------------------------------------------
@@ -310,35 +313,6 @@ CREATE INDEX IF NOT EXISTS idx_preferences_scenario ON user_preferences(scenario
 COMMENT ON TABLE user_preferences IS 'Capture les ajustements manuels pour apprentissage personnalisé';
 COMMENT ON COLUMN user_preferences.auto_brightness IS 'Intensité proposée par le système';
 COMMENT ON COLUMN user_preferences.manual_brightness IS 'Intensité choisie par l''utilisateur (feedback)';
-
--- ----------------------------------------------------------------------------
--- Table: bluetooth_devices
--- Description: Association entre adresses MAC Bluetooth et utilisateurs
--- SÉCURITÉ: Validation format MAC
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS bluetooth_devices (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    mac_address VARCHAR(17) NOT NULL UNIQUE,
-    device_name VARCHAR(100),
-    device_type VARCHAR(50),
-    is_active BOOLEAN DEFAULT TRUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT check_bluetooth_mac_format CHECK (
-        mac_address ~ '^([0-9A-F]{2}:){5}[0-9A-F]{2}$'
-    )
-);
-
--- Index pour bluetooth_devices
-CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_user ON bluetooth_devices(user_id);
-CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_mac ON bluetooth_devices(mac_address);
-CREATE INDEX IF NOT EXISTS idx_bluetooth_devices_active ON bluetooth_devices(is_active);
-
-COMMENT ON TABLE bluetooth_devices IS 'Association entre adresses MAC Bluetooth et utilisateurs';
-COMMENT ON COLUMN bluetooth_devices.mac_address IS 'Adresse MAC du device (format: AA:BB:CC:DD:EE:FF)';
-COMMENT ON COLUMN bluetooth_devices.device_name IS 'Nom du device (ex: iPhone de Jean, Montre de Marie)';
-COMMENT ON COLUMN bluetooth_devices.device_type IS 'Type de device (phone, watch, headphones, etc.)';
 
 -- ----------------------------------------------------------------------------
 -- Table: audit_log
@@ -446,32 +420,6 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION log_audit_event() IS 'Trigger pour journaliser les modifications dans audit_log';
 
--- Fonction pour déduplication des détections de présence (anti-DoS)
-CREATE OR REPLACE FUNCTION prevent_duplicate_presence()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_recent_count INTEGER;
-BEGIN
-    -- Vérifier s'il y a une détection récente (30 secondes) pour la même MAC
-    IF NEW.device_mac_address IS NOT NULL THEN
-        SELECT COUNT(*) INTO v_recent_count
-        FROM presence
-        WHERE device_mac_address = NEW.device_mac_address
-          AND raspberry_pi_id = NEW.raspberry_pi_id
-          AND detected_at > NOW() - INTERVAL '30 seconds';
-        
-        -- Si détection récente, annuler l'insertion
-        IF v_recent_count > 0 THEN
-            RETURN NULL;
-        END IF;
-    END IF;
-    
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-COMMENT ON FUNCTION prevent_duplicate_presence() IS 'Empêche les détections de présence dupliquées (anti-DoS)';
-
 -- Appliquer le trigger sur les tables avec updated_at
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
@@ -487,10 +435,6 @@ CREATE TRIGGER update_devices_updated_at BEFORE UPDATE ON devices
 
 DROP TRIGGER IF EXISTS update_rules_updated_at ON rules;
 CREATE TRIGGER update_rules_updated_at BEFORE UPDATE ON rules
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_bluetooth_devices_updated_at ON bluetooth_devices;
-CREATE TRIGGER update_bluetooth_devices_updated_at BEFORE UPDATE ON bluetooth_devices
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Appliquer les triggers d'audit sur les tables sensibles
@@ -509,11 +453,6 @@ CREATE TRIGGER audit_devices AFTER INSERT OR UPDATE OR DELETE ON devices
 DROP TRIGGER IF EXISTS audit_rules ON rules;
 CREATE TRIGGER audit_rules AFTER INSERT OR UPDATE OR DELETE ON rules
     FOR EACH ROW EXECUTE FUNCTION log_audit_event();
-
--- Appliquer le trigger de déduplication sur presence
-DROP TRIGGER IF EXISTS prevent_duplicate_presence_trigger ON presence;
-CREATE TRIGGER prevent_duplicate_presence_trigger BEFORE INSERT ON presence
-    FOR EACH ROW EXECUTE FUNCTION prevent_duplicate_presence();
 
 -- ============================================================================
 -- 4. INSERTION DES DONNÉES DE TEST
@@ -553,25 +492,21 @@ WHERE d.deleted_at IS NULL AND r.deleted_at IS NULL;
 COMMENT ON VIEW devices_with_location IS 'Vue simplifiée pour l''affichage dans l''application mobile';
 
 -- Vue: presence_last_24h
--- Affiche les détections de présence Bluetooth des dernières 24 heures
+-- Affiche les détections de mouvement (MultiSensor7) des dernières 24 heures
 CREATE OR REPLACE VIEW presence_last_24h AS
 SELECT 
     p.id,
     p.detected_at,
     r.name AS raspberry_pi_name,
     r.location,
-    p.device_mac_address,
-    p.signal_strength,
-    p.user_id,
-    u.username AS user_name
+    p.sensor_node_id
 FROM presence p
 JOIN raspberry_pis r ON p.raspberry_pi_id = r.id
-LEFT JOIN users u ON p.user_id = u.id
 WHERE p.detected_at >= NOW() - INTERVAL '24 hours'
   AND r.deleted_at IS NULL
 ORDER BY p.detected_at DESC;
 
-COMMENT ON VIEW presence_last_24h IS 'Détections Bluetooth des dernières 24h pour dashboard';
+COMMENT ON VIEW presence_last_24h IS 'Détections de mouvement (MultiSensor7) des dernières 24h pour dashboard';
 
 -- Vue: recent_events
 -- Affiche les 100 derniers événements avec informations détaillées
@@ -846,7 +781,5 @@ UNION ALL
 SELECT 'Données IA', COUNT(*) FROM training_data
 UNION ALL
 SELECT 'Ajustements Smart Dimming', COUNT(*) FROM smart_dimming_adjustments
-UNION ALL
-SELECT 'Devices Bluetooth', COUNT(*) FROM bluetooth_devices
 UNION ALL
 SELECT 'Audit Log', COUNT(*) FROM audit_log;
