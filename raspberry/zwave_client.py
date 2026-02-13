@@ -178,6 +178,33 @@ class ZWaveClient:
                 return bool(val)
         return None
 
+    async def get_motion_state_fast(self, node_id: int, timeout_sec: float = 6.0) -> Optional[bool]:
+        """
+        Lit l'état mouvement (CC 48) via getValue uniquement, sans get_node.
+        Adapté aux appareils sur pile (MultiSensor 7) : pas de lecture complète du nœud.
+        ValueIds essayés (format Z-Wave JS UI) : 5-48-0-Motion, 5-48-0-currentValue, 5-48-0-Sensor state.
+        Retourne True/False si lecture OK, None en cas de timeout/erreur.
+        """
+        value_id_strings = [
+            f"{node_id}-48-0-Motion",
+            f"{node_id}-48-0-currentValue",
+            f"{node_id}-48-0-Sensor state",
+        ]
+        for vid_str in value_id_strings:
+            try:
+                result = await asyncio.wait_for(
+                    self._call_api("getValue", vid_str),
+                    timeout=timeout_sec,
+                )
+                val = extract_zwave_value(result)
+                if val is not None:
+                    return bool(val)
+            except asyncio.TimeoutError:
+                logger.debug("getValue %s timeout (node %s)", vid_str, node_id)
+            except Exception as e:
+                logger.debug("getValue %s: %s", vid_str, e)
+        return None
+
     async def _get_value_any_format(self, vid, timeout_sec: float = 6.0) -> Optional[Any]:
         """
         Appelle getValue avec valueId (dict ou string). Z-Wave JS UI accepte parfois

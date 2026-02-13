@@ -17,28 +17,16 @@ import { useIsAdmin } from "@/hooks/use-is-admin"
 export default function PresencePage() {
   const isAdmin = useIsAdmin()
   const router = useRouter()
-
-  useEffect(() => {
-    if (!isAdmin) {
-      router.push("/dashboard")
-    }
-  }, [isAdmin, router])
-
-  if (!isAdmin) {
-    return null
-  }
   const [records, setRecords] = useState<PresenceRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Filters
   const [filterRpiId, setFilterRpiId] = useState<string>("")
   const [filterLimit, setFilterLimit] = useState<number>(100)
 
   const fetchData = useCallback(async () => {
     try {
       const data = await presenceService.getPresenceHistory(
-        filterRpiId ? Number.parseInt(filterRpiId) : undefined,
+        filterRpiId ? Number.parseInt(filterRpiId, 10) : undefined,
         filterLimit,
       )
       setRecords(data)
@@ -51,10 +39,21 @@ export default function PresencePage() {
   }, [filterRpiId, filterLimit])
 
   useEffect(() => {
+    if (!isAdmin) {
+      router.push("/dashboard")
+    }
+  }, [isAdmin, router])
+
+  useEffect(() => {
+    if (!isAdmin) return
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [fetchData])
+  }, [isAdmin, fetchData])
+
+  if (!isAdmin) {
+    return null
+  }
 
   if (isLoading) {
     return (
@@ -165,7 +164,13 @@ export default function PresencePage() {
         </CardHeader>
         <CardContent>
           {records.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">Aucun enregistrement</p>
+            <div className="text-center text-muted-foreground py-8 space-y-2">
+              <p>Aucun enregistrement de présence.</p>
+              <p className="text-sm">
+                Les détections apparaissent lorsque le Raspberry Pi envoie un mouvement au backend (POST
+                /api/presence), par exemple après une détection du MultiSensor7 Z-Wave.
+              </p>
+            </div>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {records.map((record) => (

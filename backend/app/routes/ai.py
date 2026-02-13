@@ -148,33 +148,36 @@ async def get_model_metrics(
     
     model_loaded = ai_service.model is not None
     model_path = settings.ml_model_path
-    
-    # Si le modèle est chargé, essayer d'obtenir des métriques
+    model_dir = os.path.dirname(os.path.abspath(model_path))
+    metrics_file = os.path.join(model_dir, "metrics.json")
+
+    # Toujours essayer de lire la précision depuis metrics.json (disponible même si modèle non chargé)
     accuracy = None
-    method = "ml" if model_loaded else "fallback"
-    
-    if model_loaded:
+    if os.path.exists(metrics_file):
         try:
-            model_dir = os.path.dirname(os.path.abspath(model_path))
-            metrics_file = os.path.join(model_dir, "metrics.json")
-            if os.path.exists(metrics_file):
-                with open(metrics_file, "r", encoding="utf-8") as f:
-                    metrics = json.load(f)
-                    accuracy = metrics.get("accuracy")
-            if accuracy is None:
-                # Fallback : calculer l'accuracy sur les données d'entraînement en base
-                rows = db.query(TrainingData).limit(2000).all()
-                if len(rows) >= 20:
-                    X = np.array([
-                        [r.hour, r.day_of_week, 1 if r.presence_detected else 0, 1 if r.light_on else 0]
-                        for r in rows
-                    ])
-                    y = np.array([r.scenario for r in rows])
-                    pred = ai_service.model.predict(X)
-                    accuracy = float(np.mean(pred == y))
-                    os.makedirs(model_dir, exist_ok=True)
-                    with open(metrics_file, "w", encoding="utf-8") as f:
-                        json.dump({"accuracy": accuracy}, f, indent=2)
+            with open(metrics_file, "r", encoding="utf-8") as f:
+                metrics_data = json.load(f)
+                accuracy = metrics_data.get("accuracy")
+        except Exception:
+            pass
+
+    method = "ml" if model_loaded else "fallback"
+
+    # Si modèle chargé mais pas de précision en fichier : calculer sur les données d'entraînement
+    if model_loaded and accuracy is None:
+        try:
+            rows = db.query(TrainingData).limit(2000).all()
+            if len(rows) >= 20:
+                X = np.array([
+                    [r.hour, r.day_of_week, 1 if r.presence_detected else 0, 1 if r.light_on else 0]
+                    for r in rows
+                ])
+                y = np.array([r.scenario for r in rows])
+                pred = ai_service.model.predict(X)
+                accuracy = float(np.mean(pred == y))
+                os.makedirs(model_dir, exist_ok=True)
+                with open(metrics_file, "w", encoding="utf-8") as f:
+                    json.dump({"accuracy": accuracy}, f, indent=2)
         except Exception:
             pass
 
