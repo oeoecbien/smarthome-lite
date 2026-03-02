@@ -8,11 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.delay
 import kotlinx.coroutines.isActive
 
 
@@ -97,7 +95,7 @@ class SmartHomeViewModel : ViewModel() {
                     RetrofitInstance.api.updateBrightness(
                         token = token!!,
                         deviceId = newLamp.id,
-                        intensity = newLamp.brightness * 100
+                        intensity = newLamp.brightness
                     )
                 }
 

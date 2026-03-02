@@ -32,7 +32,7 @@ interface SmartHomeApi {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
 
-    @GET("/api/devices/")
+    @GET("api/devices/")
     suspend fun getDevices(@Header("Authorization") token: String): List<ApiDevice>
 
     // --- AJOUTE CECI ---
