@@ -216,6 +216,7 @@ Les scripts dans `ml/` sont exécutés **depuis la racine `backend/`** avec **`P
 | **Évaluer les règles d’automatisation** | Moteur de règles | Décider si une règle doit s’exécuter (ex. « si soirée et présence ») | Contexte scénario fourni par le service de classification. |
 | **Vérifier l’état de l’IA** | Admin / Monitoring | Savoir si les modèles sont chargés ou en fallback | `GET /health` (ai_service, regression_service) et `GET /api/ai/model-metrics`. |
 
+
 ### User stories (résumées)
 
 1. **En tant qu’utilisateur**, je veux que la lumière s’adapte toute seule à la luminosité du jour et du soir, **pour** ne pas avoir à régler manuellement.  
