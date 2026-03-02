@@ -101,7 +101,7 @@ fun SensorControlScreen(
                     subText = "Optimal Range"
                 )
                 SensorDetailCard(
-                    icon = Icons.AutoMirrored.Filled.DirectionsRun, // Vibration Placeholder
+                    icon = Icons.Filled.DirectionsRun, // Vibration Placeholder
                     iconColor = Color.Magenta,
                     label = "VIBRATION",
                     value = "None",
@@ -139,7 +139,7 @@ fun MotionStatusCard(isActive: Boolean) {
                     .background(NeonBlue),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null, tint = Color.White)
+                Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = Color.White)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {

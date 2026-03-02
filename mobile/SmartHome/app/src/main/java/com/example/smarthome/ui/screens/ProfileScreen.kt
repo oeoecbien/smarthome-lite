@@ -189,7 +189,7 @@ fun ProfileScreen(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ExitToApp,
+                    imageVector = Icons.Outlined.ExitToApp,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
