@@ -1,0 +1,6402 @@
+[
+  {
+    "hour": 9,
+    "day_of_week": 1,
+    "lux_value": 367.07,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 5,
+    "lux_value": 787.77,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 582.73,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 5,
+    "lux_value": 661.85,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 0,
+    "lux_value": 296.87,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 2,
+    "lux_value": 63.36,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 58
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 398.21,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 105.83,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 78
+  },
+  {
+    "hour": 0,
+    "day_of_week": 1,
+    "lux_value": 21.08,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 113.0,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 2,
+    "day_of_week": 0,
+    "lux_value": 2.64,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 37
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 105.29,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 56
+  },
+  {
+    "hour": 2,
+    "day_of_week": 6,
+    "lux_value": 39.42,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 444.99,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 260.61,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 49
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 6.58,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 19,
+    "day_of_week": 2,
+    "lux_value": 119.67,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 73
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 89.48,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 69
+  },
+  {
+    "hour": 17,
+    "day_of_week": 4,
+    "lux_value": 436.76,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 230.03,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 58.67,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 62
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 625.89,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 4,
+    "lux_value": 185.1,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 276.05,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 14
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 207.69,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 1,
+    "lux_value": 25.77,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 35
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 34.69,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 12
+  },
+  {
+    "hour": 8,
+    "day_of_week": 1,
+    "lux_value": 271.75,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 25
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 19.95,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 27
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 36.97,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 8,
+    "day_of_week": 1,
+    "lux_value": 485.41,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 7
+  },
+  {
+    "hour": 7,
+    "day_of_week": 5,
+    "lux_value": 268.3,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 13
+  },
+  {
+    "hour": 12,
+    "day_of_week": 3,
+    "lux_value": 238.17,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 20
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 64.62,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 64
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 156.17,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 548.65,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 45.11,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 15,
+    "day_of_week": 6,
+    "lux_value": 226.7,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 2,
+    "lux_value": 241.44,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 153.78,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 10,
+    "day_of_week": 4,
+    "lux_value": 141.19,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 5,
+    "lux_value": 30.18,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 34
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 463.26,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 137.17,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 54
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 125.25,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 64
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 773.97,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 500.4,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 5,
+    "day_of_week": 6,
+    "lux_value": 34.72,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 254.97,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 28
+  },
+  {
+    "hour": 2,
+    "day_of_week": 4,
+    "lux_value": 5.53,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 14,
+    "day_of_week": 1,
+    "lux_value": 409.43,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 287.92,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 100.92,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 7,
+    "day_of_week": 4,
+    "lux_value": 651.57,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 110.08,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 68
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 334.35,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 224.59,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 61
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 164.62,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 65
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 437.99,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 2,
+    "lux_value": 540.38,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 466.96,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 4
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 496.52,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 6,
+    "lux_value": 152.19,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 498.11,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 427.34,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 14
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 177.4,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 36
+  },
+  {
+    "hour": 2,
+    "day_of_week": 0,
+    "lux_value": 46.76,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 15,
+    "day_of_week": 0,
+    "lux_value": 262.53,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 46.23,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 270.46,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 464.74,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 18
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 185.33,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 51
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 41.39,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 12,
+    "day_of_week": 3,
+    "lux_value": 276.25,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 30
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 14.21,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 138.21,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 29.29,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 716.36,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 48.31,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 16,
+    "day_of_week": 5,
+    "lux_value": 491.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 49.3,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 8,
+    "day_of_week": 6,
+    "lux_value": 551.14,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 295.07,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 28
+  },
+  {
+    "hour": 10,
+    "day_of_week": 0,
+    "lux_value": 404.11,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 10
+  },
+  {
+    "hour": 0,
+    "day_of_week": 0,
+    "lux_value": 39.89,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 366.71,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 4,
+    "lux_value": 55.14,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 63
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 6.73,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 33
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 197.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 574.22,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 5,
+    "day_of_week": 3,
+    "lux_value": 7.82,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 4,
+    "day_of_week": 0,
+    "lux_value": 4.94,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 183.06,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 60
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 261.72,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 199.97,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 202.77,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 41
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 319.28,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 29
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 589.57,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 28.77,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 13,
+    "day_of_week": 2,
+    "lux_value": 330.52,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 4,
+    "lux_value": 731.25,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 4,
+    "lux_value": 441.72,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 1,
+    "lux_value": 36.21,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 39.24,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 772.26,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 641.88,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 0,
+    "lux_value": 511.02,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 3,
+    "lux_value": 166.22,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 63
+  },
+  {
+    "hour": 11,
+    "day_of_week": 2,
+    "lux_value": 528.19,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 2,
+    "lux_value": 682.33,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 30.21,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 589.89,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 565.95,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 6,
+    "lux_value": 393.56,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 11
+  },
+  {
+    "hour": 18,
+    "day_of_week": 4,
+    "lux_value": 226.69,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 6,
+    "day_of_week": 4,
+    "lux_value": 18.24,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 594.49,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 1,
+    "lux_value": 11.6,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 13,
+    "day_of_week": 0,
+    "lux_value": 436.06,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 0,
+    "lux_value": 799.15,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 6,
+    "lux_value": 372.93,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 20
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 204.35,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 26.41,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 5,
+    "day_of_week": 3,
+    "lux_value": 22.56,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 8,
+    "day_of_week": 3,
+    "lux_value": 332.44,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 4
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 461.73,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 31.87,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 188.92,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 1,
+    "lux_value": 29.75,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 213.62,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 19,
+    "day_of_week": 3,
+    "lux_value": 276.93,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 43.16,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 16
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 181.66,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 181.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 5,
+    "day_of_week": 4,
+    "lux_value": 1.35,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 115.19,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 58
+  },
+  {
+    "hour": 14,
+    "day_of_week": 0,
+    "lux_value": 446.97,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 252.67,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 553.43,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 152.44,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 50
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 437.21,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 1,
+    "lux_value": 790.04,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 87.82,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 33
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 30.94,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 22,
+    "day_of_week": 1,
+    "lux_value": 196.01,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 55
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 43.05,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 110.03,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 7,
+    "day_of_week": 0,
+    "lux_value": 611.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 3,
+    "lux_value": 671.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 1,
+    "lux_value": 18.71,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 5,
+    "day_of_week": 6,
+    "lux_value": 46.08,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 20.75,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 13,
+    "day_of_week": 4,
+    "lux_value": 490.99,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 0,
+    "lux_value": 353.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 564.28,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 0,
+    "day_of_week": 2,
+    "lux_value": 7.67,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 5,
+    "day_of_week": 6,
+    "lux_value": 48.27,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 22,
+    "day_of_week": 1,
+    "lux_value": 104.29,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 63
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 36.05,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 207.91,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 290.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 11
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 536.42,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 3
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 500.92,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 176.22,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 233.88,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 36.12,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 495.03,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 3,
+    "day_of_week": 1,
+    "lux_value": 34.47,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 5,
+    "day_of_week": 5,
+    "lux_value": 49.78,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 76.26,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 14,
+    "day_of_week": 0,
+    "lux_value": 163.8,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 2,
+    "lux_value": 341.99,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 2,
+    "lux_value": 243.91,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 8,
+    "day_of_week": 6,
+    "lux_value": 577.01,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 2,
+    "lux_value": 39.14,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 790.91,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 264.21,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 70.88,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 36
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 292.09,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 271.13,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 9,
+    "day_of_week": 3,
+    "lux_value": 364.57,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 38.19,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 18,
+    "day_of_week": 6,
+    "lux_value": 632.75,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 125.37,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 54
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 120.13,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 219.41,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 49
+  },
+  {
+    "hour": 4,
+    "day_of_week": 1,
+    "lux_value": 6.68,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 35
+  },
+  {
+    "hour": 21,
+    "day_of_week": 1,
+    "lux_value": 293.45,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 27
+  },
+  {
+    "hour": 13,
+    "day_of_week": 0,
+    "lux_value": 543.99,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 538.22,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 254.58,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 26
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 184.22,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 5,
+    "lux_value": 245.11,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 5,
+    "lux_value": 261.33,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 15
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 360.78,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 103.15,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 55
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 47.29,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 16
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 446.45,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 8
+  },
+  {
+    "hour": 17,
+    "day_of_week": 1,
+    "lux_value": 191.03,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 635.1,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 164.28,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 367.49,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 0,
+    "lux_value": 186.86,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 4,
+    "lux_value": 24.44,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 223.85,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 11,
+    "day_of_week": 6,
+    "lux_value": 622.2,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 1,
+    "lux_value": 135.85,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 69
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 42.62,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 11,
+    "day_of_week": 5,
+    "lux_value": 262.28,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 2,
+    "lux_value": 130.17,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 72
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 3.13,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 315.6,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 564.42,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 32.3,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 16.18,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 37
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 477.67,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 6
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 21.81,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 384.52,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 9.77,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 16,
+    "day_of_week": 1,
+    "lux_value": 349.57,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 87.02,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 13,
+    "day_of_week": 2,
+    "lux_value": 500.83,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 147.06,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 64
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 101.48,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 32
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 247.73,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 0,
+    "day_of_week": 5,
+    "lux_value": 26.04,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 2,
+    "day_of_week": 5,
+    "lux_value": 2.57,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 27
+  },
+  {
+    "hour": 12,
+    "day_of_week": 0,
+    "lux_value": 376.94,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 3,
+    "day_of_week": 4,
+    "lux_value": 48.49,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 18,
+    "day_of_week": 4,
+    "lux_value": 114.92,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 41
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 75.67,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 85
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 26.08,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 18.87,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 15,
+    "day_of_week": 5,
+    "lux_value": 756.3,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 52.43,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 79
+  },
+  {
+    "hour": 15,
+    "day_of_week": 6,
+    "lux_value": 110.57,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 115.09,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 56
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 29.53,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 1,
+    "day_of_week": 3,
+    "lux_value": 33.84,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 458.06,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 5
+  },
+  {
+    "hour": 1,
+    "day_of_week": 5,
+    "lux_value": 16.39,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 12
+  },
+  {
+    "hour": 8,
+    "day_of_week": 4,
+    "lux_value": 787.75,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 44.77,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 9
+  },
+  {
+    "hour": 19,
+    "day_of_week": 1,
+    "lux_value": 81.16,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 55
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 160.72,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 74
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 712.79,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 58.15,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 70
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 10.65,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 19,
+    "day_of_week": 4,
+    "lux_value": 240.14,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 63
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 272.4,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 126.78,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 32
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 176.99,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 98.41,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 70
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 338.42,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 497.69,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 4,
+    "lux_value": 499.47,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 9.5,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 1,
+    "day_of_week": 1,
+    "lux_value": 32.65,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 10
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 271.81,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 5,
+    "day_of_week": 6,
+    "lux_value": 9.41,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 16,
+    "day_of_week": 3,
+    "lux_value": 204.5,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 43
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 693.86,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 292.4,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 33.74,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 14.42,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 3,
+    "day_of_week": 5,
+    "lux_value": 44.48,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 358.87,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 2
+  },
+  {
+    "hour": 6,
+    "day_of_week": 4,
+    "lux_value": 8.7,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 794.05,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 107.19,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 225.97,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 1,
+    "day_of_week": 1,
+    "lux_value": 15.04,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 162.51,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 30
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 171.17,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 54
+  },
+  {
+    "hour": 13,
+    "day_of_week": 2,
+    "lux_value": 505.45,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 8.88,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 19.89,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 284.16,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 7
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 579.8,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 2.0,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 128.82,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 0,
+    "lux_value": 785.36,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 24.46,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 16
+  },
+  {
+    "hour": 6,
+    "day_of_week": 4,
+    "lux_value": 17.5,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 36
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 215.13,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 29
+  },
+  {
+    "hour": 20,
+    "day_of_week": 4,
+    "lux_value": 249.98,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 46.31,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 18,
+    "day_of_week": 4,
+    "lux_value": 64.72,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 36
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 257.48,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 9
+  },
+  {
+    "hour": 17,
+    "day_of_week": 3,
+    "lux_value": 571.19,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 30.55,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 101.07,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 67
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 164.38,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 5,
+    "lux_value": 115.14,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 50
+  },
+  {
+    "hour": 5,
+    "day_of_week": 3,
+    "lux_value": 34.44,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 687.61,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 568.98,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 16.54,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 209.52,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 38.83,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 15.43,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 2,
+    "day_of_week": 2,
+    "lux_value": 5.91,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 37
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 168.78,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 58
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 249.55,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 47.69,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 18,
+    "day_of_week": 4,
+    "lux_value": 557.63,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 747.21,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 3,
+    "lux_value": 484.94,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 2,
+    "lux_value": 560.96,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 46.54,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 214.67,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 325.95,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 24
+  },
+  {
+    "hour": 6,
+    "day_of_week": 3,
+    "lux_value": 629.74,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 145.54,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 580.69,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 324.17,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 47.8,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 19,
+    "day_of_week": 5,
+    "lux_value": 144.9,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 49
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 0.26,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 10,
+    "day_of_week": 6,
+    "lux_value": 239.51,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 17
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 232.3,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 22,
+    "day_of_week": 3,
+    "lux_value": 279.15,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 27
+  },
+  {
+    "hour": 5,
+    "day_of_week": 0,
+    "lux_value": 7.41,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 4,
+    "day_of_week": 6,
+    "lux_value": 33.84,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 157.23,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 17,
+    "day_of_week": 6,
+    "lux_value": 627.43,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 249.58,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 35
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 178.28,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 71
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 126.89,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 18,
+    "day_of_week": 6,
+    "lux_value": 117.8,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 63
+  },
+  {
+    "hour": 17,
+    "day_of_week": 3,
+    "lux_value": 541.42,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 538.36,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 286.87,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 27
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 110.96,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 51
+  },
+  {
+    "hour": 18,
+    "day_of_week": 6,
+    "lux_value": 212.63,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 20
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 503.72,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 590.91,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 33.22,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 243.13,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 14
+  },
+  {
+    "hour": 17,
+    "day_of_week": 4,
+    "lux_value": 144.35,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 5,
+    "lux_value": 126.03,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 58
+  },
+  {
+    "hour": 21,
+    "day_of_week": 1,
+    "lux_value": 131.46,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 72
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 545.03,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 1,
+    "lux_value": 205.41,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 607.92,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 30.19,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 35
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 22.35,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 567.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 1,
+    "lux_value": 141.01,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 64
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 103.88,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 62
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 190.11,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 40
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 5.13,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 553.38,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 141.9,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 11,
+    "day_of_week": 6,
+    "lux_value": 586.7,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 760.01,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 258.85,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 434.73,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 773.83,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 1,
+    "lux_value": 159.28,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 15,
+    "day_of_week": 6,
+    "lux_value": 729.68,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 411.12,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 21
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 605.03,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 3,
+    "day_of_week": 5,
+    "lux_value": 10.62,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 17,
+    "day_of_week": 4,
+    "lux_value": 347.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 440.38,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 1,
+    "lux_value": 293.52,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 25
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 292.36,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 27
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 36.89,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 53.86,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 56
+  },
+  {
+    "hour": 1,
+    "day_of_week": 3,
+    "lux_value": 9.4,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 9,
+    "day_of_week": 1,
+    "lux_value": 740.4,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 16.4,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 352.88,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 212.79,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 218.28,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 4,
+    "lux_value": 355.45,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 11
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 424.91,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 525.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 20.34,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 28.99,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 16,
+    "day_of_week": 5,
+    "lux_value": 592.29,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 173.03,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 58
+  },
+  {
+    "hour": 9,
+    "day_of_week": 6,
+    "lux_value": 481.92,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 2,
+    "lux_value": 525.37,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 0,
+    "lux_value": 665.65,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 3,
+    "lux_value": 757.38,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 2,
+    "lux_value": 193.27,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 65
+  },
+  {
+    "hour": 8,
+    "day_of_week": 2,
+    "lux_value": 617.74,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 250.84,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 37
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 39.6,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 16,
+    "day_of_week": 4,
+    "lux_value": 280.37,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 204.54,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 36
+  },
+  {
+    "hour": 15,
+    "day_of_week": 6,
+    "lux_value": 200.0,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 3,
+    "lux_value": 482.14,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 12.66,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 51.8,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 66
+  },
+  {
+    "hour": 6,
+    "day_of_week": 3,
+    "lux_value": 41.48,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 37.13,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 540.56,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 3,
+    "lux_value": 235.06,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 66
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 184.72,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 16.12,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 36
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 389.79,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 21
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 514.03,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 0,
+    "lux_value": 438.65,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 13.09,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 38.27,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 240.85,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 5,
+    "lux_value": 603.53,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 2,
+    "lux_value": 203.54,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 40
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 709.47,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 746.41,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 2,
+    "lux_value": 294.34,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 25
+  },
+  {
+    "hour": 14,
+    "day_of_week": 1,
+    "lux_value": 311.87,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 0,
+    "lux_value": 262.77,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 4,
+    "day_of_week": 1,
+    "lux_value": 7.92,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 35
+  },
+  {
+    "hour": 14,
+    "day_of_week": 1,
+    "lux_value": 353.62,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 28.82,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 34
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 591.06,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 2,
+    "lux_value": 491.66,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 112.77,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 247.85,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 27
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 26.26,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 755.32,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 7.29,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 312.06,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 1,
+    "lux_value": 132.73,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 27
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 791.76,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 14.3,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 27
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 29.47,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 4,
+    "day_of_week": 3,
+    "lux_value": 15.42,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 1,
+    "day_of_week": 1,
+    "lux_value": 1.19,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 157.86,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 50
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 13.29,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 14,
+    "day_of_week": 0,
+    "lux_value": 366.88,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 26
+  },
+  {
+    "hour": 1,
+    "day_of_week": 0,
+    "lux_value": 45.71,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 18,
+    "day_of_week": 6,
+    "lux_value": 514.07,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 134.56,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 74
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 152.12,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 297.9,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 56.85,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 48
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 162.85,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 55
+  },
+  {
+    "hour": 7,
+    "day_of_week": 4,
+    "lux_value": 419.51,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 3
+  },
+  {
+    "hour": 19,
+    "day_of_week": 4,
+    "lux_value": 169.23,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 36
+  },
+  {
+    "hour": 7,
+    "day_of_week": 4,
+    "lux_value": 254.82,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 35
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 498.26,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 4,
+    "lux_value": 538.54,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 17,
+    "day_of_week": 6,
+    "lux_value": 327.02,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 21
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 281.6,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 15
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 21.09,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 36
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 528.98,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 22.11,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 10,
+    "day_of_week": 0,
+    "lux_value": 209.74,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 1,
+    "lux_value": 540.84,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 206.12,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 135.19,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 50
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 18.52,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 12,
+    "day_of_week": 1,
+    "lux_value": 236.51,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 476.5,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 420.7,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 6,
+    "lux_value": 479.18,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 239.33,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 22
+  },
+  {
+    "hour": 14,
+    "day_of_week": 0,
+    "lux_value": 268.38,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 14
+  },
+  {
+    "hour": 6,
+    "day_of_week": 5,
+    "lux_value": 45.21,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 2,
+    "day_of_week": 0,
+    "lux_value": 9.26,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 177.03,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 494.11,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 1,
+    "day_of_week": 5,
+    "lux_value": 49.23,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 184.29,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 5,
+    "lux_value": 56.24,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 198.16,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 150.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 4,
+    "lux_value": 519.17,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 82.47,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 67
+  },
+  {
+    "hour": 7,
+    "day_of_week": 6,
+    "lux_value": 614.05,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 530.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 50.62,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 70
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 24.0,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 33
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 92.32,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 7,
+    "day_of_week": 2,
+    "lux_value": 562.59,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 5
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 308.79,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 15
+  },
+  {
+    "hour": 5,
+    "day_of_week": 5,
+    "lux_value": 37.14,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 799.67,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 318.5,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 10
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 77.76,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 61
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 14.13,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 4,
+    "day_of_week": 2,
+    "lux_value": 17.6,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 11,
+    "day_of_week": 2,
+    "lux_value": 124.23,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 29.34,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 18,
+    "day_of_week": 4,
+    "lux_value": 205.51,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 21
+  },
+  {
+    "hour": 11,
+    "day_of_week": 2,
+    "lux_value": 587.36,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 550.14,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 215.28,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 61
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 297.74,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 632.42,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 128.1,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 10.23,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 15,
+    "day_of_week": 2,
+    "lux_value": 187.68,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 40.5,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 0.17,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 339.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 329.71,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 8
+  },
+  {
+    "hour": 5,
+    "day_of_week": 3,
+    "lux_value": 37.02,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 30.85,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 15,
+    "day_of_week": 2,
+    "lux_value": 441.49,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 227.74,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 7
+  },
+  {
+    "hour": 17,
+    "day_of_week": 1,
+    "lux_value": 612.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 578.32,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 1,
+    "lux_value": 78.7,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 71
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 40.34,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 40.77,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 28.65,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 10,
+    "day_of_week": 6,
+    "lux_value": 245.94,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 28.18,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 143.61,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 679.73,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 42.82,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 405.81,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 406.3,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 8
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 330.87,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 31
+  },
+  {
+    "hour": 17,
+    "day_of_week": 6,
+    "lux_value": 229.39,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 4,
+    "lux_value": 29.6,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 330.81,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 3,
+    "lux_value": 442.05,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 288.35,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 62.06,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 49
+  },
+  {
+    "hour": 16,
+    "day_of_week": 4,
+    "lux_value": 702.68,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 0,
+    "day_of_week": 6,
+    "lux_value": 0.79,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 296.74,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 12,
+    "day_of_week": 2,
+    "lux_value": 585.58,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 4.61,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 33
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 203.21,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 15
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 281.53,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 22,
+    "day_of_week": 1,
+    "lux_value": 118.31,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 49
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 38.8,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 65.99,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 15,
+    "day_of_week": 0,
+    "lux_value": 190.54,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 0,
+    "lux_value": 231.06,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 10,
+    "day_of_week": 4,
+    "lux_value": 296.64,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 20
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 251.75,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 42
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 385.97,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 0,
+    "day_of_week": 5,
+    "lux_value": 44.97,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 5,
+    "day_of_week": 4,
+    "lux_value": 6.24,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 10,
+    "day_of_week": 2,
+    "lux_value": 618.36,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 2,
+    "lux_value": 200.33,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 39
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 162.47,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 505.8,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 10.28,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 29.31,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 16
+  },
+  {
+    "hour": 13,
+    "day_of_week": 5,
+    "lux_value": 503.97,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 0,
+    "lux_value": 290.74,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 9
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 308.49,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 33
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 217.73,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 40
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 24.6,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 25
+  },
+  {
+    "hour": 8,
+    "day_of_week": 4,
+    "lux_value": 753.77,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 6,
+    "lux_value": 537.96,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 2,
+    "lux_value": 150.44,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 301.52,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 4,
+    "lux_value": 94.47,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 761.06,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 417.17,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 3
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 576.63,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 21.75,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 428.84,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 21
+  },
+  {
+    "hour": 9,
+    "day_of_week": 1,
+    "lux_value": 678.68,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 169.97,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 37
+  },
+  {
+    "hour": 12,
+    "day_of_week": 4,
+    "lux_value": 339.46,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 13
+  },
+  {
+    "hour": 22,
+    "day_of_week": 2,
+    "lux_value": 160.6,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 57
+  },
+  {
+    "hour": 11,
+    "day_of_week": 0,
+    "lux_value": 264.49,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 147.42,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 54
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 541.41,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 195.54,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 60
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 40.93,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 473.73,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 494.67,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 613.88,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 101.85,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 278.69,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 4,
+    "lux_value": 50.37,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 47.12,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 9
+  },
+  {
+    "hour": 10,
+    "day_of_week": 1,
+    "lux_value": 133.2,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 52.85,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 268.95,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 28.25,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 47.48,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 14
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 402.42,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 17
+  },
+  {
+    "hour": 12,
+    "day_of_week": 2,
+    "lux_value": 380.01,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 136.29,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 82.57,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 57
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 410.0,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 180.36,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 38
+  },
+  {
+    "hour": 15,
+    "day_of_week": 5,
+    "lux_value": 119.27,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 4,
+    "lux_value": 579.12,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 146.02,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 42
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 66.57,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 206.84,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 42
+  },
+  {
+    "hour": 16,
+    "day_of_week": 5,
+    "lux_value": 154.95,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 2,
+    "lux_value": 593.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 507.95,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 3,
+    "lux_value": 476.75,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 34.67,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 4,
+    "day_of_week": 3,
+    "lux_value": 12.49,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 34
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 520.34,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 6,
+    "lux_value": 6.16,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 37
+  },
+  {
+    "hour": 20,
+    "day_of_week": 1,
+    "lux_value": 226.6,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 16
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 99.67,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 56
+  },
+  {
+    "hour": 5,
+    "day_of_week": 2,
+    "lux_value": 23.5,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 5,
+    "day_of_week": 5,
+    "lux_value": 15.14,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 22
+  },
+  {
+    "hour": 16,
+    "day_of_week": 4,
+    "lux_value": 328.93,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 5,
+    "lux_value": 402.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 6,
+    "lux_value": 520.07,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 5,
+    "lux_value": 26.63,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 208.3,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 1,
+    "day_of_week": 1,
+    "lux_value": 32.6,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 287.0,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 8,
+    "day_of_week": 6,
+    "lux_value": 417.49,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 260.16,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 181.16,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 34
+  },
+  {
+    "hour": 21,
+    "day_of_week": 1,
+    "lux_value": 209.85,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 42
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 526.71,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 3,
+    "lux_value": 358.76,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 0,
+    "lux_value": 141.24,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 6,
+    "lux_value": 532.71,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 142.43,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 10,
+    "day_of_week": 4,
+    "lux_value": 547.55,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 0,
+    "day_of_week": 4,
+    "lux_value": 13.12,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 34
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 128.56,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 271.25,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 12
+  },
+  {
+    "hour": 4,
+    "day_of_week": 3,
+    "lux_value": 48.82,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 32
+  },
+  {
+    "hour": 11,
+    "day_of_week": 3,
+    "lux_value": 309.31,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 0,
+    "lux_value": 560.41,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 2,
+    "lux_value": 279.68,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 28
+  },
+  {
+    "hour": 10,
+    "day_of_week": 0,
+    "lux_value": 294.74,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 45.76,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 20,
+    "day_of_week": 2,
+    "lux_value": 286.16,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 7
+  },
+  {
+    "hour": 10,
+    "day_of_week": 0,
+    "lux_value": 202.84,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 5,
+    "day_of_week": 2,
+    "lux_value": 48.01,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 7,
+    "day_of_week": 3,
+    "lux_value": 460.24,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 39.98,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 361.92,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 4
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 506.32,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 0,
+    "lux_value": 553.56,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 3,
+    "lux_value": 263.04,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 25
+  },
+  {
+    "hour": 1,
+    "day_of_week": 0,
+    "lux_value": 19.34,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 80.13,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 44
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 78.71,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 55
+  },
+  {
+    "hour": 14,
+    "day_of_week": 6,
+    "lux_value": 343.01,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 764.08,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 2,
+    "lux_value": 289.36,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 25
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 424.17,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 3,
+    "lux_value": 292.01,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 31
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 52.01,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 66
+  },
+  {
+    "hour": 13,
+    "day_of_week": 3,
+    "lux_value": 246.09,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 160.9,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 20,
+    "day_of_week": 5,
+    "lux_value": 84.13,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 31
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 222.04,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 299.63,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 46
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 468.36,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 5
+  },
+  {
+    "hour": 12,
+    "day_of_week": 1,
+    "lux_value": 152.91,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 1,
+    "lux_value": 155.09,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 65
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 231.69,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 30
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 48.97,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 749.8,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 6,
+    "lux_value": 384.69,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 14
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 279.4,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 30
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 307.36,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 0,
+    "lux_value": 47.36,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 18
+  },
+  {
+    "hour": 9,
+    "day_of_week": 0,
+    "lux_value": 335.9,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 2,
+    "lux_value": 224.13,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 39
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 13.11,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 1,
+    "day_of_week": 1,
+    "lux_value": 24.79,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 186.12,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 51
+  },
+  {
+    "hour": 11,
+    "day_of_week": 5,
+    "lux_value": 714.43,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 221.87,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 45
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 237.12,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 51
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 488.16,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 6,
+    "lux_value": 341.23,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 4
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 209.75,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 18
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 527.96,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 4,
+    "day_of_week": 1,
+    "lux_value": 16.37,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 13,
+    "day_of_week": 3,
+    "lux_value": 554.55,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 6,
+    "lux_value": 534.16,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 236.26,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 351.95,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 3,
+    "lux_value": 254.65,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 30
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 0.5,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 29
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 1.83,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 38
+  },
+  {
+    "hour": 0,
+    "day_of_week": 4,
+    "lux_value": 49.83,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 19
+  },
+  {
+    "hour": 8,
+    "day_of_week": 4,
+    "lux_value": 255.06,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 27
+  },
+  {
+    "hour": 21,
+    "day_of_week": 3,
+    "lux_value": 96.07,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 53
+  },
+  {
+    "hour": 1,
+    "day_of_week": 5,
+    "lux_value": 41.41,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 10,
+    "day_of_week": 2,
+    "lux_value": 377.25,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 13.52,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 23
+  },
+  {
+    "hour": 1,
+    "day_of_week": 0,
+    "lux_value": 39.36,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 8,
+    "day_of_week": 5,
+    "lux_value": 772.81,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 4,
+    "lux_value": 251.91,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 627.25,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 266.14,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 23
+  },
+  {
+    "hour": 18,
+    "day_of_week": 0,
+    "lux_value": 161.86,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 9,
+    "day_of_week": 6,
+    "lux_value": 318.89,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 20,
+    "day_of_week": 3,
+    "lux_value": 59.94,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 34
+  },
+  {
+    "hour": 2,
+    "day_of_week": 4,
+    "lux_value": 37.15,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 44.98,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 28
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 134.43,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 6,
+    "lux_value": 528.48,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 1,
+    "lux_value": 389.15,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 237.43,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 51
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 182.11,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 39
+  },
+  {
+    "hour": 0,
+    "day_of_week": 4,
+    "lux_value": 38.65,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 587.78,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 8.27,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 33
+  },
+  {
+    "hour": 8,
+    "day_of_week": 0,
+    "lux_value": 400.26,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 2
+  },
+  {
+    "hour": 11,
+    "day_of_week": 6,
+    "lux_value": 220.46,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 392.71,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 3,
+    "lux_value": 385.9,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 1
+  },
+  {
+    "hour": 2,
+    "day_of_week": 4,
+    "lux_value": 35.55,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 13,
+    "day_of_week": 5,
+    "lux_value": 277.32,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 22.6,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 28.82,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 253.96,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 49.75,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 30
+  },
+  {
+    "hour": 15,
+    "day_of_week": 1,
+    "lux_value": 556.06,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 6,
+    "lux_value": 256.4,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 18
+  },
+  {
+    "hour": 22,
+    "day_of_week": 2,
+    "lux_value": 299.87,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 5
+  },
+  {
+    "hour": 19,
+    "day_of_week": 6,
+    "lux_value": 122.55,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 60
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 462.96,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 2,
+    "lux_value": 697.27,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 4,
+    "lux_value": 268.83,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 4,
+    "lux_value": 180.15,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 40
+  },
+  {
+    "hour": 10,
+    "day_of_week": 5,
+    "lux_value": 519.49,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 6,
+    "lux_value": 148.04,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 35
+  },
+  {
+    "hour": 21,
+    "day_of_week": 5,
+    "lux_value": 166.34,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 20,
+    "day_of_week": 0,
+    "lux_value": 72.65,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 65
+  },
+  {
+    "hour": 11,
+    "day_of_week": 1,
+    "lux_value": 546.59,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 11.78,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 17
+  },
+  {
+    "hour": 10,
+    "day_of_week": 3,
+    "lux_value": 585.77,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 12,
+    "day_of_week": 0,
+    "lux_value": 533.73,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 8
+  },
+  {
+    "hour": 0,
+    "day_of_week": 1,
+    "lux_value": 0.47,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 27
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 12.02,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 9,
+    "day_of_week": 4,
+    "lux_value": 584.63,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 3,
+    "lux_value": 459.15,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 3,
+    "lux_value": 508.39,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 221.72,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 32
+  },
+  {
+    "hour": 13,
+    "day_of_week": 1,
+    "lux_value": 601.22,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 114.33,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 26
+  },
+  {
+    "hour": 9,
+    "day_of_week": 2,
+    "lux_value": 747.38,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 247.04,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 43
+  },
+  {
+    "hour": 14,
+    "day_of_week": 4,
+    "lux_value": 785.08,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 3,
+    "lux_value": 452.61,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 3,
+    "lux_value": 363.88,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 1,
+    "lux_value": 12.92,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 13
+  },
+  {
+    "hour": 14,
+    "day_of_week": 2,
+    "lux_value": 641.65,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 11,
+    "day_of_week": 5,
+    "lux_value": 518.5,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 1,
+    "lux_value": 641.9,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 2,
+    "lux_value": 296.4,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 23
+  },
+  {
+    "hour": 13,
+    "day_of_week": 4,
+    "lux_value": 526.0,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 17,
+    "day_of_week": 5,
+    "lux_value": 177.84,
+    "presence_detected": true,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 15,
+    "day_of_week": 0,
+    "lux_value": 406.24,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 0,
+    "lux_value": 315.94,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 4
+  },
+  {
+    "hour": 17,
+    "day_of_week": 0,
+    "lux_value": 484.75,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 10,
+    "day_of_week": 2,
+    "lux_value": 353.89,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 6,
+    "day_of_week": 2,
+    "lux_value": 573.69,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 18,
+    "day_of_week": 6,
+    "lux_value": 279.68,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 34
+  },
+  {
+    "hour": 12,
+    "day_of_week": 1,
+    "lux_value": 373.48,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 19
+  },
+  {
+    "hour": 23,
+    "day_of_week": 2,
+    "lux_value": 24.13,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 24
+  },
+  {
+    "hour": 3,
+    "day_of_week": 0,
+    "lux_value": 25.69,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 18,
+    "day_of_week": 3,
+    "lux_value": 185.3,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 68
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 19.49,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 15
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 20.7,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 26
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 274.66,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 9
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 90.75,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 64
+  },
+  {
+    "hour": 23,
+    "day_of_week": 5,
+    "lux_value": 60.66,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 71
+  },
+  {
+    "hour": 23,
+    "day_of_week": 3,
+    "lux_value": 265.02,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 31
+  },
+  {
+    "hour": 22,
+    "day_of_week": 5,
+    "lux_value": 60.57,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 75
+  },
+  {
+    "hour": 23,
+    "day_of_week": 0,
+    "lux_value": 0.86,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 31
+  },
+  {
+    "hour": 6,
+    "day_of_week": 1,
+    "lux_value": 791.78,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 0,
+    "lux_value": 194.0,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 13,
+    "day_of_week": 1,
+    "lux_value": 382.62,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 6,
+    "lux_value": 22.85,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 34
+  },
+  {
+    "hour": 19,
+    "day_of_week": 4,
+    "lux_value": 214.68,
+    "presence_detected": false,
+    "scenario": 3,
+    "intensity": 52
+  },
+  {
+    "hour": 12,
+    "day_of_week": 0,
+    "lux_value": 170.34,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 8,
+    "day_of_week": 6,
+    "lux_value": 401.75,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 18
+  },
+  {
+    "hour": 14,
+    "day_of_week": 3,
+    "lux_value": 102.05,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 47.55,
+    "presence_detected": false,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 19,
+    "day_of_week": 0,
+    "lux_value": 213.39,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 33
+  },
+  {
+    "hour": 15,
+    "day_of_week": 5,
+    "lux_value": 207.2,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 21
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 568.24,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 2,
+    "day_of_week": 4,
+    "lux_value": 24.03,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 20
+  },
+  {
+    "hour": 11,
+    "day_of_week": 4,
+    "lux_value": 528.06,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 1,
+    "lux_value": 719.69,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 6,
+    "lux_value": 193.59,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 21,
+    "day_of_week": 1,
+    "lux_value": 112.71,
+    "presence_detected": true,
+    "scenario": 3,
+    "intensity": 59
+  },
+  {
+    "hour": 16,
+    "day_of_week": 1,
+    "lux_value": 309.24,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 9,
+    "day_of_week": 5,
+    "lux_value": 599.95,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 23,
+    "day_of_week": 4,
+    "lux_value": 13.93,
+    "presence_detected": true,
+    "scenario": 1,
+    "intensity": 21
+  },
+  {
+    "hour": 7,
+    "day_of_week": 0,
+    "lux_value": 261.03,
+    "presence_detected": false,
+    "scenario": 0,
+    "intensity": 18
+  },
+  {
+    "hour": 14,
+    "day_of_week": 5,
+    "lux_value": 110.46,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 16,
+    "day_of_week": 0,
+    "lux_value": 555.29,
+    "presence_detected": false,
+    "scenario": 2,
+    "intensity": 0
+  },
+  {
+    "hour": 7,
+    "day_of_week": 0,
+    "lux_value": 531.95,
+    "presence_detected": true,
+    "scenario": 0,
+    "intensity": 0
+  }
+]

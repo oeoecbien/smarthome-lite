@@ -372,15 +372,30 @@ def _motion_to_backend_loop():
     import urllib.error
     import json
     if not BACKEND_URL or not API_KEY or not MULTISENSOR7_NODE_ID:
-        logger.debug("Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant)")
+        logger.info(
+            "Motion→backend désactivé (BACKEND_URL, RASPBERRY_API_KEY ou MULTISENSOR7_NODE_ID manquant). "
+            "Vérifiez le .env pour enregistrer les présences dans la table presence."
+        )
         return
     url = f"{BACKEND_URL}/api/presence"
-    interval = 5  # secondes entre deux lectures
+    interval = 3  # secondes entre deux lectures (capteur batterie peut être lent à répondre)
     last_motion = False
+    consecutive_errors = 0
     while True:
         time.sleep(interval)
         try:
-            motion = run_async(zwave_client.get_motion_state(MULTISENSOR7_NODE_ID))
+            # Lecture rapide via getValue(5-48-0-Motion) uniquement, sans get_node (évite timeout sur pile)
+            motion = run_async(zwave_client.get_motion_state_fast(MULTISENSOR7_NODE_ID, timeout_sec=8.0))
+            if motion is None:
+                consecutive_errors += 1
+                if consecutive_errors <= 3 or consecutive_errors % 10 == 0:
+                    logger.warning(
+                        "Motion (node %s): lecture impossible (timeout ou nœud endormi). Essai %s",
+                        MULTISENSOR7_NODE_ID, consecutive_errors,
+                    )
+                last_motion = False
+                continue
+            consecutive_errors = 0
             if motion and not last_motion:
                 # Front montant : envoi au backend
                 data = json.dumps({"sensor_node_id": MULTISENSOR7_NODE_ID}).encode("utf-8")
@@ -394,12 +409,12 @@ def _motion_to_backend_loop():
                     },
                 )
                 urllib.request.urlopen(req, timeout=10)
-                logger.info("Mouvement détecté (node %s) → backend", MULTISENSOR7_NODE_ID)
+                logger.info("Mouvement détecté (node %s) → POST /api/presence → BDD", MULTISENSOR7_NODE_ID)
             last_motion = motion
         except urllib.error.HTTPError as e:
-            logger.debug("Motion→backend HTTP %s: %s", e.code, e.reason)
+            logger.warning("Motion→backend HTTP %s: %s (vérifiez X-API-Key et RPi en base)", e.code, e.reason)
         except Exception as e:
-            logger.debug("Motion→backend: %s", e)
+            logger.warning("Motion→backend: %s", e)
 
 
 if __name__ == "__main__":
@@ -412,6 +427,9 @@ if __name__ == "__main__":
         _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
         _motion.start()
         logger.info("Détecteur (node %s) → présence backend démarré", MULTISENSOR7_NODE_ID)
+    else:
+        _motion = threading.Thread(target=_motion_to_backend_loop, daemon=True)
+        _motion.start()
     logger.info("Démarrage API Flask Z-Wave sur %s:%s", API_HOST, API_PORT)
     logger.info("Z-Wave JS UI: %s", ZWAVE_JS_UI_URL)
     app.run(host=API_HOST, port=API_PORT, debug=DEBUG)

@@ -2,12 +2,15 @@
 Routes pour la gestion des appareils
 """
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.database import get_db
-from app.models import Device, User
+from app.models import Device, User, Presence
+from app.services.rule_engine import RuleEngine
 from app.schemas.device import (
     Device as DeviceSchema,
     DeviceCreate,
@@ -23,6 +26,7 @@ from app.schemas.zwave import ZwaveSensorData
 
 router = APIRouter()
 
+@router.get("", response_model=List[DeviceWithLocation], include_in_schema=False)
 @router.get("/", response_model=List[DeviceWithLocation])
 async def get_devices(
     location: str = None,
@@ -244,6 +248,35 @@ async def get_device_sensor(
         )
         if not isinstance(data, dict):
             data = {}
+        # Si mouvement détecté : enregistrer en table presence (visible admin/presence)
+        if data.get("motion") is True:
+            rpi = device.raspberry_pi
+            node_id = device.gpio_pin
+            five_seconds_ago = datetime.now(timezone.utc) - timedelta(seconds=5)
+            recent = (
+                db.query(Presence)
+                .filter(
+                    Presence.raspberry_pi_id == rpi.id,
+                    Presence.detected_at >= five_seconds_ago,
+                )
+                .first()
+            )
+            if not recent:
+                presence = Presence(
+                    raspberry_pi_id=rpi.id,
+                    sensor_node_id=node_id,
+                )
+                db.add(presence)
+                db.commit()
+                db.refresh(presence)
+                try:
+                    rule_engine = RuleEngine(db)
+                    await rule_engine.evaluate_rules(
+                        trigger_event="presence_detected",
+                        trigger_data={"raspberry_pi_id": rpi.id, "location": rpi.location},
+                    )
+                except Exception:
+                    pass
         # Réponse normalisée (tous les champs présents)
         return ZwaveSensorData(
             success=data.get("success", True),

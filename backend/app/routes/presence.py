@@ -36,6 +36,7 @@ class PresenceResponse(BaseModel):
     sensor_node_id: Optional[int] = None
 
 
+@router.post("", response_model=PresenceResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=PresenceResponse, status_code=status.HTTP_201_CREATED)
 async def create_presence(
     request: PresenceCreate,
@@ -131,6 +132,7 @@ async def create_presence(
     }
 
 
+@router.get("", response_model=List[PresenceResponse], include_in_schema=False)
 @router.get("/", response_model=List[PresenceResponse])
 async def get_presence_history(
     raspberry_pi_id: Optional[int] = None,
