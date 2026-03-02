@@ -4,6 +4,24 @@ Ce document décrit **comment fonctionne l’IA** du backend, **où elle est uti
 
 ---
 
+## Conformité au cahier des charges (SAE BUT3 FA 2025)
+
+Le sujet impose :
+
+- *« Le projet devra intégrer **au moins un** algorithme d'IA permettant d'effectuer une **régression ou une classification**. »*
+- *« Un accès au serveur **Ollama** de l'IUT pourra être accordé pour les traitements d'intelligence artificielle. »*
+
+Notre implémentation :
+
+| Exigence | Réponse |
+|----------|---------|
+| Au moins 1 algorithme (régression **ou** classification) | **Classification** (Decision Tree, scénarios Day/Night/Away/Evening) et **Régression** (Random Forest, intensité lumineuse). Les deux sont utilisés en production (smart dimming, scénario actuel). |
+| Ollama (IUT) | **Optionnel** : service `ollama_service.py` et routes `/api/ai/ollama/*`. Configurer `OLLAMA_BASE_URL` (ex. `http://ollama.iut.local:11434`) pour activer descriptions, parsing de règles, recommandations. |
+
+Pour la soutenance, on peut mettre en avant **un** algorithme (ex. la régression pour l'intensité lumineuse) et mentionner la classification comme second algorithme ; ou inversement. Les fallbacks (règles horaires / formules fixes) permettent de faire tourner l'API sans modèles entraînés.
+
+---
+
 ## Vue d’ensemble
 
 L’IA du backend comporte **trois parties** :
@@ -53,7 +71,7 @@ Sans modèles entraînés, l’API fonctionne quand même : elle utilise des **f
 - **Entrée** : `hour`, `day_of_week`, `lux_value`, `presence_detected`, `scenario`.
 - **Sortie** : intensité lumineuse optimale **0–100 %**.
 
-### Où c’est utilisé
+### Où est ce utilisé
 
 - **`POST /api/ai/predict-intensity`** : prédiction manuelle.
 - **Smart Dimming** : dans `smart_dimming_service.py`, si le modèle de régression est chargé, il est utilisé pour calculer l’intensité cible ; sinon utilisation des règles fixes (seuils lux → intensité).
@@ -74,9 +92,9 @@ Sans modèles entraînés, l’API fonctionne quand même : elle utilise des **f
 
 ## 3. Ollama (IA générative)
 
-- **Optionnel** : nécessite `OLLAMA_BASE_URL` (ex. `http://ollama.iut.local:11434`).
+- **Optionnel** : correspond au *« serveur Ollama de l'IUT »* mentionné dans le sujet. Nécessite `OLLAMA_BASE_URL` (ex. `http://ollama.iut.local:11434`).
 - **Routes** : `/api/ai/ollama/generate`, `/api/ai/ollama/scenario-description`, `/api/ai/ollama/parse-rule`, `/api/ai/ollama/recommendations`.
-- Non détaillé ici (hors périmètre « ML classique »).
+- Hors périmètre « ML classique » (régression/classification) mais valorisable pour l’IA dans le projet.
 
 ---
 

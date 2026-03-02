@@ -242,7 +242,7 @@ class DeviceService:
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)
-                executed_rules = rule_engine.evaluate_rules(
+                executed_rules = await rule_engine.evaluate_rules(
                     trigger_event="state_changed",
                     trigger_data={"device_id": device.id, "state": state}
                 )
@@ -311,7 +311,7 @@ class DeviceService:
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)
-                executed_rules = rule_engine.evaluate_rules(
+                executed_rules = await rule_engine.evaluate_rules(
                     trigger_event="brightness_changed",
                     trigger_data={"device_id": device.id, "brightness": brightness_stored}
                 )
