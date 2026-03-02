@@ -178,7 +178,7 @@ L’IA « marche » partout où ces services sont appelés (routes `/api/ai/*`, 
 
 ---
 
-## Comment c’est censé marcher (use cases, user stories)
+## Comment cela doit fonctionner (use cases, user stories)
 
 ### Structure des dossiers
 
