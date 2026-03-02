@@ -101,7 +101,7 @@ fun SmartHomeApp(
                     navigationIcon = {
                         if (selectedLampId != null) {
                             IconButton(onClick = { selectedLampId = null }) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     },
