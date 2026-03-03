@@ -32,18 +32,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            var isDarkTheme by remember { mutableStateOf(false) }
-
             SmartHomeTheme(dynamicColor = false) {
-                // On instancie le ViewModel au niveau le plus haut
                 val viewModel: SmartHomeViewModel = viewModel()
 
-                // ROUTAGE PRINCIPAL
                 if (viewModel.isLoggedIn) {
-                    // Si connecté -> Affiche l'application complète
-                    SmartHomeApp(viewModel, isDarkTheme, onThemeChange = { isDarkTheme = it })
+                    SmartHomeApp(viewModel)
                 } else {
-                    // Sinon -> Affiche l'écran de Login
                     LoginScreen(viewModel)
                 }
             }
@@ -55,9 +49,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartHomeApp(
-    viewModel: SmartHomeViewModel,
-    isDarkTheme: Boolean,
-    onThemeChange: (Boolean) -> Unit
+    viewModel: SmartHomeViewModel
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     // Hoisted state for Lamp detail navigation
@@ -122,9 +114,7 @@ fun SmartHomeApp(
                     AppDestinations.PROFILE -> ProfileScreen(
                         viewModel.currentUsername,
                         viewModel.currentEmail,
-                        { viewModel.logout() },
-                        isDarkTheme,
-                        onThemeChange
+                        { viewModel.logout() }
                     )
                 }
             }

@@ -57,8 +57,6 @@ fun ProfileScreen(
     name: String,
     email: String,
     onLogoutClick: () -> Unit,
-    isDarkTheme: Boolean,
-    onThemeChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
