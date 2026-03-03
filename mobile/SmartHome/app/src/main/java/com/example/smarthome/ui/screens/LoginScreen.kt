@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -91,9 +92,10 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(R.mipmap.icon_smarthome),
+                    painter = painterResource(R.drawable.smarthome_icon_image),
                     contentDescription = null,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
 
