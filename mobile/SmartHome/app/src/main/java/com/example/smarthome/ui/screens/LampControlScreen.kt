@@ -1,24 +1,17 @@
 package com.example.smarthome.ui.screens
 
 import com.example.smarthome.data.model.*
-import com.example.smarthome.data.api.*
-import com.example.smarthome.ui.viewmodel.*
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,32 +28,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RenderEffect
-import androidx.compose.ui.graphics.Shader
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smarthome.ui.theme.CardSurface
-import com.example.smarthome.ui.theme.DarkSurface
+import com.example.smarthome.R
 import com.example.smarthome.ui.theme.NeonBlue
-import com.example.smarthome.ui.theme.NeonBlueGlow
 import com.example.smarthome.ui.theme.TextGreen
 
 @Composable
@@ -73,226 +57,242 @@ fun LampControlScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 20.dp)
     ) {
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        // 2. POWER CARD (L'interrupteur)
-        PowerControlCard(
-            isOn = lamp.isOn,
-            onToggle = { isChecked ->
-                onUpdate(lamp.copy(isOn = isChecked))
-            }
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // 3. POURCENTAGE TEXTE
-        Text(
-            text = "${(lamp.brightness * 100).toInt()}%",
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Bold
-        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. ICONE SOLEIL
-        Icon(
-            imageVector = Icons.Outlined.WbSunny,
-            contentDescription = "Brightness",
-            tint = Color.Gray,
-            modifier = Modifier.size(28.dp)
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 5. SLIDER VERTICAL PERSONNALISÉ (Le gros morceau)
-        // On ne l'affiche que si la lampe est allumée pour l'effet visuel,
-        // ou on le grise si éteint.
-        VerticalNeonSlider(
-            brightness = lamp.brightness,
-            isEnabled = lamp.isOn,
-            onBrightnessChange = { newBrightness ->
-                // On met à jour la lampe (note: onUpdate gère déjà le debounce grâce au ViewModel)
-                onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
-            }
-        )
-    }
-}
-
-@Composable
-fun PowerControlCard(isOn: Boolean, onToggle: (Boolean) -> Unit) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary),
-        modifier = Modifier.fillMaxWidth().height(80.dp)
-    ) {
+        // ─── 1. TOP BAR (←  Titre  ⚙) ──────────────────────────────────────
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icone Ampoule dans un cercle
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Retour",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Text(
+                text = lamp.name,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+
+            IconButton(onClick = { /* Settings */ }) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
-                        .background(if (isOn) NeonBlue.copy(alpha = 0.2f) else Color.Gray.copy(alpha = 0.2f)),
+                        .background(MaterialTheme.colorScheme.tertiary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Lightbulb,
-                        contentDescription = null,
-                        tint = if (isOn) NeonBlue else Color.Gray
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Paramètres",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+            }
+        }
 
-                // Textes
-                Column {
-                    Text(
-                        text = "État",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = if (isOn) "Allumer" else "Éteint",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+        Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Petit point vert
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(TextGreen)
-                        )
+        // ─── 2. STATUS CARD ─────────────────────────────────────────────────
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiary
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
 
-                        Spacer(modifier = Modifier.width(6.dp))
-
+                // Status row : label + switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
                         Text(
-                            text = "Online",
+                            text = "Status",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextGreen
+                            color = MaterialTheme.colorScheme.secondary
                         )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (lamp.isOn) "Allumé" else "Éteint",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = if (lamp.isOn) NeonBlue else Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // Online indicator
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(TextGreen)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Online",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextGreen,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
 
+                    Switch(
+                        checked = lamp.isOn,
+                        onCheckedChange = { onUpdate(lamp.copy(isOn = it)) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = NeonBlue,
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.background
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Image area with "Emplacement" overlay
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                ) {
+                    // Dark gradient background to simulate the lamp image
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFF3A4A5C),
+                                        Color(0xFF2A3A4A)
+                                    )
+                                )
+                            )
+                    )
+
+                    // Emplacement text overlay (bottom-left)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Emplacement",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = lamp.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
+        }
 
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // ─── 3. BRIGHTNESS ROW (Luminosité  XX%) ────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Luminosité",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "${(lamp.brightness * 100).toInt()}%",
+                fontSize = 32.sp,
+                color = NeonBlue,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ─── 4. SLIDER CARD (☀ ──── ☀) ─────────────────────────────────────
+        Card(
+            shape = RoundedCornerShape(50.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiary
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+        ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Switch(
-                    checked = isOn,
-                    onCheckedChange = onToggle,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = NeonBlue,
-                        uncheckedThumbColor = Color.Gray,
-                        uncheckedTrackColor = DarkSurface
+                // Small sun icon (low brightness)
+                Icon(
+                    imageVector = Icons.Outlined.WbSunny,
+                    contentDescription = "Min",
+                    tint = if (lamp.isOn) Color.Gray else Color.Gray.copy(alpha = 0.4f),
+                    modifier = Modifier.size(18.dp)
+                )
+
+                Slider(
+                    value = lamp.brightness,
+                    onValueChange = { newBrightness ->
+                        onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
+                    },
+                    enabled = lamp.isOn,
+                    modifier = Modifier.weight(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonBlue,
+                        activeTrackColor = NeonBlue.copy(alpha = 0.4f),
+                        inactiveTrackColor = Color.Gray.copy(alpha = 0.2f),
+                        disabledThumbColor = Color.Gray,
+                        disabledActiveTrackColor = Color.Gray.copy(alpha = 0.3f),
+                        disabledInactiveTrackColor = Color.Gray.copy(alpha = 0.1f)
                     )
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
-
-                IconButton(onClick = { /* Todo: Settings */ }) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                // Large sun icon (high brightness)
+                Icon(
+                    imageVector = Icons.Outlined.WbSunny,
+                    contentDescription = "Max",
+                    tint = if (lamp.isOn) NeonBlue else Color.Gray.copy(alpha = 0.4f),
+                    modifier = Modifier.size(26.dp)
+                )
             }
-
         }
-    }
-}
 
-
-
-@Composable
-fun VerticalNeonSlider(
-    brightness: Float,
-    isEnabled: Boolean,
-    onBrightnessChange: (Float) -> Unit,
-    modifier: Modifier = Modifier,
-    neonColor: Color = Color(0xFF00F5FF)
-) {
-    val animatedBrightness by animateFloatAsState(
-        targetValue = brightness.coerceIn(0f, 1f),
-        label = "brightness_animation"
-    )
-
-    BoxWithConstraints(
-        modifier = modifier
-            .width(70.dp)
-            .height(240.dp)
-            .alpha(if (isEnabled) 1f else 0.35f),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-
-        val heightPx = constraints.maxHeight.toFloat()
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(35.dp))
-                .background(Color(0xFF050505))
-                .pointerInput(isEnabled) {
-                    if (!isEnabled) return@pointerInput
-
-                    detectVerticalDragGestures { change, _ ->
-                        val newValue = 1f - (change.position.y / heightPx)
-                        onBrightnessChange(newValue.coerceIn(0f, 1f))
-                    }
-                }
-        ) {
-
-            // 🌫️ Halo flou large
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(animatedBrightness)
-                    .align(Alignment.BottomCenter)
-                    .blur(40.dp)
-                    .background(neonColor.copy(alpha = 0.9f))
-            )
-
-            // ✨ Glow intermédiaire
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(animatedBrightness)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                neonColor.copy(alpha = 0.7f),
-                                neonColor
-                            )
-                        ),
-                        shape = RoundedCornerShape(35.dp)
-                    )
-            )
-
-            // 💎 Centre lumineux
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(animatedBrightness)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Color.White.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(35.dp)
-                    )
-            )
-        }
+        Spacer(modifier = Modifier.weight(1f))
     }
 }

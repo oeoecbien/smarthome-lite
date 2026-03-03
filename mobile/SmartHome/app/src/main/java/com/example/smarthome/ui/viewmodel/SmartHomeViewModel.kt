@@ -1,7 +1,7 @@
 package com.example.smarthome.ui.viewmodel
 
 import com.example.smarthome.data.model.*
-import com.example.smarthome.data.api.*
+import com.example.smarthome.data.repository.RepositoryProvider
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +16,7 @@ import kotlinx.coroutines.isActive
 
 class SmartHomeViewModel : ViewModel() {
 
+    // ─── Données exposées à l'UI ─────────────────────────────────────────────────
     var devices = mutableStateOf<List<SmartDevice>>(emptyList())
         private set
 
@@ -31,110 +32,36 @@ class SmartHomeViewModel : ViewModel() {
     var currentUsername by mutableStateOf("")
         private set
 
-    var currentPassword by mutableStateOf("")
-        private set
-
-    // --- CORRECTION ICI : On déclare le token pour qu'il soit accessible partout ---
-    private var token: String? = null
-
-    private var debounceJob: Job? = null
-
     var currentEmail by mutableStateOf("")
         private set
 
-    // Ajoute une variable pour contrôler le polling si besoin
+    // ─── État interne ─────────────────────────────────────────────────────────────
+    private var token: String? = null
+    private var debounceJob: Job? = null
     private var refreshJob: Job? = null
 
-    // Fonction fictive pour simuler l'update (à connecter à l'API plus tard)
-    fun updateDevice(device: SmartDevice) {
-        // Pour l'instant on ne gère que les lampes
-        if (device !is SmartLight) return
+    // Le repository est fourni par RepositoryProvider (fake ou réel selon USE_FAKE)
+    private val repository = RepositoryProvider.repository
 
-        // 1. Mise à jour immédiate de l'écran (pour que ce soit fluide visuellement)
-        val currentList = devices.value.toMutableList()
-        val index = currentList.indexOfFirst { it.id == device.id }
-
-        if (index == -1) return
-
-        // On sauvegarde l'ancienne version pour pouvoir annuler en cas d'erreur
-        val oldDevice = currentList[index]
-
-        // On applique la nouvelle valeur
-        currentList[index] = device
-        devices.value = currentList
-
-        // 2. Appel API DIRECT (Sans attente, sans délai)
-        if (oldDevice is SmartLight) {
-            sendUpdateToApi(device, oldDevice)
-        }
-    }
-
-    private fun sendUpdateToApi(newLamp: SmartLight, oldLamp: SmartLight) {
-        viewModelScope.launch {
-            try {
-                if (token == null) return@launch
-
-                // CAS 1 : C'est l'interrupteur (ON/OFF) qui a changé
-                if (newLamp.isOn != oldLamp.isOn) {
-                    val brightnessInt = (newLamp.brightness * 100).toInt()
-                    val requestBody = DeviceStateRequest(
-                        state = newLamp.isOn,
-                        brightness = brightnessInt
-                    )
-
-                    RetrofitInstance.api.updateState(
-                        token = token!!,
-                        deviceId = newLamp.id,
-                        request = requestBody
-                    )
-                }
-
-                // CAS 2 : C'est la luminosité qui a changé
-                // On vérifie juste si la valeur est différente et si la lampe est allumée
-                if (newLamp.brightness != oldLamp.brightness && newLamp.isOn) {
-                    RetrofitInstance.api.updateBrightness(
-                        token = token!!,
-                        deviceId = newLamp.id,
-                        intensity = newLamp.brightness
-                    )
-                }
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // ROLLBACK : En cas d'erreur, on remet l'ancienne valeur
-                val currentList = devices.value.toMutableList()
-                val idx = currentList.indexOfFirst { it.id == newLamp.id }
-                if (idx != -1) {
-                    currentList[idx] = oldLamp
-                    devices.value = currentList
-                }
-                errorMessage.value = "Erreur : ${e.localizedMessage}"
-            }
-        }
-    }
-
+    // ─── Login ────────────────────────────────────────────────────────────────────
     fun login(username: String, password: String) {
         viewModelScope.launch {
             try {
                 isLoading.value = true
+                errorMessage.value = null
 
-                // 1. Login & Token
-                val tokenResponse = RetrofitInstance.api.login(LoginRequest(username, password))
-                token = "Bearer ${tokenResponse.access_token}"
-
-                // 2. Info User
-                val userInfo = RetrofitInstance.api.getUserInfo(token!!)
+                // 1. Authentification → récupère les infos utilisateur
+                val userInfo = repository.login(username, password)
+                token = "Bearer fake-token" // Le token est utilisé en interne, le repo gère l'auth
                 currentUsername = userInfo.username
                 currentEmail = userInfo.email ?: ""
 
-
-
-                // 3. Premier chargement des lampes
+                // 2. Premier chargement des devices
                 fetchDevices()
 
                 isLoggedIn = true
 
-                // --- NOUVEAU : On lance l'actualisation automatique ---
+                // 3. Actualisation automatique
                 startAutoRefresh()
 
             } catch (e: Exception) {
@@ -147,91 +74,94 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
-    // J'ai extrait la logique de récupération pour éviter de dupliquer le code
+    // ─── Mise à jour device ───────────────────────────────────────────────────────
+    fun updateDevice(device: SmartDevice) {
+        if (device !is SmartLight) return
+
+        val currentList = devices.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == device.id }
+        if (index == -1) return
+
+        val oldDevice = currentList[index]
+        currentList[index] = device
+        devices.value = currentList
+
+        if (oldDevice is SmartLight) {
+            sendUpdateToApi(device, oldDevice)
+        }
+    }
+
+    private fun sendUpdateToApi(newLamp: SmartLight, oldLamp: SmartLight) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+
+                // CAS 1 : L'interrupteur (ON/OFF) a changé
+                if (newLamp.isOn != oldLamp.isOn) {
+                    val brightnessInt = (newLamp.brightness * 100).toInt()
+                    repository.updateState(
+                        token      = token!!,
+                        deviceId   = newLamp.id,
+                        state      = newLamp.isOn,
+                        brightness = brightnessInt
+                    )
+                }
+
+                // CAS 2 : La luminosité a changé (lampe allumée)
+                if (newLamp.brightness != oldLamp.brightness && newLamp.isOn) {
+                    repository.updateBrightness(
+                        token    = token!!,
+                        deviceId = newLamp.id,
+                        intensity = newLamp.brightness
+                    )
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Rollback en cas d'erreur
+                val currentList = devices.value.toMutableList()
+                val idx = currentList.indexOfFirst { it.id == newLamp.id }
+                if (idx != -1) {
+                    currentList[idx] = oldLamp
+                    devices.value = currentList
+                }
+                errorMessage.value = "Erreur : ${e.localizedMessage}"
+            }
+        }
+    }
+
+    // ─── Fetch devices ────────────────────────────────────────────────────────────
     private suspend fun fetchDevices() {
         if (token == null) return
-
-        val apiDevices = RetrofitInstance.api.getDevices(token!!)
-
-        val deviceList = mutableListOf<SmartDevice>()
-
-        for (device in apiDevices) {
-            if (device.type.equals("sensor", ignoreCase = true)) {
-                // C'est un capteur -> On récupère ses détails
-                try {
-                    val sensorData = RetrofitInstance.api.getSensor(token!!, device.id)
-                    deviceList.add(
-                        SmartSensor(
-                            id = device.id,
-                            name = device.name,
-                            temperature = sensorData.temperature_c ?: 0f,
-                            humidity = sensorData.humidity ?: 0,
-                            illuminance = sensorData.illuminance_lux ?: 0,
-                            motion = sensorData.motion ?: false,
-                            battery = sensorData.battery_percent ?: 0
-                        )
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    // Si erreur capteur, ou peut-être on l'ignore ou on l'ajoute comme simple device inconnu
-                }
-            } else {
-                // C'est une lumière (par défaut)
-                deviceList.add(
-                    SmartLight(
-                        id = device.id,
-                        name = device.name,
-                        isOn = device.state,
-                        brightness = (device.brightness ?: 0) / 100f
-                    )
-                )
-            }
-        }
-
-        // On met à jour la liste
-        devices.value = deviceList
+        devices.value = repository.getDevices(token!!)
     }
 
+    // ─── Auto-refresh ─────────────────────────────────────────────────────────────
     private fun startAutoRefresh() {
-        // On annule une éventuelle boucle existante pour éviter les doublons
         refreshJob?.cancel()
-
         refreshJob = viewModelScope.launch {
-            // La boucle tourne tant que le ViewModel est actif et qu'on est connecté
             while (isActive && isLoggedIn) {
-                delay(3000) // On attend 3 secondes (3000ms)
-
-                // Si l'utilisateur est en train de bouger le slider (debounce actif),
-                // on évite de rafraîchir pour ne pas faire "sauter" le slider sous son doigt.
-                if (debounceJob?.isActive == true) {
-                    continue
-                }
-
+                delay(3000)
+                if (debounceJob?.isActive == true) continue
                 try {
-                    if (token != null) {
-                        fetchDevices() // On recharge les données
-                    }
+                    if (token != null) fetchDevices()
                 } catch (e: Exception) {
-                    // En cas d'erreur (ex: coupure réseau temporaire),
-                    // on ne fait rien, on réessaiera au prochain tour.
                     e.printStackTrace()
                 }
             }
         }
     }
 
+    // ─── Logout ───────────────────────────────────────────────────────────────────
     fun logout() {
         debounceJob?.cancel()
         refreshJob?.cancel()
 
-        // Nettoyage complet
         token = null
         currentUsername = ""
         currentEmail = ""
         devices.value = emptyList()
         errorMessage.value = null
-
         isLoggedIn = false
     }
-
 }

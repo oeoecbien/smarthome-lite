@@ -163,13 +163,15 @@ fun ProfileScreen(
                     iconColor = AccentOrange
                 )
 
-                ProfileMenuItem(
-                    icon = Icons.Default.Code,
-                    title = "API Configuration",
-                    subtitle = "Keys & Webhooks",
-                    iconBgColor = AccentPurple.copy(alpha = 0.1f),
-                    iconColor = AccentPurple
-                )
+                if (name == "admin") {
+                    ProfileMenuItem(
+                        icon = Icons.Default.Code,
+                        title = "API Configuration",
+                        subtitle = "Keys & Webhooks",
+                        iconBgColor = AccentPurple.copy(alpha = 0.1f),
+                        iconColor = AccentPurple
+                    )
+                }
             }
         }
 

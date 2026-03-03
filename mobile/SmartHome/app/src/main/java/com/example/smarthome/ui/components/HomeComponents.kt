@@ -160,7 +160,7 @@ fun DeviceGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.height(400.dp) // Hauteur fixe ou weight(1f)
+        modifier = Modifier.fillMaxHeight()
     ) {
         // --- LAMPES & CAPTEURS (Depuis l'API) ---
         items(devices.size, span = { index ->
