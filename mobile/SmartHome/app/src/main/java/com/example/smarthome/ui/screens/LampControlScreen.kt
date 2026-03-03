@@ -181,18 +181,12 @@ fun LampControlScreen(
                         .height(160.dp)
                         .clip(RoundedCornerShape(16.dp))
                 ) {
-                    // Dark gradient background to simulate the lamp image
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFF3A4A5C),
-                                        Color(0xFF2A3A4A)
-                                    )
-                                )
-                            )
+                    // Image de la lampe
+                    Image(
+                        painter = painterResource(R.drawable.lampe_image),
+                        contentDescription = "Image lampe",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
 
                     // Emplacement text overlay (bottom-left)
