@@ -1,8 +1,10 @@
 # IA – Classification & régression
 
-- **Classification** : scénario Day/Night/Away/Evening (Decision Tree). Fichier `scenario_classifier.pkl`.
-- **Régression** : intensité lumineuse 0–99 % (Random Forest). Fichier `regression_model.joblib`.
-- **Ollama** : optionnel, `OLLAMA_BASE_URL` en .env. Génération texte, descriptions, recommandations.
+**Cahier des charges (SAE BUT3 FA 2025)** : *« Au moins un algorithme d'IA (régression ou classification) »* ; *« accès serveur Ollama de l'IUT possible »*.
+
+- **Classification** : scénario Day/Night/Away/Evening (Decision Tree). Fichier `scenario_classifier.pkl`. Répond à l’exigence « classification ».
+- **Régression** : intensité lumineuse 0–99 % (Random Forest). Fichier `regression_model.joblib`. Répond à l’exigence « régression ».
+- **Ollama** : optionnel, `OLLAMA_BASE_URL` en .env (serveur Ollama IUT). Génération texte, descriptions, recommandations.
 - Sans modèles → fallback (règles horaires / formules fixes). Vérifier : `GET /health` → `ai_service`, `regression_service`.
 
 Depuis `backend/` avec venv activé :
