@@ -43,6 +43,7 @@
   - [5.1 Backend (Serveur)](#51-backend-serveur)
   - [5.2 Raspberry Pi (Contrôleur)](#52-raspberry-pi-contrôleur)
   - [5.3 Application Mobile (Android)](#53-application-mobile-android)
+  - [5.4 Application Web (Next.js)](#54-application-web-nextjs)
 - [6. Communication entre Composants](#6-communication-entre-composants)
   - [6.1 Protocoles](#61-protocoles)
   - [6.2 Flux de Données : Allumage d'une Lampe (Contrôle Manuel)](#62-flux-de-données--allumage-dune-lampe-contrôle-manuel)
@@ -59,8 +60,9 @@
   - [8.1 Environnement de Déploiement](#81-environnement-de-déploiement)
   - [8.2 Installation Backend](#82-installation-backend)
   - [8.3 Installation Raspberry Pi](#83-installation-raspberry-pi)
-  - [8.4 Déploiement Application Mobile](#84-déploiement-application-mobile)
-  - [8.5 Scripts de Déploiement Automatisé](#85-scripts-de-déploiement-automatisé)
+  - [8.4 Application Web (Next.js)](#84-application-web-nextjs)
+  - [8.5 Déploiement Application Mobile](#85-déploiement-application-mobile)
+  - [8.6 Scripts de Déploiement Automatisé](#86-scripts-de-déploiement-automatisé)
 - [9. Livrables](#9-livrables)
   - [9.1 Code Source](#91-code-source)
   - [9.2 Documentation](#92-documentation)
@@ -120,15 +122,14 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    APPLICATION MOBILE                            │
-│              (Kotlin + Jetpack Compose)                          │
-│  • HTTP/REST Client                                              │
-│  • Optimistic UI Updates                                         │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │
-                       │ HTTP/REST
-                       │ JWT
-                       ▼
+│     APPLICATION MOBILE (Kotlin + Compose)   │  APPLICATION WEB   │
+│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
+│                                            │  • Dashboard, Admin │
+└──────────────────────┬─────────────────────┴──────────┬───────────┘
+                       │                                │
+                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
+                       └────────────────┬───────────────┘
+                                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                         │
 │              Architecture Modulaire Monolithique                 │
@@ -201,7 +202,7 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 #### Module Intelligence Artificielle
 - Classification de scénarios (Decision Tree)
-- Régression pour prédiction d'intensité (Random Forest) - À implémenter
+- Régression pour prédiction d'intensité (Random Forest)
 - Clustering des habitudes (K-Means) - À implémenter
 - Gestion des modèles ML
 
@@ -1053,9 +1054,11 @@ backend/
 │       └── validators.py          # Validateurs personnalisés
 │
 ├── ml/                            # Machine Learning
-│   ├── generate_data.py           # Génération données synthétiques
+│   ├── generate_data.py           # Génération données synthétiques (classification)
 │   ├── train_model.py             # Entraînement Decision Tree
-│   └── models/                    # Modèles sauvegardés (.pkl)
+│   ├── generate_regression_data.py # Données régression (intensité)
+│   ├── train_regression_model.py   # Entraînement Random Forest (régression)
+│   └── models/                    # Modèles sauvegardés (.pkl, métriques)
 │
 ├── requirements.txt               # Dépendances Python
 ├── .env.example                   # Exemple de configuration
@@ -1067,38 +1070,26 @@ backend/
 **Système d'exploitation :**
 - Raspberry Pi OS Lite (Debian)
 
-**Framework web :**
-- Flask 2.3+
-- Flask-CORS 4.0+
+**Option Z-Wave (implémentation actuelle dans `raspberry/`) :**
+- API Flask (`api_flask_zwave.py`) sur le port 5000, conforme au contrat backend SmartHome Lite
+- Communication avec Z-Wave JS UI (Socket.IO / WebSocket) pour piloter ampoules et prises Z-Wave
+- `gpio_pin` côté backend = `node_id` Z-Wave ; détection de présence via MultiSensor 7 (optionnel)
+- Voir `raspberry/README.md` et `zwave-js/` pour Z-Wave JS UI
 
-**Contrôle GPIO et Bluetooth :**
-- RPi.GPIO 0.7+ (LED, relais)
-- pybluez ou bleak (détection Bluetooth pour présence)
-- smbus2 (communication I²C pour BH1750)
-- spidev (communication SPI pour LDR + MCP3008)
-
-**Structure du projet :**
-
+**Structure du projet (Z-Wave) :**
 ```
-raspberry-pi/
-├── main.py                     # Point d'entrée principal
-├── config.py                   # Configuration GPIO, URLs, API Key
-├── sensors/
-│   ├── bluetooth.py          # Module détection Bluetooth (détection de présence)
-│   ├── light_sensor_i2c.py    # Module BH1750 (I²C)
-│   └── light_sensor_spi.py    # Module LDR + MCP3008 (SPI)
-├── actuators/
-│   ├── led_light.py           # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle module relais
-├── api/
-│   └── local_api.py           # API Flask locale
-├── services/
-│   ├── server_client.py       # Client HTTP vers serveur backend
-│   ├── device_manager.py      # Gestionnaire d'appareils
-│   ├── event_reporter.py      # Reporter événements au backend
-│   └── light_monitor.py       # Service de monitoring luminosité
+raspberry/
+├── api_flask_zwave.py         # API Flask (état, luminosité, présence)
+├── zwave_client.py            # Client Z-Wave JS (Socket.IO / WebSocket)
+├── zwave_cache.py             # Cache nœuds Z-Wave
+├── zwave_constants.py         # Constantes Z-Wave
+├── config.py                  # Configuration (URLs, API Key)
 └── requirements.txt
 ```
+
+**Option GPIO / Bluetooth (référence) :**
+- Flask 2.3+, Flask-CORS ; RPi.GPIO (LED, relais), pybluez ou bleak (présence), smbus2 (BH1750), spidev (LDR + MCP3008)
+- Structure alternative : `sensors/` (bluetooth, light_sensor_*), `actuators/` (led_light, relay), `api/local_api.py`, `services/` (server_client, device_manager, event_reporter, light_monitor)
 
 **Service light_monitor.py :**
 Ce service lit périodiquement le capteur de luminosité et envoie les valeurs au backend :
@@ -1133,7 +1124,7 @@ Ce service lit périodiquement le capteur de luminosité et envoie les valeurs a
 **Structure du projet :**
 
 ```
-mobile/app/src/main/java/com/smarthome/
+mobile/SmartHome/app/src/main/java/com/example/smarthome/
 ├── data/
 │   ├── model/                  # Modèles de données (Device, Rule, etc.)
 │   ├── remote/                 # Couche réseau (Retrofit)
@@ -1173,6 +1164,10 @@ mobile/app/src/main/java/com/smarthome/
 - Toggle pour activer/désactiver temporairement
 - Liste des derniers ajustements automatiques avec justifications
 - Indicateur du scénario actif
+
+### 5.4 Application Web (Next.js)
+
+**Framework :** Next.js 16+ (App Router), React 19, TypeScript. **UI :** Tailwind CSS 4, Radix UI, Recharts. **Fonctionnalités :** Authentification (login, JWT), tableau de bord (appareils, règles), pages admin (présence), graphiques présence/luminosité. **Structure :** `web/app/(protected)/`, `web/app/login/`, `web/lib/` (services API).
 
 ---
 
@@ -1539,7 +1534,26 @@ python main.py
 **7. Service systemd**
 Créer /etc/systemd/system/smarthome-rpi.service pour démarrage automatique au boot.
 
-### 8.4 Déploiement Application Mobile
+### 8.4 Application Web (Next.js)
+
+**Développement :**
+```bash
+cd web
+npm install
+npm run dev
+```
+Accès : http://localhost:3000
+
+**Build de production :**
+```bash
+cd web
+npm run build
+npm run start
+```
+
+**Configuration :** Définir l’URL de l’API backend (variable d’environnement ou fichier de config) pour que le frontend appelle le bon serveur.
+
+### 8.5 Déploiement Application Mobile
 
 **Build de l'APK :**
 
@@ -1575,7 +1589,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 - Si lenteur : vérifier que le serveur est accessible depuis le réseau mobile
 - Si crash : consulter les logs via Android Studio (adb logcat)
 
-### 8.5 Scripts de Déploiement Automatisé
+### 8.6 Scripts de Déploiement Automatisé
 
 **Création de scripts bash pour automatiser :**
 
@@ -1604,7 +1618,8 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 
 **Repository Git incluant :**
 - Code backend (FastAPI) avec tous les services
-- Code Raspberry Pi (Flask + GPIO + capteurs)
+- Code Raspberry Pi (Flask + Z-Wave ou GPIO/capteurs)
+- Code application web (Next.js)
 - Code application mobile (Kotlin + Compose)
 - Scripts de migration base de données (Alembic)
 - Scripts d'entraînement IA (génération + training)
@@ -1785,6 +1800,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
   - [5.1 Backend (Serveur)](#51-backend-serveur)
   - [5.2 Raspberry Pi (Contrôleur)](#52-raspberry-pi-contrôleur)
   - [5.3 Application Mobile (Android)](#53-application-mobile-android)
+  - [5.4 Application Web (Next.js)](#54-application-web-nextjs)
 - [6. Communication entre Composants](#6-communication-entre-composants)
   - [6.1 Protocoles](#61-protocoles)
   - [6.2 Flux de Données : Allumage d'une Lampe (Contrôle Manuel)](#62-flux-de-données--allumage-dune-lampe-contrôle-manuel)
@@ -1801,8 +1817,9 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
   - [8.1 Environnement de Déploiement](#81-environnement-de-déploiement)
   - [8.2 Installation Backend](#82-installation-backend)
   - [8.3 Installation Raspberry Pi](#83-installation-raspberry-pi)
-  - [8.4 Déploiement Application Mobile](#84-déploiement-application-mobile)
-  - [8.5 Scripts de Déploiement Automatisé](#85-scripts-de-déploiement-automatisé)
+  - [8.4 Application Web (Next.js)](#84-application-web-nextjs)
+  - [8.5 Déploiement Application Mobile](#85-déploiement-application-mobile)
+  - [8.6 Scripts de Déploiement Automatisé](#86-scripts-de-déploiement-automatisé)
 - [9. Livrables](#9-livrables)
   - [9.1 Code Source](#91-code-source)
   - [9.2 Documentation](#92-documentation)
@@ -1862,15 +1879,14 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    APPLICATION MOBILE                            │
-│              (Kotlin + Jetpack Compose)                          │
-│  • HTTP/REST Client                                              │
-│  • Optimistic UI Updates                                         │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │
-                       │ HTTP/REST
-                       │ JWT
-                       ▼
+│     APPLICATION MOBILE (Kotlin + Compose)   │  APPLICATION WEB   │
+│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
+│                                            │  • Dashboard, Admin │
+└──────────────────────┬─────────────────────┴──────────┬───────────┘
+                       │                                │
+                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
+                       └────────────────┬───────────────┘
+                                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                         │
 │              Architecture Modulaire Monolithique                 │
@@ -1943,7 +1959,7 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 #### Module Intelligence Artificielle
 - Classification de scénarios (Decision Tree)
-- Régression pour prédiction d'intensité (Random Forest) - À implémenter
+- Régression pour prédiction d'intensité (Random Forest)
 - Clustering des habitudes (K-Means) - À implémenter
 - Gestion des modèles ML
 
@@ -2755,9 +2771,11 @@ backend/
 │       └── validators.py          # Validateurs personnalisés
 │
 ├── ml/                            # Machine Learning
-│   ├── generate_data.py           # Génération données synthétiques
+│   ├── generate_data.py           # Génération données synthétiques (classification)
 │   ├── train_model.py             # Entraînement Decision Tree
-│   └── models/                    # Modèles sauvegardés (.pkl)
+│   ├── generate_regression_data.py # Données régression (intensité)
+│   ├── train_regression_model.py   # Entraînement Random Forest (régression)
+│   └── models/                    # Modèles sauvegardés (.pkl, métriques)
 │
 ├── requirements.txt               # Dépendances Python
 ├── .env.example                   # Exemple de configuration
@@ -2773,35 +2791,9 @@ backend/
 - Flask 2.3+
 - Flask-CORS 4.0+
 
-**Contrôle GPIO :**
-- RPi.GPIO 0.7+ (capteur PIR, LED, relais)
-- smbus2 (communication I²C pour BH1750)
-- spidev (communication SPI pour LDR + MCP3008)
+**Option Z-Wave (implémentation actuelle dans `raspberry/`) :** API Flask + Z-Wave JS (voir section 5.2 ci-dessus). **Option GPIO / PIR :** RPi.GPIO (capteur PIR, LED, relais), smbus2 (BH1750), spidev (LDR). Structure alternative : `raspberry-pi/sensors/` (pir_sensor, light_sensor_*), `actuators/`, `api/local_api.py`, `services/` (server_client, device_manager, event_reporter, light_monitor).
 
-**Structure du projet :**
-
-```
-raspberry-pi/
-├── main.py                     # Point d'entrée principal
-├── config.py                   # Configuration GPIO, URLs, API Key
-├── sensors/
-│   ├── pir_sensor.py          # Module capteur PIR
-│   ├── light_sensor_i2c.py    # Module BH1750 (I²C)
-│   └── light_sensor_spi.py    # Module LDR + MCP3008 (SPI)
-├── actuators/
-│   ├── led_light.py           # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle module relais
-├── api/
-│   └── local_api.py           # API Flask locale
-├── services/
-│   ├── server_client.py       # Client HTTP vers serveur backend
-│   ├── device_manager.py      # Gestionnaire d'appareils
-│   ├── event_reporter.py      # Reporter événements au backend
-│   └── light_monitor.py       # Service de monitoring luminosité
-└── requirements.txt
-```
-
-**Service light_monitor.py :**
+**Service light_monitor.py (option GPIO) :**
 Ce service lit périodiquement le capteur de luminosité et envoie les valeurs au backend :
 - Fréquence : toutes les 10 secondes
 - Format : JSON avec lux_value et timestamp
@@ -2834,7 +2826,7 @@ Ce service lit périodiquement le capteur de luminosité et envoie les valeurs a
 **Structure du projet :**
 
 ```
-mobile/app/src/main/java/com/smarthome/
+mobile/SmartHome/app/src/main/java/com/example/smarthome/
 ├── data/
 │   ├── model/                  # Modèles de données (Device, Rule, etc.)
 │   ├── remote/                 # Couche réseau (Retrofit)
@@ -2874,6 +2866,10 @@ mobile/app/src/main/java/com/smarthome/
 - Toggle pour activer/désactiver temporairement
 - Liste des derniers ajustements automatiques avec justifications
 - Indicateur du scénario actif
+
+### 5.4 Application Web (Next.js)
+
+**Framework :** Next.js 16+ (App Router), React 19, TypeScript. **UI :** Tailwind CSS 4, Radix UI, Recharts. **Fonctionnalités :** Authentification (login, JWT), tableau de bord (appareils, règles), pages admin (présence), graphiques présence/luminosité. **Structure :** `web/app/(protected)/`, `web/app/login/`, `web/lib/` (services API).
 
 ---
 
@@ -3239,7 +3235,26 @@ python main.py
 **7. Service systemd**
 Créer /etc/systemd/system/smarthome-rpi.service pour démarrage automatique au boot.
 
-### 8.4 Déploiement Application Mobile
+### 8.4 Application Web (Next.js)
+
+**Développement :**
+```bash
+cd web
+npm install
+npm run dev
+```
+Accès : http://localhost:3000
+
+**Build de production :**
+```bash
+cd web
+npm run build
+npm run start
+```
+
+**Configuration :** Définir l’URL de l’API backend (variable d’environnement ou fichier de config) pour que le frontend appelle le bon serveur.
+
+### 8.5 Déploiement Application Mobile
 
 **Build de l'APK :**
 
@@ -3275,7 +3290,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 - Si lenteur : vérifier que le serveur est accessible depuis le réseau mobile
 - Si crash : consulter les logs via Android Studio (adb logcat)
 
-### 8.5 Scripts de Déploiement Automatisé
+### 8.6 Scripts de Déploiement Automatisé
 
 **Création de scripts bash pour automatiser :**
 
@@ -3304,7 +3319,8 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 
 **Repository Git incluant :**
 - Code backend (FastAPI) avec tous les services
-- Code Raspberry Pi (Flask + GPIO + capteurs)
+- Code Raspberry Pi (Flask + Z-Wave ou GPIO/capteurs)
+- Code application web (Next.js)
 - Code application mobile (Kotlin + Compose)
 - Scripts de migration base de données (Alembic)
 - Scripts d'entraînement IA (génération + training)
