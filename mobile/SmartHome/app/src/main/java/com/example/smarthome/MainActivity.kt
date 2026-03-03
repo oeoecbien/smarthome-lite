@@ -67,7 +67,7 @@ fun SmartHomeApp(
     val snackbarHostState = remember { SnackbarHostState() }
 
     NavigationSuiteScaffold(
-        containerColor = MaterialTheme.colorScheme.tertiary,
+        containerColor = MaterialTheme.colorScheme.background,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
             navigationBarContainerColor = MaterialTheme.colorScheme.tertiary,
             navigationRailContainerColor = MaterialTheme.colorScheme.tertiary,
@@ -88,7 +88,7 @@ fun SmartHomeApp(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.tertiary,
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
 
             topBar = {
