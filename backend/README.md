@@ -92,7 +92,7 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Intelligence Artificielle** : Classification de scénarios (Decision Tree Classifier) et régression pour prédiction d'intensité (Random Forest Regressor) - routes `/api/ai/current-scenario`, `/api/ai/classify`, `/api/ai/predict-intensity`, `/api/ai/model-metrics` avec modèles entraînés
 - **Ollama (IA générative)** : Intégration du serveur Ollama IUT pour descriptions intelligentes, parsing de règles et recommandations - routes `/api/ai/ollama/*` (optionnel, nécessite configuration OLLAMA_BASE_URL)
 - **Gestion Raspberry Pi** : Enregistrement et suivi des Raspberry Pi connectés - routes `/api/raspberry-pis` (CRUD) avec authentification par API Key pour les endpoints appelés par RPi
-- **Détection de présence Bluetooth** : Enregistrement et historique des détections Bluetooth avec adresse MAC et RSSI - routes `POST /api/presence` (appelé par RPi avec `device_mac_address` et `signal_strength`) et `GET /api/presence` (historique) avec mapping automatique MAC → utilisateur via table `bluetooth_devices` et déclenchement automatique des règles
+- **Détection de présence** : Enregistrement et historique des détections de présence (ex. capteur de mouvement Z-Wave) - routes `POST /api/presence` (appelé par RPi avec `sensor_node_id` optionnel) et `GET /api/presence` (historique), déclenchement automatique des règles
 - **Mesures de luminosité** : Stockage des lectures de capteurs (BH1750/LDR) - routes `POST /api/light-readings` (appelé par RPi) et `GET /api/light-readings` (historique) avec déclenchement automatique du smart dimming
 - **Événements système** : Journalisation des événements (changements d'état, ajustements, etc.) - routes `GET /api/events` et `GET /api/events/device/{id}` avec filtres
 - **Journal d'audit** : Traçabilité des modifications sensibles (table `audit_log`) - enregistrement automatique des actions importantes
@@ -127,8 +127,7 @@ backend/
 │   │   ├── user.py                # Utilisateurs
 │   │   ├── device.py              # Appareils (lampes, prises)
 │   │   ├── raspberry_pi.py        # Raspberry Pi
-│   │   ├── presence.py            # Détections de présence Bluetooth
-│   │   ├── bluetooth_device.py    # Association MAC Bluetooth → utilisateur
+│   │   ├── presence.py            # Détections de présence (capteur Z-Wave, etc.)
 │   │   ├── light_reading.py       # Mesures de luminosité
 │   │   ├── rule.py                # Règles d'automatisation
 │   │   ├── event.py               # Événements système
@@ -483,11 +482,10 @@ Une fois le serveur lancé :
 
 ### Présence
 
-- `POST /api/presence` - Enregistrer une détection Bluetooth (appelé par RPi)
-  - Body: `{ "device_mac_address": "AA:BB:CC:DD:EE:FF" (optionnel), "signal_strength": -75 (optionnel) }`
-  - Le backend tente automatiquement de mapper la MAC à un utilisateur via la table `bluetooth_devices`
-  - Déclenche automatiquement l'évaluation des règles
-- `GET /api/presence` - Historique des détections (filtres: `raspberry_pi_id`, `user_id`, `device_mac_address`, `limit`)
+- `POST /api/presence` - Enregistrer une détection de présence (appelé par RPi, ex. capteur Z-Wave MultiSensor 7)
+  - Body: `{ "sensor_node_id": 5 }` (optionnel, node_id du capteur Z-Wave)
+  - Déclenche automatiquement l'évaluation des règles et met à jour le scénario IA
+- `GET /api/presence` - Historique des détections (filtres: `raspberry_pi_id`, `limit`)
 
 ### Mesures de Luminosité
 
@@ -771,8 +769,7 @@ L'endpoint `POST /api/rules/{id}/test` permet de :
 - `users` : Utilisateurs du système (chaque utilisateur a son propre dashboard)
 - `raspberry_pis` : Inventaire des Raspberry Pi
 - `devices` : Appareils connectés (lampes, prises) - chaque device appartient à un utilisateur (`user_id`)
-- `presence` : Historique des détections de présence via Bluetooth (avec `device_mac_address`, `signal_strength`, `user_id`)
-- `bluetooth_devices` : Association entre adresses MAC Bluetooth et utilisateurs (identification personnalisée)
+- `presence` : Historique des détections de présence (ex. capteur de mouvement Z-Wave, avec `sensor_node_id`, `raspberry_pi_id`, `detected_at`)
 - `light_readings` : Mesures de luminosité (time-series)
 - `rules` : Règles d'automatisation (format JSONB)
 - `events` : Journal des événements système (filtrés par utilisateur)

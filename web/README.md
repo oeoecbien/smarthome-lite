@@ -190,7 +190,7 @@ npm run lint
 - **Présence** : `/presence`
   - Graphique des détections sur 24h
   - Filtrage par localisation
-  - Identification des utilisateurs (via MAC Bluetooth)
+  - Historique des détections de présence
 
 - **Luminosité** : `/light-readings`
   - Graphique en courbe de l'évolution
