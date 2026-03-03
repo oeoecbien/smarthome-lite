@@ -1,5 +1,7 @@
 package com.example.smarthome.ui.components
 
+
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -25,8 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.theme.*
+import com.example.smarthome.R
 
 
 
@@ -282,11 +286,10 @@ fun ThermostatCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2A2018)), // Fond orange très sombre
+                    .clip(CircleShape), // Fond orange très sombre
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = AccentOrange)
+                Image(painter = painterResource(R.drawable.sensor_svg), contentDescription = null)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {

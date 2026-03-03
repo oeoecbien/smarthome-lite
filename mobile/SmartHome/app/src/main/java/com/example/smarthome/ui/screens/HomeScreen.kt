@@ -9,11 +9,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
 import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
+
 
 @Composable
 fun HomeScreen(

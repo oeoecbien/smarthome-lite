@@ -43,20 +43,7 @@ fun SensorControlScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp)
     ) {
-        // --- Header ---
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { /* Settings */ }) {
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = NeonBlue
-                )
-            }
-        }
+
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -202,7 +189,7 @@ fun SensorDetailCard(
 
             Column {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(value, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Text(value, color = MaterialTheme.colorScheme.primary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                     Text(unit, color = Color.Gray, fontSize = 16.sp, modifier = Modifier.padding(bottom = 6.dp))
                 }
                 Text(subText, color = Color.Gray, fontSize = 12.sp)
