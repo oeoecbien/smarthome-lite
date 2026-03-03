@@ -1,9 +1,9 @@
 package com.example.smarthome.ui.screens
 
+import androidx.compose.foundation.Image
 import com.example.smarthome.data.model.*
 import com.example.smarthome.data.api.*
 import com.example.smarthome.ui.viewmodel.*
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,11 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smarthome.R
 import com.example.smarthome.darkTextFieldColors
 import com.example.smarthome.ui.theme.TextWhite
 import com.example.smarthome.ui.theme.PrimaryBlue
@@ -87,10 +90,9 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                     .background(Color(0xFF121826)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Lightbulb,
+                Image(
+                    painter = painterResource(R.mipmap.icon_smarthome),
                     contentDescription = null,
-                    tint = Color(0xFF2979FF),
                     modifier = Modifier.size(32.dp)
                 )
             }
