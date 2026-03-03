@@ -198,12 +198,12 @@ fun LampControlScreen(
                         Text(
                             text = "Emplacement",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
+                            color = Color.Black
                         )
                         Text(
                             text = lamp.name,
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = Color.Black,
                             fontWeight = FontWeight.Bold
                         )
                     }

@@ -78,7 +78,10 @@ fun SmartHomeApp(
                     icon = { Icon(dest.icon, contentDescription = dest.label) },
                     label = { Text(dest.label) },
                     selected = dest == currentDestination,
-                    onClick = { currentDestination = dest }
+                    onClick = {
+                        currentDestination = dest
+                        selectedLampId = null  // Reset le détail quand on change d'onglet
+                    }
                 )
             }
         }
@@ -89,29 +92,19 @@ fun SmartHomeApp(
             snackbarHost = { SnackbarHost(snackbarHostState) },
 
             topBar = {
-                TopAppBar(
-                    title = {
-                        val titleText = if (selectedLampId != null) {
-                            devices.find { it.id == selectedLampId }?.name ?: "Détail"
-                        } else {
-                            currentDestination.label
-                        }
-                        Text(text = titleText)
-                    },
-                    navigationIcon = {
-                        if (selectedLampId != null) {
-                            IconButton(onClick = { selectedLampId = null }) {
-                                Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                        actionIconContentColor = Color.White
+                if (selectedLampId == null) {
+                    TopAppBar(
+                        title = {
+                            Text(text = currentDestination.label)
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.primary,
+                            navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                            actionIconContentColor = Color.White
+                        )
                     )
-                )
+                }
             }
         ) { innerPadding ->
             Box(
