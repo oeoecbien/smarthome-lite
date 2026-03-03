@@ -25,6 +25,8 @@ import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
 import com.example.smarthome.ui.screens.*
 import com.example.smarthome.ui.theme.SmartHomeTheme
+import com.example.smarthome.ui.theme.PrimaryBlue
+import com.example.smarthome.ui.theme.GrayText
 import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 class MainActivity : ComponentActivity() {
@@ -58,65 +60,76 @@ fun SmartHomeApp(
     val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
 
-    NavigationSuiteScaffold(
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContainerColor = MaterialTheme.colorScheme.tertiary,
-            navigationRailContainerColor = MaterialTheme.colorScheme.tertiary,
-        ),
-        navigationSuiteItems = {
-            AppDestinations.entries.forEach { dest ->
-                item(
-                    icon = { Icon(dest.icon, contentDescription = dest.label) },
-                    label = { Text(dest.label) },
-                    selected = dest == currentDestination,
-                    onClick = {
-                        currentDestination = dest
-                        selectedLampId = null  // Reset le détail quand on change d'onglet
-                    }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+
+        topBar = {
+            if (selectedLampId == null) {
+                TopAppBar(
+                    title = {
+                        Text(text = currentDestination.label)
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.primary,
+                        actionIconContentColor = Color.White
+                    )
                 )
             }
-        }
-    ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = MaterialTheme.colorScheme.background,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+        },
 
-            topBar = {
-                if (selectedLampId == null) {
-                    TopAppBar(
-                        title = {
-                            Text(text = currentDestination.label)
+        bottomBar = {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.tertiary
+            ) {
+                AppDestinations.entries.forEach { dest ->
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                dest.icon,
+                                contentDescription = dest.label,
+                                tint = if (dest == currentDestination) PrimaryBlue else GrayText
+                            )
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background,
-                            titleContentColor = MaterialTheme.colorScheme.primary,
-                            navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                            actionIconContentColor = Color.White
+                        label = {
+                            Text(
+                                dest.label,
+                                color = if (dest == currentDestination) PrimaryBlue else GrayText
+                            )
+                        },
+                        selected = dest == currentDestination,
+                        onClick = {
+                            currentDestination = dest
+                            selectedLampId = null
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = Color.Transparent
                         )
                     )
                 }
             }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                when (currentDestination) {
-                    AppDestinations.HOME -> HomeScreen(
-                        viewModel = viewModel,
-                        selectedLampId = selectedLampId,
-                        onLampSelect = { selectedLampId = it }
-                    )
-                    AppDestinations.FAVORITES -> FavoritesScreen()
-                    AppDestinations.PROFILE -> ProfileScreen(
-                        viewModel.currentUsername,
-                        viewModel.currentEmail,
-                        { viewModel.logout() }
-                    )
-                }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (currentDestination) {
+                AppDestinations.HOME -> HomeScreen(
+                    viewModel = viewModel,
+                    selectedLampId = selectedLampId,
+                    onLampSelect = { selectedLampId = it }
+                )
+                AppDestinations.FAVORITES -> FavoritesScreen()
+                AppDestinations.PROFILE -> ProfileScreen(
+                    viewModel.currentUsername,
+                    viewModel.currentEmail,
+                    { viewModel.logout() }
+                )
             }
         }
     }
