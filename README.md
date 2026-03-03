@@ -122,10 +122,10 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│     APPLICATION MOBILE (Kotlin + Compose)   │  APPLICATION WEB   │
+│     APPLICATION MOBILE (Kotlin + Compose)  │   APPLICATION WEB   │
 │  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
 │                                            │  • Dashboard, Admin │
-└──────────────────────┬─────────────────────┴──────────┬───────────┘
+└──────────────────────┬─────────────────────┴──────────┬──────────┘
                        │                                │
                        │ HTTP/REST, JWT                 │ HTTP/REST, JWT
                        └────────────────┬───────────────┘

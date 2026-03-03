@@ -1,6 +1,6 @@
 # Scripts de Configuration et Reconstruction de la Base de Données
 
-Ces scripts permettent de configurer PostgreSQL et de recréer complètement la base de données pour le projet SmartHome.
+Ces scripts permettent de configurer PostgreSQL et de recréer complètement la base de données pour le projet SmartHome. La base est utilisée par le **backend** FastAPI et consultée indirectement par l’**application web** Next.js et l’**application mobile** Android via l’API.
 
 ## Configuration
 
@@ -54,6 +54,23 @@ Ce script configure :
 | `setup_complete.sh` | **Recommandé** : Configure tout automatiquement | Oui |
 | `configure_postgresql.sh` | Configure PostgreSQL pour accepter les connexions distantes | Oui |
 | `recreate_database.sh` | Supprime et recrée la base de données avec toutes les tables | Non |
+| `backup.sh` | Sauvegarde la BDD (lit `DATABASE_*` depuis `.env`) | Non |
+| `restore.sh` | Restaure la BDD depuis un backup (dernier backup ou fichier donné) | Non |
+
+## Sauvegarde et restauration
+
+Les scripts **`backup.sh`** et **`restore.sh`** utilisent les variables `DATABASE_*` du fichier **`.env`** à la racine du projet (lignes 2–12).
+
+- **Créer un backup** (enregistré dans `db/backups/smarthome_YYYYMMDD_HHMMSS.sql`) :
+  ```bash
+  ./db/backup.sh
+  ```
+
+- **Récupérer / restaurer la BDD** :
+  - Dernier backup : `./db/restore.sh`
+  - Fichier précis : `./db/restore.sh db/backups/smarthome_20250303_120000.sql`
+
+La restauration supprime la base `smarthome`, la recrée vide, puis réinjecte le contenu du fichier SQL.
 
 ## Prérequis
 

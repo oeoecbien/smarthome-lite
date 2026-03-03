@@ -29,7 +29,7 @@ Backend FastAPI avec **architecture modulaire monolithique** et fonctionnalités
   - [Événements](#événements)
 - [Intelligence Artificielle](#intelligence-artificielle-1)
   - [Classification de Scénarios (Implémenté)](#classification-de-scénarios-implémenté)
-  - [Régression pour Prédiction d'Intensité (À implémenter)](#régression-pour-prédiction-dintensité-à-implémenter)
+  - [Régression pour Prédiction d'Intensité (Implémenté)](#régression-pour-prédiction-dintensité-implémenté)
   - [Clustering des Habitudes (À implémenter)](#clustering-des-habitudes-à-implémenter)
 - [Smart Dimming](#smart-dimming-1)
   - [Principe de Fonctionnement](#principe-de-fonctionnement)
@@ -70,7 +70,7 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 - **Services** : Logique métier isolée et testable
 - **ORM** : SQLAlchemy pour l'accès aux données
 - **Validation** : Pydantic pour la validation des données
-- **IA multi-modèles** : Classification, régression et clustering (partiellement implémenté)
+- **IA multi-modèles** : Classification et régression implémentées, clustering (K-Means) à implémenter
 
 **Composants principaux :**
 - **Routes** : Endpoints API REST organisés par domaine
@@ -111,7 +111,7 @@ Le backend utilise une **architecture modulaire monolithique** avec séparation 
 ### À implémenter
 
 - **Clustering** : Détection automatique de profils utilisateur (K-Means)
-- **WebSockets** : Synchronisation temps réel pour l'application mobile (optionnel)
+- **WebSockets** : Synchronisation temps réel pour l'application mobile ou web (optionnel)
 
 ## Structure du Projet
 
@@ -797,9 +797,9 @@ Pour optimiser les requêtes time-series sur `light_readings` :
 SELECT create_hypertable('light_readings', 'measured_at');
 ```
 
-## Chaîne de contrôle : Mobile / Web → Backend → RPi → Lampe
+## Chaîne de contrôle : Mobile ou Web → Backend → RPi → Lampe
 
-Pour qu’un utilisateur contrôle la lampe depuis son téléphone (ou le web) :
+Les clients peuvent être l’**application mobile** (Kotlin) ou l’**application web** (Next.js). Pour qu’un utilisateur contrôle la lampe depuis son téléphone ou le navigateur :
 
 1. **Front (mobile ou web)** : appelle le **backend** avec un JWT (après login).
 2. **Backend** : vérifie l’auth, charge l’appareil et le RPi associé, envoie la commande au **RPi** (IP + port depuis la config).

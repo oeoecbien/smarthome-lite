@@ -1,6 +1,6 @@
 # Web - Interface Next.js
 
-Interface web moderne développée avec Next.js 16, React 19, TypeScript et Tailwind CSS pour la gestion du système SmartHome Lite.
+Interface web moderne développée avec Next.js 16, React 19, TypeScript et Tailwind CSS pour la gestion du système SmartHome Lite. Elle constitue le **client web** du projet, aux côtés de l’**application mobile** Android (Kotlin + Jetpack Compose) ; les deux s’appuient sur le même backend FastAPI.
 
 ## Table des Matières
 
