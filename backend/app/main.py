@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 import logging
 import time
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request, status
@@ -26,6 +27,22 @@ logging.basicConfig(
     format=settings.log_format,
 )
 logger = logging.getLogger(__name__)
+
+# Fichier de log optionnel (visible dans l'interface admin)
+_log_file_path: Path | None = None
+if getattr(settings, "log_file", None) and settings.log_file:
+    try:
+        _log_file_path = Path(settings.log_file)
+        if not _log_file_path.is_absolute():
+            _log_file_path = (Path(__file__).resolve().parent.parent / settings.log_file).resolve()
+        _log_file_path.parent.mkdir(parents=True, exist_ok=True)
+        _fh = logging.FileHandler(_log_file_path, encoding="utf-8")
+        _fh.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+        _fh.setFormatter(logging.Formatter(settings.log_format))
+        logging.getLogger().addHandler(_fh)
+        logger.info("Logs écrits dans %s", _log_file_path)
+    except Exception as e:
+        logger.warning("Impossible d'ouvrir le fichier de log %s: %s", settings.log_file, e)
 
 
 @asynccontextmanager

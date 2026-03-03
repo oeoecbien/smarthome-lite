@@ -7,10 +7,27 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { Button } from "@/components/ui/button"
-import { Home, Lightbulb, Settings2, Brain, SunDim, Sun, Calendar, LogOut, Menu, X, Shield, Activity, Radio } from "lucide-react"
+import {
+  Home,
+  Lightbulb,
+  Settings2,
+  Brain,
+  SunDim,
+  Sun,
+  Calendar,
+  LogOut,
+  Menu,
+  X,
+  Shield,
+  Activity,
+  Radio,
+  BarChart3,
+  Cpu,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsAdmin } from "@/hooks/use-is-admin"
 
+/** Navigation principale (utilisateur ou admin : les 3 premiers liens pointent vers la version admin si connecté en admin). */
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: Home },
   { href: "/devices", label: "Appareils", icon: Lightbulb },
@@ -20,18 +37,27 @@ const navItems = [
   { href: "/events", label: "Événements", icon: Calendar },
 ]
 
+/** Pages réservées aux admins (sans doublon avec la nav principale : Appareils / Règles / IA y sont déjà). */
 const adminNavItems = [
-  { href: "/admin", label: "Administration", icon: Shield },
+  { href: "/admin", label: "Accueil Administration", icon: Shield },
+  { href: "/admin/monitoring", label: "Monitoring", icon: BarChart3 },
+  { href: "/admin/raspberry-pis", label: "Raspberry Pi", icon: Cpu },
+  { href: "/admin/zwave-sensors", label: "Capteurs Z-Wave", icon: Radio },
   { href: "/admin/presence", label: "Présence (mouvement)", icon: Activity },
   { href: "/admin/light-readings", label: "Luminosité", icon: Sun },
-  { href: "/admin/zwave-sensors", label: "Capteurs Z-Wave", icon: Radio },
 ]
 
-/** Pour un admin, les chemins "utilisateur" sont remplacés par la version admin. */
+/** Pour un admin, les entrées "Appareils", "Règles", "Intelligence IA" pointent vers les pages admin. */
 const adminHrefMap: Record<string, string> = {
   "/devices": "/admin/devices",
   "/rules": "/admin/rules",
   "/ai": "/admin/ai",
+}
+
+/** True si cette entrée admin doit être considérée comme active pour le pathname actuel. */
+function isAdminItemActive(href: string, pathname: string): boolean {
+  if (href === "/admin") return pathname === "/admin"
+  return pathname === href || pathname.startsWith(href + "/")
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -140,7 +166,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
                 </div>
                 {adminNavItems.map((item) => {
                   const Icon = item.icon
-                  const isActive = pathname.startsWith(item.href)
+                  const isActive = isAdminItemActive(item.href, pathname)
                   return (
                     <Link
                       key={item.href}

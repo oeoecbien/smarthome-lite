@@ -2,13 +2,17 @@
 Routes d'administration - Accessibles uniquement aux administrateurs
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime, timedelta
+
 from pydantic import BaseModel, Field
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, require_admin, User
 from app.models import Device, User as UserModel, Event, SmartDimmingAdjustment, RaspberryPi, LightReading, Presence
@@ -187,6 +191,55 @@ async def get_zwave_known_devices(admin_user: User = Depends(require_admin)):
     """
     from app.zwave_devices import list_known_devices
     return list_known_devices()
+
+
+# =============================================================================
+# Monitoring : métriques et logs (admin uniquement)
+# =============================================================================
+
+@router.get("/metrics")
+async def get_admin_metrics(admin_user: User = Depends(require_admin)):
+    """
+    Métriques de l'API (requêtes, erreurs, temps de réponse, top endpoints).
+    """
+    from app.utils.metrics import get_metrics_collector
+    return get_metrics_collector().get_stats()
+
+
+@router.get("/logs")
+async def get_admin_logs(
+    admin_user: User = Depends(require_admin),
+    tail: int = Query(500, ge=1, le=10000, description="Nombre de lignes à retourner (dernières)"),
+    level: Optional[str] = Query(None, description="Filtrer par niveau: DEBUG, INFO, WARNING, ERROR"),
+):
+    """
+    Dernières lignes du fichier de log (si LOG_FILE est configuré).
+    """
+    log_file = getattr(settings, "log_file", None)
+    if not log_file:
+        return {
+            "lines": [],
+            "message": "Fichier de log non configuré. Définir LOG_FILE dans .env (ex: logs/smarthome.log).",
+            "count": 0,
+        }
+    path = Path(log_file)
+    if not path.is_absolute():
+        path = (Path(__file__).resolve().parent.parent.parent / log_file).resolve()
+    if not path.exists():
+        return {"lines": [], "message": f"Fichier {path} introuvable.", "count": 0}
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            all_lines = f.readlines()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Impossible de lire le fichier de log: {e}")
+    # Dernières N lignes
+    lines = all_lines[-tail:] if len(all_lines) > tail else all_lines
+    if level and level.upper() in ("DEBUG", "INFO", "WARNING", "ERROR"):
+        lines = [ln for ln in lines if f" - {level.upper()} - " in ln]
+    return {
+        "lines": [ln.rstrip("\n") for ln in lines],
+        "count": len(lines),
+    }
 
 
 # Note: Les endpoints /api/admin/devices/all et /api/admin/events/all ont été supprimés

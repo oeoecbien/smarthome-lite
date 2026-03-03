@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     # Logs
     log_level: str = Field(default="INFO")
     log_format: str = Field(default="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    log_file: Optional[str] = Field(default="logs/smarthome.log", description="Chemin du fichier de log. Tous les logs sont écrits dans ce fichier (visible dans l'interface admin). Mettre à vide pour désactiver.")
     
     @property
     def dimming_params(self) -> dict:
