@@ -71,7 +71,7 @@ fun SmartHomeApp(
         snackbarHost = { SnackbarHost(snackbarHostState) },
 
         topBar = {
-            if (selectedLampId == null) {
+            if (selectedLampId == null && currentDestination != AppDestinations.HOME) {
                 TopAppBar(
                     title = {
                         Text(text = currentDestination.label)

@@ -38,7 +38,7 @@ fun HomeScreen(
                     .padding(horizontal = 20.dp)
             ) {
                 // 1. En-tête (Profil + Notif)
-                HeaderSection(name = "${viewModel.currentUsername},")
+                HeaderSection(name = "${viewModel.currentUsername}")
 
                 Spacer(modifier = Modifier.height(24.dp))
 
