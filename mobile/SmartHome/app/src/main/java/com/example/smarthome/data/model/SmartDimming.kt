@@ -2,8 +2,9 @@ package com.example.smarthome.data.model
 
 data class SmartDimmingStatus(
     val enabled: Boolean,
-    val adjustments_today: Int,
-    val active_devices: List<Int>
+    val message: String? = null,
+    val adjustments_today: Int? = 0,
+    val active_devices: List<Int>? = emptyList()
 )
 
 data class SmartDimmingAdjustment(

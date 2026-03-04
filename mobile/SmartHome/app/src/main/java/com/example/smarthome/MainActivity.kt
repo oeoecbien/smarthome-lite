@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -23,6 +24,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
+import com.example.smarthome.ui.screens.LoginScreen
+import com.example.smarthome.ui.screens.ProfileScreen
+import com.example.smarthome.ui.screens.SmartDimmingScreen
+import com.example.smarthome.ui.screens.EventsScreen
 import com.example.smarthome.ui.screens.*
 import com.example.smarthome.ui.theme.SmartHomeTheme
 import com.example.smarthome.ui.theme.PrimaryBlue
@@ -124,6 +129,7 @@ fun SmartHomeApp(
                     selectedLampId = selectedLampId,
                     onLampSelect = { selectedLampId = it }
                 )
+                AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
                 AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
                 AppDestinations.FAVORITES -> FavoritesScreen()
                 AppDestinations.PROFILE -> ProfileScreen(
@@ -139,6 +145,7 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
+    EVENTS("Événements", Icons.Default.Notifications),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
     FAVORITES("Favoris", Icons.Default.Favorite),
     PROFILE("Profil", Icons.Default.AccountBox),

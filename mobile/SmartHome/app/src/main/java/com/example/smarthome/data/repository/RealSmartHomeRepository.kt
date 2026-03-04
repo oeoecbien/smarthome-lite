@@ -82,4 +82,8 @@ class RealSmartHomeRepository : SmartHomeRepository {
         val request = com.example.smarthome.data.model.SmartDimmingRequest(enabled = enabled)
         return api.updateSmartDimmingStatus(token, request)
     }
+
+    override suspend fun getEvents(token: String): List<com.example.smarthome.data.model.ApiEvent> {
+        return api.getEvents(token)
+    }
 }
