@@ -43,4 +43,7 @@ interface SmartHomeRepository {
 
     // --- Événements ---
     suspend fun getEvents(token: String): List<com.example.smarthome.data.model.ApiEvent>
+
+    // --- Inscription ---
+    suspend fun register(username: String, email: String, password: String): UserResponse
 }

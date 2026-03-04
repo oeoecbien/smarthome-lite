@@ -24,10 +24,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
-import com.example.smarthome.ui.screens.LoginScreen
-import com.example.smarthome.ui.screens.ProfileScreen
-import com.example.smarthome.ui.screens.SmartDimmingScreen
-import com.example.smarthome.ui.screens.EventsScreen
 import com.example.smarthome.ui.screens.*
 import com.example.smarthome.ui.theme.SmartHomeTheme
 import com.example.smarthome.ui.theme.PrimaryBlue
@@ -42,10 +38,26 @@ class MainActivity : ComponentActivity() {
             SmartHomeTheme(dynamicColor = false) {
                 val viewModel: SmartHomeViewModel = viewModel()
 
+                var showRegisterScreen by remember { mutableStateOf(false) }
+
                 if (viewModel.isLoggedIn) {
-                    SmartHomeApp(viewModel)
+                    SmartHomeApp(
+                        viewModel = viewModel,
+                        onCreateAccountClick = {
+                            viewModel.logout()
+                            showRegisterScreen = true
+                        }
+                    )
+                } else if (showRegisterScreen) {
+                    RegisterScreen(
+                        viewModel = viewModel,
+                        onBackToLogin = { showRegisterScreen = false }
+                    )
                 } else {
-                    LoginScreen(viewModel)
+                    LoginScreen(
+                        viewModel = viewModel,
+                        onCreateAccountClick = { showRegisterScreen = true }
+                    )
                 }
             }
         }
@@ -56,7 +68,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartHomeApp(
-    viewModel: SmartHomeViewModel
+    viewModel: SmartHomeViewModel,
+    onCreateAccountClick: () -> Unit = {}
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     // Hoisted state for Lamp detail navigation
@@ -116,9 +129,10 @@ fun SmartHomeApp(
                 AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
                 AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
                 AppDestinations.PROFILE -> ProfileScreen(
-                    viewModel.currentUsername,
-                    viewModel.currentEmail,
-                    { viewModel.logout() }
+                    name = viewModel.currentUsername,
+                    email = viewModel.currentEmail,
+                    onLogoutClick = { viewModel.logout() },
+                    onCreateAccountClick = onCreateAccountClick
                 )
             }
         }

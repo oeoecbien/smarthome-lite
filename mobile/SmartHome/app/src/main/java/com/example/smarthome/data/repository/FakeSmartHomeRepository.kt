@@ -158,4 +158,17 @@ class FakeSmartHomeRepository : SmartHomeRepository {
             )
         )
     }
+
+    // ─── Register (Fake) ──────────────────────────────────────────────────────────
+    override suspend fun register(username: String, email: String, password: String): UserResponse {
+        delay(600)
+        return UserResponse(
+            id = 42,
+            username = username,
+            email = email,
+            full_name = null,
+            role = "user",
+            created_at = "2026-03-04T12:00:00Z"
+        )
+    }
 }

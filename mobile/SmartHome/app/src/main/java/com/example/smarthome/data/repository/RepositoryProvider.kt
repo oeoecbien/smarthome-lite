@@ -13,7 +13,7 @@ package com.example.smarthome.data.repository
  */
 object RepositoryProvider {
 
-    private const val USE_FAKE = false   // ← changer ici pour switcher
+    private const val USE_FAKE = true   // ← changer ici pour switcher
 
     val repository: SmartHomeRepository by lazy {
         if (USE_FAKE) FakeSmartHomeRepository()

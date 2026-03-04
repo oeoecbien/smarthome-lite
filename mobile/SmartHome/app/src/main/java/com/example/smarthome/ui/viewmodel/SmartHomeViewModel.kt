@@ -260,4 +260,38 @@ class SmartHomeViewModel : ViewModel() {
         errorMessage.value = null
         isLoggedIn = false
     }
+
+    // ─── Registration ─────────────────────────────────────────────────────────────
+    var registrationSuccess = mutableStateOf(false)
+        private set
+
+    var registrationError = mutableStateOf<String?>(null)
+        private set
+
+    var isRegistering = mutableStateOf(false)
+        private set
+
+    fun register(username: String, email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                isRegistering.value = true
+                registrationError.value = null
+                registrationSuccess.value = false
+
+                repository.register(username, email, password)
+
+                registrationSuccess.value = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                registrationError.value = "Erreur inscription : ${e.localizedMessage}"
+            } finally {
+                isRegistering.value = false
+            }
+        }
+    }
+
+    fun resetRegistration() {
+        registrationSuccess.value = false
+        registrationError.value = null
+    }
 }
