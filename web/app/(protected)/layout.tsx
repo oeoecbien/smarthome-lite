@@ -135,9 +135,9 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <span className="ml-2 text-lg font-semibold">SmartHome Lite</span>
           </div>
 
-          {/* Navigation - Règles visible uniquement pour les admins */}
+          {/* Navigation - les admins sont redirigés vers les pages /admin via adminHrefMap */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {navItems.filter((item) => isAdmin || item.href !== "/rules").map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon
               const href = (isAdmin && adminHrefMap[item.href]) ? adminHrefMap[item.href] : item.href
               const isActive = pathname === href
