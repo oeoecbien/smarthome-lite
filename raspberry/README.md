@@ -1,6 +1,6 @@
 # API Flask Z-Wave (Raspberry Pi)
 
-API Flask déployée sur le Raspberry Pi qui héberge **Z-Wave JS UI**. Elle expose les commandes Z-Wave (ON/OFF, intensité) et respecte le **contrat du backend** SmartHome Lite (`sae_s5/backend`).
+API Flask déployée sur le Raspberry Pi qui héberge **Z-Wave JS UI**. Elle expose les commandes Z-Wave (ON/OFF, intensité) et respecte le **contrat du backend** SmartHome Lite (`sae_s5/backend`). C’est l’**implémentation actuelle** du contrôleur RPi pour ce projet ; une option **GPIO** (capteurs PIR, BH1750, relais) est décrite dans le README principal du projet pour référence.
 
 ## Liens avec le projet
 

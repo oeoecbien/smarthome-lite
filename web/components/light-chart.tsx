@@ -16,11 +16,9 @@ export function LightChart({ data }: LightChartProps) {
       .reverse()
       .map((reading, index) => {
         const lux = reading.lux_value
-        const percentage = Math.min(100, Math.round((lux / 65535) * 100))
         return {
           index,
           lux,
-          percentage,
           time: new Date(reading.measured_at).toLocaleTimeString("fr-FR", {
             hour: "2-digit",
             minute: "2-digit",
@@ -33,7 +31,7 @@ export function LightChart({ data }: LightChartProps) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Évolution de la luminosité</CardTitle>
-        <CardDescription>50 dernières mesures (lux et pourcentage)</CardDescription>
+        <CardDescription>50 dernières mesures (en lux)</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[300px]">
@@ -41,14 +39,7 @@ export function LightChart({ data }: LightChartProps) {
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="time" tick={{ fontSize: 10 }} className="text-muted-foreground" interval="preserveEnd" />
-              <YAxis yAxisId="left" tick={{ fontSize: 12 }} className="text-muted-foreground" />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fontSize: 12 }}
-                className="text-muted-foreground"
-                domain={[0, 100]}
-              />
+              <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--popover))",
@@ -59,22 +50,12 @@ export function LightChart({ data }: LightChartProps) {
               />
               <Legend />
               <Line
-                yAxisId="left"
                 type="monotone"
                 dataKey="lux"
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 dot={false}
                 name="Lux"
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey="percentage"
-                stroke="hsl(var(--secondary))"
-                strokeWidth={2}
-                dot={false}
-                name="Pourcentage"
               />
             </LineChart>
           </ResponsiveContainer>

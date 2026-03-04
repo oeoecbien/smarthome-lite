@@ -24,13 +24,14 @@ Pour la soutenance, on peut mettre en avant **un** algorithme (ex. la régressio
 
 ## Vue d’ensemble
 
-L’IA du backend comporte **trois parties** :
+L’IA du backend comporte **quatre parties** (trois implémentées, une prévue) :
 
 | Composant | Rôle | Fichiers / Services | État actuel |
 |-----------|------|---------------------|-------------|
-| **Classification de scénarios** | Détecter le contexte (Day / Night / Away / Evening) | `ml/generate_data.py`, `ml/train_model.py`, `app/services/ai_service.py` | Implémenté, **modèle non entraîné** (pas de `.pkl`) |
-| **Régression (prédiction d’intensité)** | Prédire l’intensité lumineuse optimale (0–100 %) | `ml/generate_regression_data.py`, `ml/train_regression_model.py`, `app/services/regression_service.py` | Implémenté, **modèle non entraîné** (pas de `.joblib`) |
+| **Classification de scénarios** | Détecter le contexte (Day / Night / Away / Evening) | `ml/generate_data.py`, `ml/train_model.py`, `app/services/ai_service.py` | Implémenté (modèle à entraîner : `.pkl`) |
+| **Régression (prédiction d’intensité)** | Prédire l’intensité lumineuse optimale (0–100 %) | `ml/generate_regression_data.py`, `ml/train_regression_model.py`, `app/services/regression_service.py` | Implémenté (modèle à entraîner : `.joblib`) |
 | **Ollama (IA générative)** | Descriptions, parsing de règles, recommandations | `app/services/ollama_service.py` | Optionnel, config `OLLAMA_BASE_URL` |
+| **Clustering (habitudes utilisateur)** | Profils Early Bird / Night Owl / etc. | (prévu) | À implémenter (K-Means) |
 
 Sans modèles entraînés, l’API fonctionne quand même : elle utilise des **fallbacks** (règles basées sur l’heure et le scénario).
 
