@@ -39,6 +39,13 @@ class SmartHomeViewModel : ViewModel() {
     private var token: String? = null
     private var debounceJob: Job? = null
     private var refreshJob: Job? = null
+    
+    // Garde en mémoire l'heure (en millisecondes) de la dernière modification par l'utilisateur
+    // pour chaque appareil. K=Id Device, V=Timestamp
+    private val lastUpdateMap = mutableMapOf<Int, Long>()
+    
+    // Durée pendant laquelle on ignore les données venant du serveur après une modif locale (5s)
+    private val IGNORE_SERVER_DELAY_MS = 5000L
 
     // Le repository est fourni par RepositoryProvider (fake ou réel selon USE_FAKE)
     private val repository = RepositoryProvider.repository
@@ -85,6 +92,9 @@ class SmartHomeViewModel : ViewModel() {
         val oldDevice = currentList[index]
         currentList[index] = device
         devices.value = currentList
+        
+        // On enregistre qu'on vient de modifier cet appareil
+        lastUpdateMap[device.id] = System.currentTimeMillis()
 
         if (oldDevice is SmartLight) {
             sendUpdateToApi(device, oldDevice)
@@ -134,7 +144,26 @@ class SmartHomeViewModel : ViewModel() {
     // ─── Fetch devices ────────────────────────────────────────────────────────────
     private suspend fun fetchDevices() {
         if (token == null) return
-        devices.value = repository.getDevices(token!!)
+        val serverDevices = repository.getDevices(token!!)
+        
+        val currentTime = System.currentTimeMillis()
+        val currentLocalDevices = devices.value.associateBy { it.id }
+        
+        // On merge les devices du serveur avec nos devices locaux
+        val mergedDevices = serverDevices.map { serverDevice ->
+            val lastUpdateTime = lastUpdateMap[serverDevice.id] ?: 0L
+            val isRecentlyUpdatedLocally = (currentTime - lastUpdateTime) < IGNORE_SERVER_DELAY_MS
+            
+            if (isRecentlyUpdatedLocally && currentLocalDevices.containsKey(serverDevice.id)) {
+                // Le serveur n'a peut-être pas encore la bonne valeur, on garde notre valeur locale
+                currentLocalDevices[serverDevice.id]!!
+            } else {
+                // Le délai est passé ou pas de modif locale récente, on prend la valeur du serveur
+                serverDevice
+            }
+        }
+        
+        devices.value = mergedDevices
     }
 
     // ─── Auto-refresh ─────────────────────────────────────────────────────────────
