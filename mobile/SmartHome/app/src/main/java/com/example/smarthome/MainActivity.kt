@@ -70,22 +70,6 @@ fun SmartHomeApp(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
 
-        topBar = {
-            if (selectedLampId == null && currentDestination != AppDestinations.HOME) {
-                TopAppBar(
-                    title = {
-                        Text(text = currentDestination.label)
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                        actionIconContentColor = Color.White
-                    )
-                )
-            }
-        },
-
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.tertiary
@@ -131,7 +115,6 @@ fun SmartHomeApp(
                 )
                 AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
                 AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
-                AppDestinations.FAVORITES -> FavoritesScreen()
                 AppDestinations.PROFILE -> ProfileScreen(
                     viewModel.currentUsername,
                     viewModel.currentEmail,
@@ -147,7 +130,6 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
     EVENTS("Événements", Icons.Default.Notifications),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
-    FAVORITES("Favoris", Icons.Default.Favorite),
     PROFILE("Profil", Icons.Default.AccountBox),
 }
 

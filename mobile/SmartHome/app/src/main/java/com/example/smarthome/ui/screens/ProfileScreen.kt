@@ -66,6 +66,21 @@ fun ProfileScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         contentPadding = PaddingValues(24.dp)
     ) {
+        // --- 1. Header ---
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Text(
+                    text = "Profil",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
 
         // --- 2. Avatar Section ---
         item {
