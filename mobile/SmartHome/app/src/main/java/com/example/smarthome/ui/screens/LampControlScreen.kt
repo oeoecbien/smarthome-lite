@@ -33,6 +33,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +57,14 @@ fun LampControlScreen(
     onBack: () -> Unit,
     onUpdate: (SmartLight) -> Unit
 ) {
+    // État local pour le slider pendant le drag
+    var isDragging by remember { mutableStateOf(false) }
+    var localBrightness by remember { mutableFloatStateOf(lamp.brightness) }
+    // Synchroniser quand la valeur externe change (et qu'on n'est pas en train de drag)
+    if (!isDragging) {
+        localBrightness = lamp.brightness
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -225,7 +238,7 @@ fun LampControlScreen(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "${(lamp.brightness * 100).toInt()}%",
+                text = "${(localBrightness * 100).toInt()}%",
                 fontSize = 32.sp,
                 color = NeonBlue,
                 fontWeight = FontWeight.Bold
@@ -260,9 +273,14 @@ fun LampControlScreen(
                 )
 
                 Slider(
-                    value = lamp.brightness,
+                    value = localBrightness,
                     onValueChange = { newBrightness ->
-                        onUpdate(lamp.copy(brightness = newBrightness, isOn = true))
+                        isDragging = true
+                        localBrightness = newBrightness
+                    },
+                    onValueChangeFinished = {
+                        isDragging = false
+                        onUpdate(lamp.copy(brightness = localBrightness, isOn = true))
                     },
                     enabled = lamp.isOn,
                     modifier = Modifier.weight(1f),

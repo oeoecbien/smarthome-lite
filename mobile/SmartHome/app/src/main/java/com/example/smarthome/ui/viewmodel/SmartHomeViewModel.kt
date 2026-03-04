@@ -92,7 +92,8 @@ class SmartHomeViewModel : ViewModel() {
     }
 
     private fun sendUpdateToApi(newLamp: SmartLight, oldLamp: SmartLight) {
-        viewModelScope.launch {
+        debounceJob?.cancel()
+        debounceJob = viewModelScope.launch {
             try {
                 if (token == null) return@launch
 
@@ -141,7 +142,7 @@ class SmartHomeViewModel : ViewModel() {
         refreshJob?.cancel()
         refreshJob = viewModelScope.launch {
             while (isActive && isLoggedIn) {
-                delay(3000)
+                delay(6000)
                 if (debounceJob?.isActive == true) continue
                 try {
                     if (token != null) fetchDevices()
