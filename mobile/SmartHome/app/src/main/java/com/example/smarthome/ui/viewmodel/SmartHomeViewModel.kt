@@ -50,11 +50,11 @@ class SmartHomeViewModel : ViewModel() {
                 isLoading.value = true
                 errorMessage.value = null
 
-                // 1. Authentification → récupère les infos utilisateur
-                val userInfo = repository.login(username, password)
-                token = "Bearer fake-token" // Le token est utilisé en interne, le repo gère l'auth
-                currentUsername = userInfo.username
-                currentEmail = userInfo.email ?: ""
+                // 1. Authentification → récupère le token + les infos utilisateur
+                val loginResult = repository.login(username, password)
+                token = loginResult.token
+                currentUsername = loginResult.userInfo.username
+                currentEmail = loginResult.userInfo.email ?: ""
 
                 // 2. Premier chargement des devices
                 fetchDevices()

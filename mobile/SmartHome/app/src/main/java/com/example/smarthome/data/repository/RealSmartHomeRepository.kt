@@ -16,11 +16,12 @@ class RealSmartHomeRepository : SmartHomeRepository {
 
     private val api = RetrofitInstance.api
 
-    override suspend fun login(username: String, password: String): UserResponse {
+    override suspend fun login(username: String, password: String): LoginResult {
         val loginRequest = com.example.smarthome.data.model.LoginRequest(username, password)
         val tokenResponse = api.login(loginRequest)
         val bearerToken = "Bearer ${tokenResponse.access_token}"
-        return api.getUserInfo(bearerToken)
+        val userInfo = api.getUserInfo(bearerToken)
+        return LoginResult(token = bearerToken, userInfo = userInfo)
     }
 
     override suspend fun getDevices(token: String): List<SmartDevice> {

@@ -31,15 +31,18 @@ class FakeSmartHomeRepository : SmartHomeRepository {
     )
 
     // ─── Login ────────────────────────────────────────────────────────────────────
-    override suspend fun login(username: String, password: String): UserResponse {
+    override suspend fun login(username: String, password: String): LoginResult {
         delay(600) // Simule la latence réseau
 
         if (username == "admin" && password == "admin") {
-            return UserResponse(
-                id        = 1,
-                username  = "admin",
-                email     = "admin@smarthome.local",
-                full_name = "Administrateur"
+            return LoginResult(
+                token = "Bearer fake-token",
+                userInfo = UserResponse(
+                    id        = 1,
+                    username  = "admin",
+                    email     = "admin@smarthome.local",
+                    full_name = "Administrateur"
+                )
             )
         }
         // Simule une erreur HTTP 401
