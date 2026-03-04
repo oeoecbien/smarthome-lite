@@ -35,6 +35,13 @@ class SmartHomeViewModel : ViewModel() {
     var currentEmail by mutableStateOf("")
         private set
 
+    // --- Smart Dimming ---
+    var smartDimmingStatus = mutableStateOf<SmartDimmingStatus?>(null)
+        private set
+
+    var smartDimmingHistory = mutableStateOf<List<SmartDimmingAdjustment>>(emptyList())
+        private set
+
     // ─── État interne ─────────────────────────────────────────────────────────────
     private var token: String? = null
     private var debounceJob: Job? = null
@@ -63,8 +70,9 @@ class SmartHomeViewModel : ViewModel() {
                 currentUsername = loginResult.userInfo.username
                 currentEmail = loginResult.userInfo.email ?: ""
 
-                // 2. Premier chargement des devices
+                // 2. Premier chargement des devices et Smart Dimming
                 fetchDevices()
+                fetchSmartDimmingData()
 
                 isLoggedIn = true
 
@@ -166,6 +174,44 @@ class SmartHomeViewModel : ViewModel() {
         devices.value = mergedDevices
     }
 
+    // ─── Fetch Smart Dimming ──────────────────────────────────────────────────────
+    private suspend fun fetchSmartDimmingData() {
+        if (token == null) return
+        try {
+            smartDimmingStatus.value = repository.getSmartDimmingStatus(token!!)
+            smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Optionnel : ne pas crasher l'app si ces endpoints manquent
+        }
+    }
+
+    // ─── Update Smart Dimming ─────────────────────────────────────────────────────
+    fun toggleSmartDimming(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                
+                // Active le bouton immédiatement (Optimistic UI)
+                val currentStatus = smartDimmingStatus.value
+                if (currentStatus != null) {
+                    smartDimmingStatus.value = currentStatus.copy(enabled = enabled)
+                }
+
+                val newStatus = repository.updateSmartDimmingStatus(token!!, enabled)
+                smartDimmingStatus.value = newStatus
+                
+                // Recharge l'historique potentiellement mis à jour
+                smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                errorMessage.value = "Erreur Smart Dimming : ${e.localizedMessage}"
+                // Rollback (re-fetch)
+                fetchSmartDimmingData()
+            }
+        }
+    }
+
     // ─── Auto-refresh ─────────────────────────────────────────────────────────────
     private fun startAutoRefresh() {
         refreshJob?.cancel()
@@ -174,7 +220,10 @@ class SmartHomeViewModel : ViewModel() {
                 delay(6000)
                 if (debounceJob?.isActive == true) continue
                 try {
-                    if (token != null) fetchDevices()
+                    if (token != null) {
+                        fetchDevices()
+                        fetchSmartDimmingData()
+                    }
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }

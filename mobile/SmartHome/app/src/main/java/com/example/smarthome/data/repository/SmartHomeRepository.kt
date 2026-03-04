@@ -35,4 +35,9 @@ interface SmartHomeRepository {
      * Met à jour uniquement la luminosité d'un appareil.
      */
     suspend fun updateBrightness(token: String, deviceId: Int, intensity: Float)
+
+    // --- Smart Dimming ---
+    suspend fun getSmartDimmingStatus(token: String): com.example.smarthome.data.model.SmartDimmingStatus
+    suspend fun getSmartDimmingHistory(token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment>
+    suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): com.example.smarthome.data.model.SmartDimmingStatus
 }

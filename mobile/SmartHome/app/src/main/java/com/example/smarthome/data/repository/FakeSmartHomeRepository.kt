@@ -83,4 +83,52 @@ class FakeSmartHomeRepository : SmartHomeRepository {
             }
         }
     }
+
+    // ─── Smart Dimming (Fake) ─────────────────────────────────────────────────────
+    private var fakeSmartDimmingEnabled = false
+
+    override suspend fun getSmartDimmingStatus(token: String): com.example.smarthome.data.model.SmartDimmingStatus {
+        delay(300)
+        return com.example.smarthome.data.model.SmartDimmingStatus(
+            enabled = fakeSmartDimmingEnabled,
+            adjustments_today = 12,
+            active_devices = listOf(1, 2)
+        )
+    }
+
+    override suspend fun getSmartDimmingHistory(token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment> {
+        delay(400)
+        return listOf(
+            com.example.smarthome.data.model.SmartDimmingAdjustment(
+                id = 101,
+                device_id = 1,
+                device_name = "Lampe Salon",
+                scenario = 0,
+                brightness_before = 20,
+                brightness_after = 45,
+                reason = "ML prediction",
+                timestamp = "2026-03-04T10:15:00Z"
+            ),
+            com.example.smarthome.data.model.SmartDimmingAdjustment(
+                id = 102,
+                device_id = 2,
+                device_name = "Lampe Chambre",
+                scenario = 0,
+                brightness_before = 80,
+                brightness_after = 30,
+                reason = "Time of day",
+                timestamp = "2026-03-04T09:30:00Z"
+            )
+        )
+    }
+
+    override suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): com.example.smarthome.data.model.SmartDimmingStatus {
+        delay(300)
+        fakeSmartDimmingEnabled = enabled
+        return com.example.smarthome.data.model.SmartDimmingStatus(
+            enabled = enabled,
+            adjustments_today = 12,
+            active_devices = listOf(1, 2)
+        )
+    }
 }

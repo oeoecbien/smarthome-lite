@@ -69,4 +69,17 @@ class RealSmartHomeRepository : SmartHomeRepository {
     override suspend fun updateBrightness(token: String, deviceId: Int, intensity: Float) {
         api.updateBrightness(token, deviceId, intensity)
     }
+
+    override suspend fun getSmartDimmingStatus(token: String): com.example.smarthome.data.model.SmartDimmingStatus {
+        return api.getSmartDimmingStatus(token)
+    }
+
+    override suspend fun getSmartDimmingHistory(token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment> {
+        return api.getSmartDimmingHistory(token)
+    }
+
+    override suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): com.example.smarthome.data.model.SmartDimmingStatus {
+        val request = com.example.smarthome.data.model.SmartDimmingRequest(enabled = enabled)
+        return api.updateSmartDimmingStatus(token, request)
+    }
 }

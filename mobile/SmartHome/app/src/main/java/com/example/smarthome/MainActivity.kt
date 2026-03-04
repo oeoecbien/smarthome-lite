@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -124,6 +124,7 @@ fun SmartHomeApp(
                     selectedLampId = selectedLampId,
                     onLampSelect = { selectedLampId = it }
                 )
+                AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
                 AppDestinations.FAVORITES -> FavoritesScreen()
                 AppDestinations.PROFILE -> ProfileScreen(
                     viewModel.currentUsername,
@@ -138,6 +139,7 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
+    DIMMING("Dimming", Icons.Default.AutoAwesome),
     FAVORITES("Favoris", Icons.Default.Favorite),
     PROFILE("Profil", Icons.Default.AccountBox),
 }

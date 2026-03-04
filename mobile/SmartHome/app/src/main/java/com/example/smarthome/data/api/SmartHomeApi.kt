@@ -57,6 +57,18 @@ interface SmartHomeApi {
     ): ApiSensor
 
 
+    @GET("api/smart-dimming/status")
+    suspend fun getSmartDimmingStatus(@Header("Authorization") token: String): com.example.smarthome.data.model.SmartDimmingStatus
+
+    @GET("api/smart-dimming/adjustments")
+    suspend fun getSmartDimmingHistory(@Header("Authorization") token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment>
+
+    @PUT("api/smart-dimming/status")
+    suspend fun updateSmartDimmingStatus(
+        @Header("Authorization") token: String,
+        @Body request: com.example.smarthome.data.model.SmartDimmingRequest
+    ): com.example.smarthome.data.model.SmartDimmingStatus
+
     @GET("api/auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserResponse
 }
