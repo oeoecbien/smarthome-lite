@@ -131,8 +131,12 @@ class SmartHomeViewModel : ViewModel() {
                 e.printStackTrace()
                 if (e is HttpException) {
                     errorMessage.value = when (e.code()) {
-                        401 -> "Identifiants incorrects."
-                        else -> "Erreur HTTP ${e.code()}"
+                        401 -> "Identifiant ou mot de passe incorrect."
+                        403 -> "Accès refusé."
+                        404 -> "Serveur introuvable."
+                        422 -> "Données invalides : ${e.response()?.errorBody()?.string() ?: "Erreur format"}"
+                        500 -> "Erreur interne du serveur."
+                        else -> "Erreur HTTP ${e.code()} : ${e.message()}"
                     }
                 } else {
                     errorMessage.value = "Erreur de connexion."
