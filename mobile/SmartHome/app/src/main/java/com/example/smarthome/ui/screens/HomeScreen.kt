@@ -3,10 +3,12 @@ package com.example.smarthome.ui.screens
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,8 +26,8 @@ fun HomeScreen(
     onLampSelect: (Int?) -> Unit
 ) {
     val devices by viewModel.devices
+    val isDevicesLoading by viewModel.isDevicesLoading
     val error by viewModel.errorMessage
-    // Local state removed, using hoisted state passed via parameters
 
     // Navigation entre Liste et Détail
     Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
@@ -51,15 +53,28 @@ fun HomeScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Grille intelligente
-                DeviceGrid(
-                    devices = devices,
-                    onLampClick = { onLampSelect(it.id) },
-                    onSensorClick = { onLampSelect(it.id) }, // Réutilise le même ID state
-                    onToggleLamp = { lamp, newState ->
-                         viewModel.updateDevice(lamp.copy(isOn = newState))
+                if (isDevicesLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                )
+                } else {
+                    // Grille intelligente
+                    DeviceGrid(
+                        devices = devices,
+                        onLampClick = { onLampSelect(it.id) },
+                        onSensorClick = { onLampSelect(it.id) }, // Réutilise le même ID state
+                        onToggleLamp = { lamp, newState ->
+                             viewModel.updateDevice(lamp.copy(isOn = newState))
+                        }
+                    )
+                }
             }
         } else {
             // --- VUE DÉTAIL ---

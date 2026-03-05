@@ -6,11 +6,13 @@ import com.example.smarthome.data.api.UserResponse
 import com.example.smarthome.data.model.SmartDevice
 import com.example.smarthome.data.model.SmartLight
 import com.example.smarthome.data.model.SmartSensor
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /**
  * Implémentation RÉELLE du repository.
  * Délègue tous les appels à l'API via Retrofit.
- * Utiliser cette implémentation quand l'API est de nouveau accessible.
  */
 class RealSmartHomeRepository : SmartHomeRepository {
 
@@ -24,15 +26,15 @@ class RealSmartHomeRepository : SmartHomeRepository {
         return LoginResult(token = bearerToken, userInfo = userInfo)
     }
 
-    override suspend fun getDevices(token: String): List<SmartDevice> {
+    override suspend fun getDevices(token: String): List<SmartDevice> = coroutineScope {
         val apiDevices = api.getDevices(token)
-        val deviceList = mutableListOf<SmartDevice>()
-
-        for (device in apiDevices) {
-            if (device.type.equals("sensor", ignoreCase = true)) {
-                try {
-                    val sensorData = api.getSensor(token, device.id)
-                    deviceList.add(
+        
+        // On lance la récupération des détails de chaque device en parallèle
+        apiDevices.map { device ->
+            async {
+                if (device.type.equals("sensor", ignoreCase = true)) {
+                    try {
+                        val sensorData = api.getSensor(token, device.id)
                         SmartSensor(
                             id          = device.id,
                             name        = device.name,
@@ -42,22 +44,20 @@ class RealSmartHomeRepository : SmartHomeRepository {
                             motion      = sensorData.motion ?: false,
                             battery     = sensorData.battery_percent ?: 0
                         )
-                    )
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            } else {
-                deviceList.add(
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        null // Si un capteur échoue, on l'ignore proprement
+                    }
+                } else {
                     SmartLight(
                         id         = device.id,
                         name       = device.name,
                         isOn       = device.state,
                         brightness = (device.brightness ?: 0) / 100f
                     )
-                )
+                }
             }
-        }
-        return deviceList
+        }.awaitAll().filterNotNull()
     }
 
     override suspend fun updateState(

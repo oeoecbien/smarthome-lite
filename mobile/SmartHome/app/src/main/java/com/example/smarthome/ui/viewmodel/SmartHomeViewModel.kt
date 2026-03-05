@@ -27,6 +27,9 @@ class SmartHomeViewModel : ViewModel() {
     var isLoading = mutableStateOf(false)
         private set
 
+    var isDevicesLoading = mutableStateOf(false)
+        private set
+
     var isLoggedIn by mutableStateOf(false)
         private set
 
@@ -69,20 +72,25 @@ class SmartHomeViewModel : ViewModel() {
                 isLoading.value = true
                 errorMessage.value = null
 
-                // 1. Authentification → récupère le token + les infos utilisateur
+                // 1. Authentification (Seul appel bloquant pour l'UI)
                 val loginResult = repository.login(username, password)
                 token = loginResult.token
                 currentUsername = loginResult.userInfo.username
                 currentEmail = loginResult.userInfo.email ?: ""
 
-                // 2. Premier chargement des devices, Smart Dimming et Evénements
-                fetchDevices()
-                fetchSmartDimmingData()
-                fetchEvents()
-
+                // 2. On connecte l'utilisateur IMMÉDIATEMENT
                 isLoggedIn = true
 
-                // 3. Actualisation automatique
+                // 3. On lance le chargement des données en ARRIÈRE-PLAN
+                isDevicesLoading.value = true
+                launch { 
+                    fetchDevices() 
+                    isDevicesLoading.value = false
+                }
+                launch { fetchSmartDimmingData() }
+                launch { fetchEvents() }
+
+                // 4. Lancement du refresh auto
                 startAutoRefresh()
 
             } catch (e: Exception) {
@@ -158,26 +166,30 @@ class SmartHomeViewModel : ViewModel() {
     // ─── Fetch devices ────────────────────────────────────────────────────────────
     private suspend fun fetchDevices() {
         if (token == null) return
-        val serverDevices = repository.getDevices(token!!)
-        
-        val currentTime = System.currentTimeMillis()
-        val currentLocalDevices = devices.value.associateBy { it.id }
-        
-        // On merge les devices du serveur avec nos devices locaux
-        val mergedDevices = serverDevices.map { serverDevice ->
-            val lastUpdateTime = lastUpdateMap[serverDevice.id] ?: 0L
-            val isRecentlyUpdatedLocally = (currentTime - lastUpdateTime) < IGNORE_SERVER_DELAY_MS
+        try {
+            val serverDevices = repository.getDevices(token!!)
             
-            if (isRecentlyUpdatedLocally && currentLocalDevices.containsKey(serverDevice.id)) {
-                // Le serveur n'a peut-être pas encore la bonne valeur, on garde notre valeur locale
-                currentLocalDevices[serverDevice.id]!!
-            } else {
-                // Le délai est passé ou pas de modif locale récente, on prend la valeur du serveur
-                serverDevice
+            val currentTime = System.currentTimeMillis()
+            val currentLocalDevices = devices.value.associateBy { it.id }
+            
+            // On merge les devices du serveur avec nos devices locaux
+            val mergedDevices = serverDevices.map { serverDevice ->
+                val lastUpdateTime = lastUpdateMap[serverDevice.id] ?: 0L
+                val isRecentlyUpdatedLocally = (currentTime - lastUpdateTime) < IGNORE_SERVER_DELAY_MS
+                
+                if (isRecentlyUpdatedLocally && currentLocalDevices.containsKey(serverDevice.id)) {
+                    // Le serveur n'a peut-être pas encore la bonne valeur, on garde notre valeur locale
+                    currentLocalDevices[serverDevice.id]!!
+                } else {
+                    // Le délai est passé ou pas de modif locale récente, on prend la valeur du serveur
+                    serverDevice
+                }
             }
+            
+            devices.value = mergedDevices
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        
-        devices.value = mergedDevices
     }
 
     // ─── Fetch Smart Dimming ──────────────────────────────────────────────────────
@@ -188,7 +200,6 @@ class SmartHomeViewModel : ViewModel() {
             smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
         } catch (e: Exception) {
             e.printStackTrace()
-            // Optionnel : ne pas crasher l'app si ces endpoints manquent
         }
     }
 
@@ -225,7 +236,6 @@ class SmartHomeViewModel : ViewModel() {
             events.value = repository.getEvents(token!!)
         } catch (e: Exception) {
             e.printStackTrace()
-            // Optionnel : on ignore silencieusement si l'endpoint échoue
         }
     }
 
@@ -260,6 +270,7 @@ class SmartHomeViewModel : ViewModel() {
         devices.value = emptyList()
         errorMessage.value = null
         isLoggedIn = false
+        isDevicesLoading.value = false
     }
 
     // ─── Registration ─────────────────────────────────────────────────────────────
@@ -278,7 +289,6 @@ class SmartHomeViewModel : ViewModel() {
                 isRegistering.value = true
                 registrationError.value = null
                 registrationSuccess.value = false
-
 
                 repository.register(username, email, password)
 
