@@ -173,7 +173,7 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email (optionnel)") },
+                label = { Text("Email") },
                 supportingText = {
                     if (email.isNotEmpty() && !isEmailValid) {
                         Text("Format d'email invalide")
