@@ -4,23 +4,25 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
@@ -95,24 +97,37 @@ fun SmartHomeApp(
 
             bottomBar = {
                 NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.tertiary
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .height(72.dp) // Hauteur réduite pour gagner de la place
+                        .clip(RoundedCornerShape(28.dp)),
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    tonalElevation = 0.dp
                 ) {
                     AppDestinations.entries.forEach { dest ->
+                        val isSelected = dest == currentDestination
                         NavigationBarItem(
                             icon = {
-                                Icon(
-                                    dest.icon,
-                                    contentDescription = dest.label,
-                                    tint = if (dest == currentDestination) PrimaryBlue else GrayText
-                                )
+                                AnimatedVisibility(
+                                    visible = isSelected,
+                                    enter = fadeIn() + scaleIn() + expandVertically(),
+                                    exit = fadeOut() + scaleOut() + shrinkVertically()
+                                ) {
+                                    Icon(
+                                        dest.icon,
+                                        contentDescription = dest.label,
+                                        tint = PrimaryBlue
+                                    )
+                                }
                             },
                             label = {
                                 Text(
                                     dest.label,
-                                    color = if (dest == currentDestination) PrimaryBlue else GrayText
+                                    color = if (isSelected) PrimaryBlue else GrayText
                                 )
                             },
-                            selected = dest == currentDestination,
+                            selected = isSelected,
+                            alwaysShowLabel = true, // Important pour que le texte reste visible sans icône
                             onClick = {
                                 currentDestination = dest
                                 selectedLampId = null
@@ -154,7 +169,7 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
-    EVENTS("Événements", Icons.Default.Notifications),
+    EVENTS("Événement", Icons.Default.Notifications),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
     PROFILE("Profil", Icons.Default.AccountBox),
 }
