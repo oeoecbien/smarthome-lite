@@ -237,8 +237,12 @@ class DeviceService:
         self.db.commit()
         self.db.refresh(device)
         
-        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
-        if source != "automatic":
+        # Ne pas déclencher l'évaluation des règles après une action manuelle :
+        # le bouton ON/OFF a la priorité sur les règles (les règles passent en dessous).
+        # Après une action automatique, on ne relance pas non plus pour éviter les boucles.
+        if source == "manual":
+            logger.debug(f"Device {device.name} state changed to {state} (manual): rules not re-evaluated (manual has priority)")
+        elif source != "automatic":
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)
@@ -306,8 +310,10 @@ class DeviceService:
         self.db.commit()
         self.db.refresh(device)
         
-        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
-        if source != "automatic":
+        # Ne pas déclencher l'évaluation des règles après une action manuelle (priorité au contrôle manuel).
+        if source == "manual":
+            logger.debug(f"Device {device.name} brightness changed (manual): rules not re-evaluated")
+        elif source != "automatic":
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)

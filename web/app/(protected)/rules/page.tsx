@@ -297,6 +297,15 @@ export default function RulesPage() {
     }
   }
 
+  const handleDelete = async (id: number) => {
+    try {
+      await ruleService.deleteRule(id)
+      await fetchRules()
+    } catch (err) {
+      console.error("Failed to delete rule:", err)
+    }
+  }
+
   if (isAdmin) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
@@ -380,7 +389,7 @@ export default function RulesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {filteredRules.map((rule) => (
-            <RuleCardUser key={rule.id} rule={rule} onUpdate={fetchRules} onEdit={openEditDialog} />
+            <RuleCardUser key={rule.id} rule={rule} onUpdate={fetchRules} onEdit={openEditDialog} onDelete={handleDelete} />
           ))}
         </div>
       )}
