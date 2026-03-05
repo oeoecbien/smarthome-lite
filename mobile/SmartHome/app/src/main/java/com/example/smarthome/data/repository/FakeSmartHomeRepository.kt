@@ -13,6 +13,13 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         SmartLight(id = 1, name = "Lampe Salon",   isOn = true,  brightness = 0.75f),
         SmartLight(id = 2, name = "Lampe Chambre", isOn = false, brightness = 0.50f),
         SmartLight(id = 3, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 4, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 5, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 6, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 7, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 8, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 9, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 10, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
         SmartSensor(
             id          = 4,
             name        = "Capteur Entrée",

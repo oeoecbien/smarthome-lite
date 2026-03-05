@@ -4,8 +4,11 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +20,7 @@ import com.example.smarthome.ui.components.*
 import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -40,41 +44,35 @@ fun HomeScreen(
         Crossfade(targetState = selectedLampId, label = "PageTransition") { lampId ->
             if (lampId == null) {
                 // --- VUE PRINCIPALE (Design de l'image) ---
-                Column(
+                PullToRefreshBox(
+                    isRefreshing = isDevicesLoading,
+                    onRefresh = { viewModel.refreshDevices() },
                     modifier = modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background) // Fond sombre global
-                        .padding(horizontal = 20.dp)
+                        .background(MaterialTheme.colorScheme.background)
                 ) {
-                    // 1. En-tête (Profil + Notif)
-                    HeaderSection(
-                        name = "${viewModel.currentUsername}",
-                        onAddClick = { showAddDevice = true }
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 20.dp)
+                    ) {
+                        // 1. En-tête (Profil + Notif)
+                        HeaderSection(
+                            name = "${viewModel.currentUsername}",
+                            onAddClick = { showAddDevice = true }
+                        )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    // 4. Section Devices (Grille)
-                    Text(
-                        text = "Mes appareils",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
+                        // 4. Section Devices (Grille)
+                        Text(
+                            text = "Mes appareils",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    if (isDevicesLoading) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    } else {
                         // Grille intelligente
                         DeviceGrid(
                             devices = devices,

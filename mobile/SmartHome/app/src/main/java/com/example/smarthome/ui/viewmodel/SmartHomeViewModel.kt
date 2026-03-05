@@ -202,6 +202,19 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    // ─── Refresh manuel ──────────────────────────────────────────────────────────
+    fun refreshDevices() {
+        viewModelScope.launch {
+            isDevicesLoading.value = true
+            fetchDevices()
+            fetchSmartDimmingData()
+            fetchEvents()
+            fetchAIScenario()
+            fetchRules()
+            isDevicesLoading.value = false
+        }
+    }
+
     // ─── Fetch devices ────────────────────────────────────────────────────────────
     private suspend fun fetchDevices() {
         if (token == null) return
@@ -309,8 +322,6 @@ class SmartHomeViewModel : ViewModel() {
                         fetchSmartDimmingData()
                         fetchEvents()
                         fetchAIScenario()
-                        // Rules are usually more static, maybe fetch less often? 
-                        // Let's stick to fetchRules() call in startAutoRefresh if needed.
                         fetchRules()
                     }
                 } catch (e: Exception) {

@@ -161,7 +161,8 @@ fun DeviceGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight(),
+        contentPadding = PaddingValues(bottom = 140.dp) // Ajoute l'espace pour que le scroll finisse au dessus de la barre
     ) {
         // --- LAMPES & CAPTEURS (Depuis l'API) ---
         items(devices.size, span = { index ->
