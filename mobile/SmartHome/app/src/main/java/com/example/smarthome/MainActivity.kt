@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smarthome.data.api.TokenManager
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
 import com.example.smarthome.ui.screens.*
@@ -35,10 +36,16 @@ import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val tokenManager = TokenManager(this)
         enableEdgeToEdge()
         setContent {
             SmartHomeTheme(dynamicColor = false) {
                 val viewModel: SmartHomeViewModel = viewModel()
+
+                // Initialisation de l'authentification au démarrage
+                LaunchedEffect(Unit) {
+                    viewModel.initAuth(tokenManager)
+                }
 
                 var showRegisterScreen by remember { mutableStateOf(false) }
 
@@ -74,15 +81,10 @@ fun SmartHomeApp(
     onCreateAccountClick: () -> Unit = {}
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
-    // Hoisted state for Lamp detail navigation
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
-    
-    // NOUVEAU : État pour afficher l'écran IA
     var showAIScreen by rememberSaveable { mutableStateOf(false) }
-
     var showRuleScreen by rememberSaveable { mutableStateOf(false) }
     
-    // Observe lamps to get the name for the title
     val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -158,7 +160,6 @@ fun SmartHomeApp(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    // On n'applique que les paddings latéraux et le haut, pas le bas
                     .padding(
                         top = innerPadding.calculateTopPadding(),
                         start = innerPadding.calculateStartPadding(layoutDirection),

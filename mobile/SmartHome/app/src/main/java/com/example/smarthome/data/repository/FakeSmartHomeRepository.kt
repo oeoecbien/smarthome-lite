@@ -21,12 +21,12 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         SmartLight(id = 9, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
         SmartLight(id = 10, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
         SmartSensor(
-            id          = 4,
+            id          = 11,
             name        = "Capteur Entrée",
             temperature = 21.5f,
             humidity    = 55,
             illuminance = 342,
-            motion      = false,
+            motion      = true,
             battery     = 87
         )
     )

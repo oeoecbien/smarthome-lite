@@ -2,6 +2,7 @@ package com.example.smarthome.ui.viewmodel
 
 import com.example.smarthome.data.model.*
 import com.example.smarthome.data.repository.RepositoryProvider
+import com.example.smarthome.data.api.TokenManager
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
 
 
@@ -68,11 +70,33 @@ class SmartHomeViewModel : ViewModel() {
     private var token: String? = null
     private var debounceJob: Job? = null
     private var refreshJob: Job? = null
+    private var tokenManager: TokenManager? = null
     
     private val lastUpdateMap = mutableMapOf<Int, Long>()
     private val IGNORE_SERVER_DELAY_MS = 5000L
 
     private val repository = RepositoryProvider.repository
+
+    // ─── Initialisation ───────────────────────────────────────────────────────────
+    fun initAuth(manager: TokenManager) {
+        this.tokenManager = manager
+        viewModelScope.launch {
+            val savedToken = manager.token.first()
+            val savedUsername = manager.username.first()
+            val savedEmail = manager.email.first()
+
+            if (!savedToken.isNullOrBlank()) {
+                token = savedToken
+                currentUsername = savedUsername ?: ""
+                currentEmail = savedEmail ?: ""
+                isLoggedIn = true
+                
+                // Charger les données
+                refreshDevices()
+                startAutoRefresh()
+            }
+        }
+    }
 
     // ─── Login ────────────────────────────────────────────────────────────────────
     fun login(username: String, password: String) {
@@ -85,6 +109,9 @@ class SmartHomeViewModel : ViewModel() {
                 token = loginResult.token
                 currentUsername = loginResult.userInfo.username
                 currentEmail = loginResult.userInfo.email ?: ""
+
+                // Sauvegarder le token
+                tokenManager?.saveAuthData(token!!, currentUsername, currentEmail)
 
                 isLoggedIn = true
 
@@ -126,6 +153,7 @@ class SmartHomeViewModel : ViewModel() {
                 aiScenario.value = repository.getCurrentScenario(token!!)
             } catch (e: Exception) {
                 e.printStackTrace()
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
             } finally {
                 isAILoading.value = false
             }
@@ -177,6 +205,7 @@ class SmartHomeViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
                 errorMessage.value = "Erreur : ${e.localizedMessage}"
             }
         }
@@ -195,6 +224,7 @@ class SmartHomeViewModel : ViewModel() {
                 onSuccess()
             } catch (e: Exception) {
                 e.printStackTrace()
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
                 errorMessage.value = "Erreur lors de l'ajout."
             } finally {
                 isLoading.value = false
@@ -204,13 +234,18 @@ class SmartHomeViewModel : ViewModel() {
 
     // ─── Refresh manuel ──────────────────────────────────────────────────────────
     fun refreshDevices() {
+        if (token == null) return
         viewModelScope.launch {
             isDevicesLoading.value = true
-            fetchDevices()
-            fetchSmartDimmingData()
-            fetchEvents()
-            fetchAIScenario()
-            fetchRules()
+            try {
+                fetchDevices()
+                fetchSmartDimmingData()
+                fetchEvents()
+                fetchAIScenario()
+                fetchRules()
+            } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
+            }
             isDevicesLoading.value = false
         }
     }
@@ -233,6 +268,7 @@ class SmartHomeViewModel : ViewModel() {
             }
             devices.value = mergedDevices
         } catch (e: Exception) {
+            if (e is HttpException && e.code() == 401) handleUnauthorized()
             e.printStackTrace()
         }
     }
@@ -245,6 +281,7 @@ class SmartHomeViewModel : ViewModel() {
                 isRulesLoading.value = true
                 rules.value = repository.getRules(token!!)
             } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
                 e.printStackTrace()
             } finally {
                 isRulesLoading.value = false
@@ -261,6 +298,7 @@ class SmartHomeViewModel : ViewModel() {
                 fetchRules()
                 onSuccess()
             } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
                 e.printStackTrace()
                 errorMessage.value = "Erreur lors de la création de la règle."
             } finally {
@@ -276,6 +314,7 @@ class SmartHomeViewModel : ViewModel() {
             smartDimmingStatus.value = repository.getSmartDimmingStatus(token!!)
             smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
         } catch (e: Exception) {
+            if (e is HttpException && e.code() == 401) handleUnauthorized()
             e.printStackTrace()
         }
     }
@@ -293,6 +332,7 @@ class SmartHomeViewModel : ViewModel() {
                 smartDimmingStatus.value = newStatus
                 smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
             } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
                 e.printStackTrace()
                 fetchSmartDimmingData()
             }
@@ -305,6 +345,7 @@ class SmartHomeViewModel : ViewModel() {
         try {
             events.value = repository.getEvents(token!!)
         } catch (e: Exception) {
+            if (e is HttpException && e.code() == 401) handleUnauthorized()
             e.printStackTrace()
         }
     }
@@ -325,16 +366,27 @@ class SmartHomeViewModel : ViewModel() {
                         fetchRules()
                     }
                 } catch (e: Exception) {
+                    if (e is HttpException && e.code() == 401) handleUnauthorized()
                     e.printStackTrace()
                 }
             }
         }
     }
 
+    private fun handleUnauthorized() {
+        logout()
+        errorMessage.value = "Session expirée. Veuillez vous reconnecter."
+    }
+
     // ─── Logout ───────────────────────────────────────────────────────────────────
     fun logout() {
         debounceJob?.cancel()
         refreshJob?.cancel()
+        
+        viewModelScope.launch {
+            tokenManager?.clearAuthData()
+        }
+
         token = null
         currentUsername = ""
         currentEmail = ""
