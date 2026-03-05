@@ -1,6 +1,7 @@
 package com.example.smarthome.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.smarthome.ui.viewmodel.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -57,18 +58,32 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
 
     val isLoading by viewModel.isLoading
     val error by viewModel.errorMessage
+    
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // Définition du fond selon le thème
+    val backgroundModifier = if (isDarkTheme) {
+        Modifier.background(
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF0A1A33),
+                    Color(0xFF060B16)
+                )
+            )
+        )
+    } else {
+        Modifier.background(MaterialTheme.colorScheme.background)
+    }
+    
+    // Couleurs de texte adaptatives
+    val titleColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground
+    val subtitleColor = if (isDarkTheme) Color(0xFF9AA4B2) else MaterialTheme.colorScheme.onSurfaceVariant
+    val forgotPasswordColor = if (isDarkTheme) TextWhite else MaterialTheme.colorScheme.primary
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0A1A33),
-                        Color(0xFF060B16)
-                    )
-                )
-            ),
+            .then(backgroundModifier),
     ) {
         Column(
             modifier = Modifier
@@ -84,7 +99,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                 modifier = Modifier
                     .size(72.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF121826)),
+                    .background(if (isDarkTheme) Color(0xFF121826) else MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -99,7 +114,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
 
             Text(
                 text = "SmartHome",
-                color = Color.White,
+                color = titleColor,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -107,8 +122,8 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Connecter vous pour accéder à vos appareils",
-                color = Color(0xFF9AA4B2),
+                text = "Connectez-vous pour accéder à vos appareils",
+                color = subtitleColor,
                 fontSize = 14.sp
             )
 
@@ -124,7 +139,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                     Icon(Icons.Default.Person, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
+                colors = if (isDarkTheme) darkTextFieldColors() else androidx.compose.material3.OutlinedTextFieldDefaults.colors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -153,7 +168,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                 else
                     PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
+                colors = if (isDarkTheme) darkTextFieldColors() else androidx.compose.material3.OutlinedTextFieldDefaults.colors()
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -183,11 +198,11 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color.White
                     )
                 } else {
                     Text("Se connecter",
-                        color = MaterialTheme.colorScheme.primary
+                        color = Color.White
                     )
                 }
             }
@@ -204,7 +219,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                 Text(
                     text = "Mot de passe oublié ?",
                     fontSize = 14.sp,
-                    color = TextWhite
+                    color = forgotPasswordColor
                 )
             }
 
