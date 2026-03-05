@@ -530,8 +530,11 @@ class ZWaveClient:
             logger.debug("setValue (object valueId) node %s: %s, try string valueId", node_id, e)
             try:
                 vid_str = self._value_id_str(node_id, PROP_TARGET_VALUE)
+                args_str = [vid_str, value]
+                if transition_duration:
+                    args_str.append({"transitionDuration": transition_duration})
                 result = await asyncio.wait_for(
-                    self._call_api("setValue", vid_str, value),
+                    self._call_api("setValue", *args_str),
                     timeout=timeout_sec,
                 )
                 self._cache_current_value[node_id] = value
@@ -1057,9 +1060,9 @@ class ZWaveClient:
         """Allume le nœud (targetValue = ON_LEVEL_FULL). Compatible 0-99 (ex. ABUS node 3)."""
         return await self._set_value(node_id, ON_LEVEL_FULL, transition_duration=transition_duration)
 
-    async def turn_off(self, node_id: int) -> Any:
-        """Éteint le nœud (Multilevel Switch à 0)."""
-        return await self._set_value(node_id, 0)
+    async def turn_off(self, node_id: int, transition_duration: Optional[str] = "0s") -> Any:
+        """Éteint le nœud (Multilevel Switch à 0). Par défaut transition 0s = extinction instantanée."""
+        return await self._set_value(node_id, 0, transition_duration=transition_duration)
 
     async def set_brightness(
         self,
