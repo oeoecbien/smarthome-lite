@@ -86,6 +86,7 @@ async def get_device(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.post("", response_model=DeviceSchema, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post("/", response_model=DeviceSchema, status_code=status.HTTP_201_CREATED)
 async def create_device(
     device_data: DeviceCreate,

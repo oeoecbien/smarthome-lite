@@ -284,7 +284,7 @@ function DevicesContent() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Ajouter un appareil</DialogTitle>
-                <DialogDescription>Configurez un nouvel appareil connecté à votre système.</DialogDescription>
+                <DialogDescription>Ajoutez un appareil (lumière, variateur ou prise) à votre domicile.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreate}>
                 <div className="space-y-4 py-4">
@@ -326,10 +326,10 @@ function DevicesContent() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="rpi">Raspberry Pi</Label>
+                      <Label htmlFor="rpi">Contrôleur</Label>
                       {raspberryPis.length === 0 ? (
                         <div className="text-sm text-muted-foreground p-2 border rounded-md">
-                          Aucun Raspberry Pi disponible. Veuillez contacter un administrateur.
+                          Aucun contrôleur disponible. Contactez l&apos;administrateur.
                         </div>
                       ) : (
                         <Select
@@ -337,7 +337,7 @@ function DevicesContent() {
                           onValueChange={(value) => setFormData({ ...formData, raspberry_pi_id: Number.parseInt(value) })}
                         >
                           <SelectTrigger id="rpi">
-                            <SelectValue placeholder="Sélectionner un Raspberry Pi" />
+                            <SelectValue placeholder="Choisir un contrôleur" />
                           </SelectTrigger>
                           <SelectContent>
                             {raspberryPis.map((rpi) => (
@@ -350,7 +350,7 @@ function DevicesContent() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="gpio">Broche / Node ID</Label>
+                      <Label htmlFor="gpio">Numéro d&apos;appareil</Label>
                       <Input
                         id="gpio"
                         type="number"
@@ -363,7 +363,7 @@ function DevicesContent() {
                       <p className="text-xs text-muted-foreground">
                         {formData.type === "sensor"
                           ? "Node ID Z-Wave (1–255), ex. 5 pour MultiSensor 7."
-                          : "Sur un RPi Z-Wave : node_id du nœud (ex. 3 pour une ampoule). Sinon numéro GPIO (1–40)."}
+                          : "Numéro indiqué sur le contrôleur pour cet appareil (souvent entre 1 et 40)."}
                       </p>
                     </div>
                   </div>
@@ -678,6 +678,7 @@ function DevicesContent() {
                 key={device.id}
                 device={device}
                 onUpdate={fetchDevices}
+                onDelete={handleDelete}
                 onDeviceUpdated={handleDeviceUpdated}
               />
             ),
