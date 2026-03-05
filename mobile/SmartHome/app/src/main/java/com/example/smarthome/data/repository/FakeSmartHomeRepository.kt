@@ -1,9 +1,7 @@
 package com.example.smarthome.data.repository
 
 import com.example.smarthome.data.api.UserResponse
-import com.example.smarthome.data.model.SmartDevice
-import com.example.smarthome.data.model.SmartLight
-import com.example.smarthome.data.model.SmartSensor
+import com.example.smarthome.data.model.*
 import kotlinx.coroutines.delay
 
 /**
@@ -53,6 +51,18 @@ class FakeSmartHomeRepository : SmartHomeRepository {
     override suspend fun getDevices(token: String): List<SmartDevice> {
         delay(400)
         return fakeDevices.toList() // Copie défensive
+    }
+
+    override suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): ApiDevice {
+        delay(500)
+        val newId = (fakeDevices.maxOfOrNull { it.id } ?: 0) + 1
+        val newDevice = if (type == "sensor") {
+            SmartSensor(id = newId, name = name, temperature = 0f, humidity = 0, illuminance = 0, motion = false, battery = 100)
+        } else {
+            SmartLight(id = newId, name = name, isOn = false, brightness = 0.5f)
+        }
+        fakeDevices.add(newDevice)
+        return ApiDevice(id = newId, name = name, state = false, brightness = 50, type = type)
     }
 
     // ─── updateState ──────────────────────────────────────────────────────────────
@@ -169,6 +179,27 @@ class FakeSmartHomeRepository : SmartHomeRepository {
             full_name = null,
             role = "user",
             created_at = "2026-03-04T12:00:00Z"
+        )
+    }
+
+    // ─── Intelligence Artificielle (Fake) ─────────────────────────────────────────
+    override suspend fun getCurrentScenario(token: String): com.example.smarthome.data.model.AIScenarioResponse {
+        delay(500)
+        return com.example.smarthome.data.model.AIScenarioResponse(
+            scenario = 1,
+            scenarioName = "Soirée Cinéma",
+            confidence = 0.85,
+            method = "Random Forest",
+            context = com.example.smarthome.data.model.AIContext(
+                hour = 20,
+                dayOfWeek = 5,
+                presenceDetected = true,
+                lightOn = true,
+                raspberryPiId = "fake-pi-123",
+                detectedUsers = listOf("admin"),
+                detectedUsernames = listOf("Administrateur"),
+                userCount = 1
+            )
         )
     }
 }

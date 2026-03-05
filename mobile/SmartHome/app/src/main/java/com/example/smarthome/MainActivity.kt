@@ -74,66 +74,78 @@ fun SmartHomeApp(
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     // Hoisted state for Lamp detail navigation
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
+    
+    // NOUVEAU : État pour afficher l'écran IA
+    var showAIScreen by rememberSaveable { mutableStateOf(false) }
+    
     // Observe lamps to get the name for the title
     val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+    if (showAIScreen) {
+        AIScreen(
+            viewModel = viewModel,
+            onBack = { showAIScreen = false }
+        )
+    } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
 
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.tertiary
-            ) {
-                AppDestinations.entries.forEach { dest ->
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                dest.icon,
-                                contentDescription = dest.label,
-                                tint = if (dest == currentDestination) PrimaryBlue else GrayText
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                ) {
+                    AppDestinations.entries.forEach { dest ->
+                        NavigationBarItem(
+                            icon = {
+                                Icon(
+                                    dest.icon,
+                                    contentDescription = dest.label,
+                                    tint = if (dest == currentDestination) PrimaryBlue else GrayText
+                                )
+                            },
+                            label = {
+                                Text(
+                                    dest.label,
+                                    color = if (dest == currentDestination) PrimaryBlue else GrayText
+                                )
+                            },
+                            selected = dest == currentDestination,
+                            onClick = {
+                                currentDestination = dest
+                                selectedLampId = null
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = Color.Transparent
                             )
-                        },
-                        label = {
-                            Text(
-                                dest.label,
-                                color = if (dest == currentDestination) PrimaryBlue else GrayText
-                            )
-                        },
-                        selected = dest == currentDestination,
-                        onClick = {
-                            currentDestination = dest
-                            selectedLampId = null
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = Color.Transparent
                         )
-                    )
+                    }
                 }
             }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (currentDestination) {
-                AppDestinations.HOME -> HomeScreen(
-                    viewModel = viewModel,
-                    selectedLampId = selectedLampId,
-                    onLampSelect = { selectedLampId = it }
-                )
-                AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
-                AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
-                AppDestinations.PROFILE -> ProfileScreen(
-                    name = viewModel.currentUsername,
-                    email = viewModel.currentEmail,
-                    onLogoutClick = { viewModel.logout() },
-                    onCreateAccountClick = onCreateAccountClick
-                )
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                when (currentDestination) {
+                    AppDestinations.HOME -> HomeScreen(
+                        viewModel = viewModel,
+                        selectedLampId = selectedLampId,
+                        onLampSelect = { selectedLampId = it }
+                    )
+                    AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
+                    AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
+                    AppDestinations.PROFILE -> ProfileScreen(
+                        name = viewModel.currentUsername,
+                        email = viewModel.currentEmail,
+                        onLogoutClick = { viewModel.logout() },
+                        onAIIntelligenceClick = { showAIScreen = true },
+                        onCreateAccountClick = onCreateAccountClick
+                    )
+                }
             }
         }
     }

@@ -164,7 +164,7 @@ fun LampControlScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Online",
+                                text = "En ligne",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextGreen,
                                 fontWeight = FontWeight.Medium

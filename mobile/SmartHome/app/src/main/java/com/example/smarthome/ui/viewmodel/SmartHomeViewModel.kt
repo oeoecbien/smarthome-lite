@@ -50,6 +50,13 @@ class SmartHomeViewModel : ViewModel() {
     var events = mutableStateOf<List<com.example.smarthome.data.model.ApiEvent>>(emptyList())
         private set
 
+    // --- Intelligence Artificielle ---
+    var aiScenario = mutableStateOf<AIScenarioResponse?>(null)
+        private set
+    
+    var isAILoading = mutableStateOf(false)
+        private set
+
     // ─── État interne ─────────────────────────────────────────────────────────────
     private var token: String? = null
     private var debounceJob: Job? = null
@@ -89,16 +96,43 @@ class SmartHomeViewModel : ViewModel() {
                 }
                 launch { fetchSmartDimmingData() }
                 launch { fetchEvents() }
+                launch { fetchAIScenario() }
 
                 // 4. Lancement du refresh auto
                 startAutoRefresh()
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                errorMessage.value = "Erreur connexion : ${e.localizedMessage}"
+                if (e is HttpException) {
+                    errorMessage.value = when (e.code()) {
+                        401 -> "Identifiants incorrects."
+                        403 -> "Accès refusé."
+                        404 -> "Serveur introuvable."
+                        422 -> "Données invalides : ${e.response()?.errorBody()?.string() ?: "Erreur format"}"
+                        500 -> "Erreur interne du serveur."
+                        else -> "Erreur HTTP ${e.code()} : ${e.message()}"
+                    }
+                } else {
+                    errorMessage.value = "Erreur de connexion : Vérifiez votre internet."
+                }
                 isLoggedIn = false
             } finally {
                 isLoading.value = false
+            }
+        }
+    }
+
+    // ─── Intelligence Artificielle ──────────────────────────────────────────────
+    fun fetchAIScenario() {
+        if (token == null) return
+        viewModelScope.launch {
+            try {
+                isAILoading.value = true
+                aiScenario.value = repository.getCurrentScenario(token!!)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isAILoading.value = false
             }
         }
     }
@@ -159,6 +193,26 @@ class SmartHomeViewModel : ViewModel() {
                     devices.value = currentList
                 }
                 errorMessage.value = "Erreur : ${e.localizedMessage}"
+            }
+        }
+    }
+
+    // ─── Ajouter un appareil ─────────────────────────────────────────────────────
+    fun addDevice(name: String, type: String, gpioPin: Int, raspberryPiId: Int, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                isLoading.value = true
+                errorMessage.value = null
+                
+                repository.addDevice(token!!, gpioPin, name, raspberryPiId, type)
+                fetchDevices()
+                onSuccess()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                errorMessage.value = "Erreur lors de l'ajout : ${e.localizedMessage}"
+            } finally {
+                isLoading.value = false
             }
         }
     }
@@ -251,6 +305,7 @@ class SmartHomeViewModel : ViewModel() {
                         fetchDevices()
                         fetchSmartDimmingData()
                         fetchEvents()
+                        fetchAIScenario()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -271,6 +326,7 @@ class SmartHomeViewModel : ViewModel() {
         errorMessage.value = null
         isLoggedIn = false
         isDevicesLoading.value = false
+        aiScenario.value = null
     }
 
     // ─── Registration ─────────────────────────────────────────────────────────────
@@ -295,11 +351,14 @@ class SmartHomeViewModel : ViewModel() {
                 registrationSuccess.value = true
             } catch (e: Exception) {
                 e.printStackTrace()
-                if (e is HttpException && e.code() == 422) {
-                    val errorBody = e.response()?.errorBody()?.string()
-                    registrationError.value = "Données invalides : $errorBody"
+                if (e is HttpException) {
+                    registrationError.value = when (e.code()) {
+                        409 -> "Cet utilisateur existe déjà."
+                        422 -> "Données invalides : ${e.response()?.errorBody()?.string()}"
+                        else -> "Erreur ${e.code()} lors de l'inscription."
+                    }
                 } else {
-                    registrationError.value = "Erreur inscription : ${e.localizedMessage}"
+                    registrationError.value = "Erreur réseau : ${e.localizedMessage}"
                 }
             } finally {
                 isRegistering.value = false

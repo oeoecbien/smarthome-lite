@@ -3,9 +3,7 @@ package com.example.smarthome.data.repository
 import com.example.smarthome.data.api.DeviceStateRequest
 import com.example.smarthome.data.api.RetrofitInstance
 import com.example.smarthome.data.api.UserResponse
-import com.example.smarthome.data.model.SmartDevice
-import com.example.smarthome.data.model.SmartLight
-import com.example.smarthome.data.model.SmartSensor
+import com.example.smarthome.data.model.*
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -60,6 +58,11 @@ class RealSmartHomeRepository : SmartHomeRepository {
         }.awaitAll().filterNotNull()
     }
 
+    override suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): ApiDevice {
+        val request = AddDeviceRequest(gpio_pin = gpioPin, name = name, raspberry_pi_id = raspberryPiId, type = type)
+        return api.addDevice(token, request)
+    }
+
     override suspend fun updateState(
         token: String, deviceId: Int, state: Boolean, brightness: Int
     ) {
@@ -90,5 +93,9 @@ class RealSmartHomeRepository : SmartHomeRepository {
     override suspend fun register(username: String, email: String, password: String): UserResponse {
         val request = com.example.smarthome.data.model.RegisterRequest(username, email, password)
         return api.register(request)
+    }
+
+    override suspend fun getCurrentScenario(token: String): AIScenarioResponse {
+        return api.getAICurrentScenario(token)
     }
 }

@@ -2,6 +2,7 @@ package com.example.smarthome.data.repository
 
 import com.example.smarthome.data.api.UserResponse
 import com.example.smarthome.data.model.SmartDevice
+import com.example.smarthome.data.model.AIScenarioResponse
 
 /**
  * Résultat du login : contient le token Bearer ET les infos utilisateur.
@@ -27,6 +28,11 @@ interface SmartHomeRepository {
     suspend fun getDevices(token: String): List<SmartDevice>
 
     /**
+     * Ajoute un nouvel appareil.
+     */
+    suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): com.example.smarthome.data.model.ApiDevice
+
+    /**
      * Met à jour l'état (on/off) d'un appareil et sa luminosité.
      */
     suspend fun updateState(token: String, deviceId: Int, state: Boolean, brightness: Int)
@@ -46,4 +52,7 @@ interface SmartHomeRepository {
 
     // --- Inscription ---
     suspend fun register(username: String, email: String, password: String): UserResponse
+
+    // --- Intelligence Artificielle ---
+    suspend fun getCurrentScenario(token: String): AIScenarioResponse
 }

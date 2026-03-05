@@ -1,10 +1,6 @@
 package com.example.smarthome.data.api
 
-import com.example.smarthome.data.model.ApiDevice
-import com.example.smarthome.data.model.ApiSensor
-import com.example.smarthome.data.model.LoginRequest
-import com.example.smarthome.data.model.RegisterRequest
-import com.example.smarthome.data.model.TokenResponse
+import com.example.smarthome.data.model.*
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -37,6 +33,12 @@ interface SmartHomeApi {
 
     @GET("api/devices/")
     suspend fun getDevices(@Header("Authorization") token: String): List<ApiDevice>
+
+    @POST("api/devices/")
+    suspend fun addDevice(
+        @Header("Authorization") token: String,
+        @Body request: AddDeviceRequest
+    ): ApiDevice
 
     // --- AJOUTE CECI ---
     @PUT("api/devices/{device_id}/brightness")
@@ -81,4 +83,8 @@ interface SmartHomeApi {
 
     @POST("api/auth/register")
     suspend fun register(@Body request: RegisterRequest): UserResponse
+
+    // --- IA Intelligence ---
+    @GET("api/ai/current-scenario")
+    suspend fun getAICurrentScenario(@Header("Authorization") token: String): AIScenarioResponse
 }
