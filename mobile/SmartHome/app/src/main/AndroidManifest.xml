@@ -6,9 +6,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_smarthome_clair"
+        android:icon="@mipmap/icon_smarthome"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_smarthome_clair_round"
+        android:roundIcon="@mipmap/icon_smarthome_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartHome"
         android:usesCleartextTraffic="true">

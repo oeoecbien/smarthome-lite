@@ -1,4 +1,4 @@
-package com.example.smarthome
+package com.example.smarthome.data.api
 
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
