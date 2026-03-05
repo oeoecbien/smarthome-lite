@@ -57,19 +57,21 @@ class SmartHomeViewModel : ViewModel() {
     var isAILoading = mutableStateOf(false)
         private set
 
+    // --- Règles ---
+    var rules = mutableStateOf<List<RuleResponse>>(emptyList())
+        private set
+    
+    var isRulesLoading = mutableStateOf(false)
+        private set
+
     // ─── État interne ─────────────────────────────────────────────────────────────
     private var token: String? = null
     private var debounceJob: Job? = null
     private var refreshJob: Job? = null
     
-    // Garde en mémoire l'heure (en millisecondes) de la dernière modification par l'utilisateur
-    // pour chaque appareil. K=Id Device, V=Timestamp
     private val lastUpdateMap = mutableMapOf<Int, Long>()
-    
-    // Durée pendant laquelle on ignore les données venant du serveur après une modif locale (5s)
     private val IGNORE_SERVER_DELAY_MS = 5000L
 
-    // Le repository est fourni par RepositoryProvider (fake ou réel selon USE_FAKE)
     private val repository = RepositoryProvider.repository
 
     // ─── Login ────────────────────────────────────────────────────────────────────
@@ -79,16 +81,13 @@ class SmartHomeViewModel : ViewModel() {
                 isLoading.value = true
                 errorMessage.value = null
 
-                // 1. Authentification (Seul appel bloquant pour l'UI)
                 val loginResult = repository.login(username, password)
                 token = loginResult.token
                 currentUsername = loginResult.userInfo.username
                 currentEmail = loginResult.userInfo.email ?: ""
 
-                // 2. On connecte l'utilisateur IMMÉDIATEMENT
                 isLoggedIn = true
 
-                // 3. On lance le chargement des données en ARRIÈRE-PLAN
                 isDevicesLoading.value = true
                 launch { 
                     fetchDevices() 
@@ -97,8 +96,8 @@ class SmartHomeViewModel : ViewModel() {
                 launch { fetchSmartDimmingData() }
                 launch { fetchEvents() }
                 launch { fetchAIScenario() }
+                launch { fetchRules() }
 
-                // 4. Lancement du refresh auto
                 startAutoRefresh()
 
             } catch (e: Exception) {
@@ -106,14 +105,10 @@ class SmartHomeViewModel : ViewModel() {
                 if (e is HttpException) {
                     errorMessage.value = when (e.code()) {
                         401 -> "Identifiants incorrects."
-                        403 -> "Accès refusé."
-                        404 -> "Serveur introuvable."
-                        422 -> "Données invalides : ${e.response()?.errorBody()?.string() ?: "Erreur format"}"
-                        500 -> "Erreur interne du serveur."
-                        else -> "Erreur HTTP ${e.code()} : ${e.message()}"
+                        else -> "Erreur HTTP ${e.code()}"
                     }
                 } else {
-                    errorMessage.value = "Erreur de connexion : Vérifiez votre internet."
+                    errorMessage.value = "Erreur de connexion."
                 }
                 isLoggedIn = false
             } finally {
@@ -149,7 +144,6 @@ class SmartHomeViewModel : ViewModel() {
         currentList[index] = device
         devices.value = currentList
         
-        // On enregistre qu'on vient de modifier cet appareil
         lastUpdateMap[device.id] = System.currentTimeMillis()
 
         if (oldDevice is SmartLight) {
@@ -163,7 +157,6 @@ class SmartHomeViewModel : ViewModel() {
             try {
                 if (token == null) return@launch
 
-                // CAS 1 : L'interrupteur (ON/OFF) a changé
                 if (newLamp.isOn != oldLamp.isOn) {
                     val brightnessInt = (newLamp.brightness * 100).toInt()
                     repository.updateState(
@@ -174,7 +167,6 @@ class SmartHomeViewModel : ViewModel() {
                     )
                 }
 
-                // CAS 2 : La luminosité a changé (lampe allumée)
                 if (newLamp.brightness != oldLamp.brightness && newLamp.isOn) {
                     repository.updateBrightness(
                         token    = token!!,
@@ -185,13 +177,6 @@ class SmartHomeViewModel : ViewModel() {
 
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Rollback en cas d'erreur
-                val currentList = devices.value.toMutableList()
-                val idx = currentList.indexOfFirst { it.id == newLamp.id }
-                if (idx != -1) {
-                    currentList[idx] = oldLamp
-                    devices.value = currentList
-                }
                 errorMessage.value = "Erreur : ${e.localizedMessage}"
             }
         }
@@ -210,7 +195,7 @@ class SmartHomeViewModel : ViewModel() {
                 onSuccess()
             } catch (e: Exception) {
                 e.printStackTrace()
-                errorMessage.value = "Erreur lors de l'ajout : ${e.localizedMessage}"
+                errorMessage.value = "Erreur lors de l'ajout."
             } finally {
                 isLoading.value = false
             }
@@ -222,27 +207,52 @@ class SmartHomeViewModel : ViewModel() {
         if (token == null) return
         try {
             val serverDevices = repository.getDevices(token!!)
-            
             val currentTime = System.currentTimeMillis()
             val currentLocalDevices = devices.value.associateBy { it.id }
-            
-            // On merge les devices du serveur avec nos devices locaux
             val mergedDevices = serverDevices.map { serverDevice ->
                 val lastUpdateTime = lastUpdateMap[serverDevice.id] ?: 0L
                 val isRecentlyUpdatedLocally = (currentTime - lastUpdateTime) < IGNORE_SERVER_DELAY_MS
-                
                 if (isRecentlyUpdatedLocally && currentLocalDevices.containsKey(serverDevice.id)) {
-                    // Le serveur n'a peut-être pas encore la bonne valeur, on garde notre valeur locale
                     currentLocalDevices[serverDevice.id]!!
                 } else {
-                    // Le délai est passé ou pas de modif locale récente, on prend la valeur du serveur
                     serverDevice
                 }
             }
-            
             devices.value = mergedDevices
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    // ─── Fetch Rules ─────────────────────────────────────────────────────────────
+    fun fetchRules() {
+        if (token == null) return
+        viewModelScope.launch {
+            try {
+                isRulesLoading.value = true
+                rules.value = repository.getRules(token!!)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                isRulesLoading.value = false
+            }
+        }
+    }
+
+    fun createRule(rule: RuleRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                isLoading.value = true
+                repository.createRule(token!!, rule)
+                fetchRules()
+                onSuccess()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                errorMessage.value = "Erreur lors de la création de la règle."
+            } finally {
+                isLoading.value = false
+            }
         }
     }
 
@@ -262,22 +272,15 @@ class SmartHomeViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 if (token == null) return@launch
-                
-                // Active le bouton immédiatement (Optimistic UI)
                 val currentStatus = smartDimmingStatus.value
                 if (currentStatus != null) {
                     smartDimmingStatus.value = currentStatus.copy(enabled = enabled)
                 }
-
                 val newStatus = repository.updateSmartDimmingStatus(token!!, enabled)
                 smartDimmingStatus.value = newStatus
-                
-                // Recharge l'historique potentiellement mis à jour
                 smartDimmingHistory.value = repository.getSmartDimmingHistory(token!!)
             } catch (e: Exception) {
                 e.printStackTrace()
-                errorMessage.value = "Erreur Smart Dimming : ${e.localizedMessage}"
-                // Rollback (re-fetch)
                 fetchSmartDimmingData()
             }
         }
@@ -306,6 +309,9 @@ class SmartHomeViewModel : ViewModel() {
                         fetchSmartDimmingData()
                         fetchEvents()
                         fetchAIScenario()
+                        // Rules are usually more static, maybe fetch less often? 
+                        // Let's stick to fetchRules() call in startAutoRefresh if needed.
+                        fetchRules()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -318,7 +324,6 @@ class SmartHomeViewModel : ViewModel() {
     fun logout() {
         debounceJob?.cancel()
         refreshJob?.cancel()
-
         token = null
         currentUsername = ""
         currentEmail = ""
@@ -327,15 +332,14 @@ class SmartHomeViewModel : ViewModel() {
         isLoggedIn = false
         isDevicesLoading.value = false
         aiScenario.value = null
+        rules.value = emptyList()
     }
 
     // ─── Registration ─────────────────────────────────────────────────────────────
     var registrationSuccess = mutableStateOf(false)
         private set
-
     var registrationError = mutableStateOf<String?>(null)
         private set
-
     var isRegistering = mutableStateOf(false)
         private set
 
@@ -345,21 +349,11 @@ class SmartHomeViewModel : ViewModel() {
                 isRegistering.value = true
                 registrationError.value = null
                 registrationSuccess.value = false
-
                 repository.register(username, email, password)
-
                 registrationSuccess.value = true
             } catch (e: Exception) {
                 e.printStackTrace()
-                if (e is HttpException) {
-                    registrationError.value = when (e.code()) {
-                        409 -> "Cet utilisateur existe déjà."
-                        422 -> "Données invalides : ${e.response()?.errorBody()?.string()}"
-                        else -> "Erreur ${e.code()} lors de l'inscription."
-                    }
-                } else {
-                    registrationError.value = "Erreur réseau : ${e.localizedMessage}"
-                }
+                registrationError.value = "Erreur d'inscription."
             } finally {
                 isRegistering.value = false
             }

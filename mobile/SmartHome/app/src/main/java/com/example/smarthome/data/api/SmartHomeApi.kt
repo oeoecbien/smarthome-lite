@@ -1,17 +1,8 @@
 package com.example.smarthome.data.api
 
 import com.example.smarthome.data.model.*
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.Header
-import retrofit2.http.POST
-import retrofit2.http.PUT
-import retrofit2.http.Path
-import retrofit2.http.Query
+import retrofit2.http.*
 
-
-// [NOUVEAU] Pour les infos utilisateur (/api/auth/me)
-// Adapte les champs si ton API renvoie des noms différents (ex: "email" vs "mail")
 data class UserResponse(
     val id: Int?,
     val username: String,
@@ -23,11 +14,10 @@ data class UserResponse(
 
 data class DeviceStateRequest(
     val state: Boolean,
-    val brightness: Int // L'API attend un entier (ex: 33) et pas un float (0.33)
+    val brightness: Int
 )
+
 interface SmartHomeApi {
-    // Attention: Je suppose que le endpoint de login est "/token" (standard FastAPI)
-    // Si c'est autre chose (ex: /auth/login), change-le ici.
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
 
@@ -40,19 +30,18 @@ interface SmartHomeApi {
         @Body request: AddDeviceRequest
     ): ApiDevice
 
-    // --- AJOUTE CECI ---
     @PUT("api/devices/{device_id}/brightness")
     suspend fun updateBrightness(
         @Header("Authorization") token: String,
         @Path("device_id") deviceId: Int,
-        @Query("intensity") intensity: Float // On envoie la valeur (0.0 à 1.0)
+        @Query("intensity") intensity: Float
     )
 
     @PUT("api/devices/{device_id}/state")
     suspend fun updateState(
         @Header("Authorization") token: String,
         @Path("device_id") deviceId: Int,
-        @Body request: DeviceStateRequest // <-- On envoie l'objet JSON complet ici
+        @Body request: DeviceStateRequest
     ): ApiDevice
 
     @GET("api/devices/{device_id}/sensor")
@@ -60,7 +49,6 @@ interface SmartHomeApi {
         @Header("Authorization") token: String,
         @Path("device_id") deviceId: Int
     ): ApiSensor
-
 
     @GET("api/smart-dimming/status")
     suspend fun getSmartDimmingStatus(@Header("Authorization") token: String): com.example.smarthome.data.model.SmartDimmingStatus
@@ -74,7 +62,6 @@ interface SmartHomeApi {
         @Body request: com.example.smarthome.data.model.SmartDimmingRequest
     ): com.example.smarthome.data.model.SmartDimmingStatus
 
-    // --- Événements ---
     @GET("api/events")
     suspend fun getEvents(@Header("Authorization") token: String): List<com.example.smarthome.data.model.ApiEvent>
 
@@ -84,7 +71,16 @@ interface SmartHomeApi {
     @POST("api/auth/register")
     suspend fun register(@Body request: RegisterRequest): UserResponse
 
-    // --- IA Intelligence ---
     @GET("api/ai/current-scenario")
     suspend fun getAICurrentScenario(@Header("Authorization") token: String): AIScenarioResponse
+
+    // --- Rules ---
+    @GET("api/rules/")
+    suspend fun getRules(@Header("Authorization") token: String): List<RuleResponse>
+
+    @POST("api/rules/")
+    suspend fun createRule(
+        @Header("Authorization") token: String,
+        @Body request: RuleRequest
+    ): RuleResponse
 }

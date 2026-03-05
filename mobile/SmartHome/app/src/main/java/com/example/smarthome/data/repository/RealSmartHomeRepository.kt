@@ -98,4 +98,12 @@ class RealSmartHomeRepository : SmartHomeRepository {
     override suspend fun getCurrentScenario(token: String): AIScenarioResponse {
         return api.getAICurrentScenario(token)
     }
+
+    override suspend fun getRules(token: String): List<RuleResponse> {
+        return api.getRules(token)
+    }
+
+    override suspend fun createRule(token: String, rule: RuleRequest): RuleResponse {
+        return api.createRule(token, rule)
+    }
 }
