@@ -171,11 +171,11 @@ async def get_raspberry_pi_node_sensor(
         raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")
     if node_id < 1 or node_id > 255:
         raise HTTPException(status_code=400, detail="node_id doit être entre 1 et 255")
-    logger.info("GET sensor: rpi_id=%s rpi=%s node_id=%s", rpi_id, rpi.name, node_id)
+    logger.debug("GET sensor: rpi_id=%s rpi=%s node_id=%s", rpi_id, rpi.name, node_id)
     device_service = DeviceService(db)
     try:
         data = await device_service.get_sensor_data_from_rpi(rpi, node_id)
-        logger.info("GET sensor OK: rpi_id=%s node_id=%s", rpi_id, node_id)
+        logger.debug("GET sensor OK: rpi_id=%s node_id=%s", rpi_id, node_id)
         return data
     except Exception as e:
         logger.warning("GET sensor failed: rpi_id=%s node_id=%s err=%s", rpi_id, node_id, e)
@@ -210,7 +210,7 @@ async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[
     """
     import time
     from app.database import SessionLocal
-    logger.info("Sensor stream started: rpi_id=%s node_id=%s", rpi_id, node_id)
+    logger.debug("Sensor stream started: rpi_id=%s node_id=%s", rpi_id, node_id)
     try:
         while True:
             t0 = time.monotonic()
@@ -243,7 +243,7 @@ async def _sensor_stream_generator(rpi_id: int, node_id: int) -> AsyncGenerator[
                 break
     except asyncio.CancelledError:
         pass
-    logger.info("Sensor stream ended: rpi_id=%s node_id=%s", rpi_id, node_id)
+    logger.debug("Sensor stream ended: rpi_id=%s node_id=%s", rpi_id, node_id)
 
 
 @router.get("/{rpi_id}/nodes/{node_id}/sensor/stream")
@@ -257,7 +257,7 @@ async def stream_raspberry_pi_node_sensor(
     Flux temps réel des données capteur (Server-Sent Events).
     Envoie un événement toutes les 5 secondes. Fermez la connexion pour arrêter.
     """
-    logger.info("GET sensor/stream: rpi_id=%s node_id=%s", rpi_id, node_id)
+    logger.debug("GET sensor/stream: rpi_id=%s node_id=%s", rpi_id, node_id)
     rpi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi_id).first()
     if not rpi:
         raise HTTPException(status_code=404, detail="Raspberry Pi introuvable")

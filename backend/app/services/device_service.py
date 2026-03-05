@@ -63,7 +63,7 @@ class DeviceService:
             kwargs["headers"] = headers
         timeout_sec = timeout_override if timeout_override is not None else settings.raspberry_pi_timeout
         if "/sensor" in endpoint:
-            logger.info("RPi sensor request: %s %s (timeout=%ss)", method, url, timeout_sec)
+            logger.debug("RPi sensor request: %s %s (timeout=%ss)", method, url, timeout_sec)
         try:
             async with httpx.AsyncClient(timeout=timeout_sec) as client:
                 if method.upper() == "GET":
@@ -81,7 +81,7 @@ class DeviceService:
                     motion = result.get("motion")
                     temp = result.get("temperature_c")
                     cached = result.get("cached", False)
-                    logger.info(
+                    logger.debug(
                         "RPi sensor response OK: node_id=%s motion=%s temp=%s cached=%s",
                         result.get("node_id"), motion, temp, cached,
                     )
@@ -247,11 +247,11 @@ class DeviceService:
                     trigger_data={"device_id": device.id, "state": state}
                 )
                 if executed_rules:
-                    logger.info(f"Règles exécutées après changement d'état: {len(executed_rules)}")
+                    logger.debug(f"Règles exécutées après changement d'état: {len(executed_rules)}")
             except Exception as e:
                 logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
         
-        logger.info(f"Device {device.name} state changed to {state} (source: {source})")
+        logger.debug(f"Device {device.name} state changed to {state} (source: {source})")
         
         return device
     
@@ -316,11 +316,11 @@ class DeviceService:
                     trigger_data={"device_id": device.id, "brightness": brightness_stored}
                 )
                 if executed_rules:
-                    logger.info(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
+                    logger.debug(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
             except Exception as e:
                 logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
         
-        logger.info(
+        logger.debug(
             f"Device {device.name} brightness changed "
             f"{previous_brightness}% → {brightness_stored}% (source: {source})"
         )

@@ -27,6 +27,9 @@ logging.basicConfig(
     format=settings.log_format,
 )
 logger = logging.getLogger(__name__)
+# Réduire le bruit : httpx et uvicorn en WARNING
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 # Fichier de log optionnel (visible dans l'interface admin)
 _log_file_path: Path | None = None
@@ -219,7 +222,7 @@ async def lifespan(app: FastAPI):
                                     db.add(presence)
                                     db.commit()
                                     db.refresh(presence)
-                                    logger.info("Présence enregistrée (motion capteur node %s, rpi_id=%s)", node_id, rpi.id)
+                                    logger.debug("Présence enregistrée (motion capteur node %s, rpi_id=%s)", node_id, rpi.id)
                                     try:
                                         rule_engine = RuleEngine(db)
                                         await rule_engine.evaluate_rules(
@@ -326,14 +329,22 @@ async def log_requests(request: Request, call_next):
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
-        
-        # Log structuré
-        logger.info(
-            f"{request.method} {request.url.path} "
-            f"[{response.status_code}] "
-            f"({process_time:.3f}s) "
-            f"- {client_ip}"
-        )
+        path = request.url.path
+        # Lecture capteur Z-Wave : souvent ~4 s, on ne log pas en INFO
+        is_sensor_poll = path.startswith("/api/devices/") and path.endswith("/sensor")
+
+        # Log : erreurs (4xx/5xx) ou requêtes lentes (> 1 s) sauf poll capteur attendu
+        if response.status_code >= 400 or (process_time > 1.0 and not is_sensor_poll):
+            logger.info(
+                f"{request.method} {path} "
+                f"[{response.status_code}] "
+                f"({process_time:.3f}s) "
+                f"- {client_ip}"
+            )
+        else:
+            logger.debug(
+                f"{request.method} {path} [{response.status_code}] ({process_time:.3f}s) - {client_ip}"
+            )
         
         # Collecte de métriques
         try:

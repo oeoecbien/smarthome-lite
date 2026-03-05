@@ -107,7 +107,7 @@ class SmartDimmingService:
             Liste des ajustements effectués
         """
         if not get_smart_dimming_enabled(self.db):
-            logger.info("Smart dimming globally disabled")
+            logger.debug("Smart dimming globally disabled")
             return []
         
         # Récupérer le scénario actuel
