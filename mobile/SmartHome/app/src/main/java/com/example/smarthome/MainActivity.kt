@@ -179,8 +179,8 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
 fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFF2979FF),
     unfocusedBorderColor = Color(0xFF2A3245),
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
+    focusedTextColor = MaterialTheme.colorScheme.primary,
+    unfocusedTextColor = MaterialTheme.colorScheme.primary,
     focusedLabelColor = Color(0xFF9AA4B2),
     unfocusedLabelColor = Color(0xFF9AA4B2),
     cursorColor = Color(0xFF2979FF),
