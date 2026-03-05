@@ -49,7 +49,7 @@ import com.example.smarthome.ui.theme.PrimaryBlue
 import com.example.smarthome.ui.theme.CardBackground
 
 @Composable
-fun LoginScreen(viewModel: SmartHomeViewModel) {
+fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit = {}) {
     // Variables locales pour les champs de texte
     var username by remember { mutableStateOf("admin") } // Pré-rempli pour tester vite
     var password by remember { mutableStateOf("admin123") }
@@ -207,6 +207,24 @@ fun LoginScreen(viewModel: SmartHomeViewModel) {
                     color = TextWhite
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Bouton Créer un compte
+            Button(
+                onClick = onCreateAccountClick,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                )
+            ) {
+                Text(
+                    text = "Créer un compte",
+                    fontSize = 14.sp,
+                    color = Color(0xFF2979FF),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

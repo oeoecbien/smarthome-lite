@@ -40,4 +40,10 @@ interface SmartHomeRepository {
     suspend fun getSmartDimmingStatus(token: String): com.example.smarthome.data.model.SmartDimmingStatus
     suspend fun getSmartDimmingHistory(token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment>
     suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): com.example.smarthome.data.model.SmartDimmingStatus
+
+    // --- Événements ---
+    suspend fun getEvents(token: String): List<com.example.smarthome.data.model.ApiEvent>
+
+    // --- Inscription ---
+    suspend fun register(username: String, email: String, password: String): UserResponse
 }

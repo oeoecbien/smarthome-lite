@@ -3,6 +3,7 @@ package com.example.smarthome.data.api
 import com.example.smarthome.data.model.ApiDevice
 import com.example.smarthome.data.model.ApiSensor
 import com.example.smarthome.data.model.LoginRequest
+import com.example.smarthome.data.model.RegisterRequest
 import com.example.smarthome.data.model.TokenResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -18,8 +19,10 @@ import retrofit2.http.Query
 data class UserResponse(
     val id: Int?,
     val username: String,
-    val email: String?,     // Peut être null selon l'API
-    val full_name: String?  // Peut être null selon l'API
+    val email: String?,
+    val full_name: String? = null,
+    val role: String? = null,
+    val created_at: String? = null
 )
 
 data class DeviceStateRequest(
@@ -63,12 +66,19 @@ interface SmartHomeApi {
     @GET("api/smart-dimming/adjustments")
     suspend fun getSmartDimmingHistory(@Header("Authorization") token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment>
 
-    @PUT("api/smart-dimming/status")
+    @PUT("api/smart-dimming/enable")
     suspend fun updateSmartDimmingStatus(
         @Header("Authorization") token: String,
         @Body request: com.example.smarthome.data.model.SmartDimmingRequest
     ): com.example.smarthome.data.model.SmartDimmingStatus
 
+    // --- Événements ---
+    @GET("api/events")
+    suspend fun getEvents(@Header("Authorization") token: String): List<com.example.smarthome.data.model.ApiEvent>
+
     @GET("api/auth/me")
     suspend fun getUserInfo(@Header("Authorization") token: String): UserResponse
+
+    @POST("api/auth/register")
+    suspend fun register(@Body request: RegisterRequest): UserResponse
 }

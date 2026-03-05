@@ -42,6 +42,10 @@ class SmartHomeViewModel : ViewModel() {
     var smartDimmingHistory = mutableStateOf<List<SmartDimmingAdjustment>>(emptyList())
         private set
 
+    // --- Événements ---
+    var events = mutableStateOf<List<com.example.smarthome.data.model.ApiEvent>>(emptyList())
+        private set
+
     // ─── État interne ─────────────────────────────────────────────────────────────
     private var token: String? = null
     private var debounceJob: Job? = null
@@ -70,9 +74,10 @@ class SmartHomeViewModel : ViewModel() {
                 currentUsername = loginResult.userInfo.username
                 currentEmail = loginResult.userInfo.email ?: ""
 
-                // 2. Premier chargement des devices et Smart Dimming
+                // 2. Premier chargement des devices, Smart Dimming et Evénements
                 fetchDevices()
                 fetchSmartDimmingData()
+                fetchEvents()
 
                 isLoggedIn = true
 
@@ -212,6 +217,17 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    // ─── Fetch Events ─────────────────────────────────────────────────────────────
+    private suspend fun fetchEvents() {
+        if (token == null) return
+        try {
+            events.value = repository.getEvents(token!!)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Optionnel : on ignore silencieusement si l'endpoint échoue
+        }
+    }
+
     // ─── Auto-refresh ─────────────────────────────────────────────────────────────
     private fun startAutoRefresh() {
         refreshJob?.cancel()
@@ -223,6 +239,7 @@ class SmartHomeViewModel : ViewModel() {
                     if (token != null) {
                         fetchDevices()
                         fetchSmartDimmingData()
+                        fetchEvents()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -242,5 +259,39 @@ class SmartHomeViewModel : ViewModel() {
         devices.value = emptyList()
         errorMessage.value = null
         isLoggedIn = false
+    }
+
+    // ─── Registration ─────────────────────────────────────────────────────────────
+    var registrationSuccess = mutableStateOf(false)
+        private set
+
+    var registrationError = mutableStateOf<String?>(null)
+        private set
+
+    var isRegistering = mutableStateOf(false)
+        private set
+
+    fun register(username: String, email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                isRegistering.value = true
+                registrationError.value = null
+                registrationSuccess.value = false
+
+                repository.register(username, email, password)
+
+                registrationSuccess.value = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+                registrationError.value = "Erreur inscription : ${e.localizedMessage}"
+            } finally {
+                isRegistering.value = false
+            }
+        }
+    }
+
+    fun resetRegistration() {
+        registrationSuccess.value = false
+        registrationError.value = null
     }
 }

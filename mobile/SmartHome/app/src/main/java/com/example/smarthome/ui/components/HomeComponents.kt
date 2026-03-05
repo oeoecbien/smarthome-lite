@@ -57,7 +57,7 @@ fun HeaderSection(name: String) {
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text("Bonjour", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp)
+                Text("Bonjour,", color = MaterialTheme.colorScheme.secondary, fontSize = 14.sp)
                 Text(name, color = MaterialTheme.colorScheme.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }

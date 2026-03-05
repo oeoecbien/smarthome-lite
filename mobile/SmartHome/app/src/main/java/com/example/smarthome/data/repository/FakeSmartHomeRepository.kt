@@ -91,6 +91,7 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         delay(300)
         return com.example.smarthome.data.model.SmartDimmingStatus(
             enabled = fakeSmartDimmingEnabled,
+            message = if(fakeSmartDimmingEnabled) "Smart Dimming activé" else "Smart Dimming désactivé",
             adjustments_today = 12,
             active_devices = listOf(1, 2)
         )
@@ -127,8 +128,47 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         fakeSmartDimmingEnabled = enabled
         return com.example.smarthome.data.model.SmartDimmingStatus(
             enabled = enabled,
+            message = if(enabled) "Smart Dimming activé" else "Smart Dimming désactivé",
             adjustments_today = 12,
             active_devices = listOf(1, 2)
+        )
+    }
+
+    // ─── Événements (Fake) ────────────────────────────────────────────────────────
+    override suspend fun getEvents(token: String): List<com.example.smarthome.data.model.ApiEvent> {
+        delay(300)
+        return listOf(
+            com.example.smarthome.data.model.ApiEvent(
+                id = 4283,
+                device_id = 17,
+                device_name = "Lampe du Salon",
+                event_type = "brightness_changed",
+                value = "11->27",
+                source = "smart_dimming_ml",
+                timestamp = "2026-03-04T11:06:28.138892+01:00"
+            ),
+            com.example.smarthome.data.model.ApiEvent(
+                id = 4282,
+                device_id = 17,
+                device_name = "Lampe du Salon",
+                event_type = "brightness_changed",
+                value = "56->11",
+                source = "manual",
+                timestamp = "2026-03-04T10:29:45.229031+01:00"
+            )
+        )
+    }
+
+    // ─── Register (Fake) ──────────────────────────────────────────────────────────
+    override suspend fun register(username: String, email: String, password: String): UserResponse {
+        delay(600)
+        return UserResponse(
+            id = 42,
+            username = username,
+            email = email,
+            full_name = null,
+            role = "user",
+            created_at = "2026-03-04T12:00:00Z"
         )
     }
 }

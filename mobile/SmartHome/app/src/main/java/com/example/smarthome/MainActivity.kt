@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -37,10 +38,26 @@ class MainActivity : ComponentActivity() {
             SmartHomeTheme(dynamicColor = false) {
                 val viewModel: SmartHomeViewModel = viewModel()
 
+                var showRegisterScreen by remember { mutableStateOf(false) }
+
                 if (viewModel.isLoggedIn) {
-                    SmartHomeApp(viewModel)
+                    SmartHomeApp(
+                        viewModel = viewModel,
+                        onCreateAccountClick = {
+                            viewModel.logout()
+                            showRegisterScreen = true
+                        }
+                    )
+                } else if (showRegisterScreen) {
+                    RegisterScreen(
+                        viewModel = viewModel,
+                        onBackToLogin = { showRegisterScreen = false }
+                    )
                 } else {
-                    LoginScreen(viewModel)
+                    LoginScreen(
+                        viewModel = viewModel,
+                        onCreateAccountClick = { showRegisterScreen = true }
+                    )
                 }
             }
         }
@@ -51,7 +68,8 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartHomeApp(
-    viewModel: SmartHomeViewModel
+    viewModel: SmartHomeViewModel,
+    onCreateAccountClick: () -> Unit = {}
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     // Hoisted state for Lamp detail navigation
@@ -64,22 +82,6 @@ fun SmartHomeApp(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
-
-        topBar = {
-            if (selectedLampId == null) {
-                TopAppBar(
-                    title = {
-                        Text(text = currentDestination.label)
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.primary,
-                        navigationIconContentColor = MaterialTheme.colorScheme.primary,
-                        actionIconContentColor = Color.White
-                    )
-                )
-            }
-        },
 
         bottomBar = {
             NavigationBar(
@@ -124,12 +126,13 @@ fun SmartHomeApp(
                     selectedLampId = selectedLampId,
                     onLampSelect = { selectedLampId = it }
                 )
+                AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
                 AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
-                AppDestinations.FAVORITES -> FavoritesScreen()
                 AppDestinations.PROFILE -> ProfileScreen(
-                    viewModel.currentUsername,
-                    viewModel.currentEmail,
-                    { viewModel.logout() }
+                    name = viewModel.currentUsername,
+                    email = viewModel.currentEmail,
+                    onLogoutClick = { viewModel.logout() },
+                    onCreateAccountClick = onCreateAccountClick
                 )
             }
         }
@@ -139,8 +142,8 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
+    EVENTS("Événements", Icons.Default.Notifications),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
-    FAVORITES("Favoris", Icons.Default.Favorite),
     PROFILE("Profil", Icons.Default.AccountBox),
 }
 
