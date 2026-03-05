@@ -5,10 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
@@ -98,11 +95,12 @@ fun SmartHomeApp(
             bottomBar = {
                 NavigationBar(
                     modifier = Modifier
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
-                        .height(72.dp) // Hauteur réduite pour gagner de la place
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp) 
+                        .height(80.dp) 
                         .clip(RoundedCornerShape(28.dp)),
                     containerColor = MaterialTheme.colorScheme.tertiary,
-                    tonalElevation = 0.dp
+                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets(0.dp) 
                 ) {
                     AppDestinations.entries.forEach { dest ->
                         val isSelected = dest == currentDestination
@@ -127,7 +125,7 @@ fun SmartHomeApp(
                                 )
                             },
                             selected = isSelected,
-                            alwaysShowLabel = true, // Important pour que le texte reste visible sans icône
+                            alwaysShowLabel = true,
                             onClick = {
                                 currentDestination = dest
                                 selectedLampId = null
