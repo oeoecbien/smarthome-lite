@@ -191,32 +191,6 @@ fun ProfileScreen(
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
 
-        // --- 5. Bouton Créer un compte ---
-        item {
-            Button(
-                onClick = onCreateAccountClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryBlue,
-                    contentColor = Color.White
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Créer un compte",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
 
         item { Spacer(modifier = Modifier.height(16.dp)) }
 
