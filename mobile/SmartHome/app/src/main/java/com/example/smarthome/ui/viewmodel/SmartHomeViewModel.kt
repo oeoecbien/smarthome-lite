@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
+import retrofit2.HttpException
 
 
 class SmartHomeViewModel : ViewModel() {
@@ -283,7 +284,12 @@ class SmartHomeViewModel : ViewModel() {
                 registrationSuccess.value = true
             } catch (e: Exception) {
                 e.printStackTrace()
-                registrationError.value = "Erreur inscription : ${e.localizedMessage}"
+                if (e is HttpException && e.code() == 422) {
+                    val errorBody = e.response()?.errorBody()?.string()
+                    registrationError.value = "Données invalides : $errorBody"
+                } else {
+                    registrationError.value = "Erreur inscription : ${e.localizedMessage}"
+                }
             } finally {
                 isRegistering.value = false
             }

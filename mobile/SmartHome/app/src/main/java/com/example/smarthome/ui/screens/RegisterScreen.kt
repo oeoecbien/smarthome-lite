@@ -62,6 +62,13 @@ fun RegisterScreen(
     val registrationError by viewModel.registrationError
     val registrationSuccess by viewModel.registrationSuccess
 
+    // Validation logic
+    val isUsernameValid = username.length in 3..50 && username.all { it.isLetterOrDigit() || it == '_' }
+    val isEmailValid = email.isEmpty() || android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val isPasswordValid = password.length >= 8 && password.any { it.isUpperCase() } && password.any { it.isDigit() }
+    
+    val canRegister = isUsernameValid && isEmailValid && isPasswordValid && !isRegistering
+
     // Quand l'inscription réussit, on revient à l'écran de connexion
     LaunchedEffect(registrationSuccess) {
         if (registrationSuccess) {
@@ -131,6 +138,12 @@ fun RegisterScreen(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Nom d'utilisateur") },
+                supportingText = {
+                    if (username.isNotEmpty() && !isUsernameValid) {
+                        Text("3-50 caractères (lettres, chiffres, _)")
+                    }
+                },
+                isError = username.isNotEmpty() && !isUsernameValid,
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Default.Person, contentDescription = null)
@@ -145,7 +158,13 @@ fun RegisterScreen(
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
-                label = { Text("Email") },
+                label = { Text("Email (optionnel)") },
+                supportingText = {
+                    if (email.isNotEmpty() && !isEmailValid) {
+                        Text("Format d'email invalide")
+                    }
+                },
+                isError = email.isNotEmpty() && !isEmailValid,
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Default.Email, contentDescription = null)
@@ -161,6 +180,12 @@ fun RegisterScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Mot de passe") },
+                supportingText = {
+                    if (password.isNotEmpty() && !isPasswordValid) {
+                        Text("Min. 8 caractères, 1 majuscule, 1 chiffre")
+                    }
+                },
+                isError = password.isNotEmpty() && !isPasswordValid,
                 leadingIcon = {
                     Icon(Icons.Default.Lock, contentDescription = null)
                 },
@@ -196,8 +221,8 @@ fun RegisterScreen(
 
             // Bouton d'inscription
             Button(
-                onClick = { viewModel.register(username, email, password) },
-                enabled = !isRegistering && username.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
+                onClick = { viewModel.register(username.trim(), email.trim(), password) },
+                enabled = canRegister,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
