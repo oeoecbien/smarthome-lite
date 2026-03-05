@@ -40,10 +40,12 @@ fun AddDeviceScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                windowInsets = WindowInsets(0.dp) // Supprime les insets qui décalent la barre vers le bas
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0.dp)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -64,24 +66,37 @@ fun AddDeviceScreen(
 
             // Sélection du Type
             Column(modifier = Modifier.fillMaxWidth()) {
-                Text("Type d'appareil", color = Color.Gray, fontSize = 14.sp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                Text(
+                    text = "Type d'appareil",
+                    color = Color.Gray,
+                    fontSize = 14.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val types = listOf("dimmer", "sensor")
+
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    val types = listOf("dimmer", "sensor")
-                    types.forEach { t ->
-                        FilterChip(
+                    types.forEachIndexed { index, t ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = types.size
+                            ),
                             selected = type == t,
                             onClick = { type = t },
-                            label = { Text(t.replaceFirstChar { it.uppercase() }) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PrimaryBlue,
-                                selectedLabelColor = Color.White,
-                                containerColor = Color(0xFF2A3245),
-                                labelColor = Color.Gray
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = PrimaryBlue,
+                                activeContentColor = Color.White,
+                                inactiveContainerColor = Color(0xFF2A3245),
+                                inactiveContentColor = Color.Gray
                             )
-                        )
+                        ) {
+                            Text(t.replaceFirstChar { it.uppercase() })
+                        }
                     }
                 }
             }
