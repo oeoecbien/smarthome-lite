@@ -120,69 +120,7 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ### 2.2 Architecture Modulaire
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│     APPLICATION MOBILE (Kotlin + Compose)  │   APPLICATION WEB   │
-│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
-│                                            │  • Dashboard, Admin │
-└──────────────────────┬─────────────────────┴──────────┬──────────┘
-                       │                                │
-                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
-                       └────────────────┬───────────────┘
-                                        ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    BACKEND API (FastAPI)                         │
-│              Architecture Modulaire Monolithique                 │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   Routes     │  │   Services   │  │   Models     │            │
-│  │              │  │              │  │              │            │
-│  │ • auth       │  │ • ai_service │  │ • User       │            │
-│  │ • devices    │  │ • device_    │  │ • Device     │            │
-│  │ • rules      │  │   service    │  │ • Rule       │            │
-│  │ • ai         │  │ • rule_      │  │ • Presence   │            │
-│  │ • presence   │  │   engine     │  │ • LightRead  │            │
-│  │ • smart_     │  │ • smart_     │  │              │            │
-│  │   dimming    │  │   dimming    │  │              │            │
-│  └──────────────┘  └──────────────┘  └──────────────┘            │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐                              │
-│  │   Schemas    │  │    Utils     │                              │
-│  │  (Pydantic)  │  │              │                              │
-│  │              │  │ • auth (JWT) │                              │
-│  │ • Validation │  │ • validators │                              │
-│  └──────────────┘  └──────────────┘                              │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Machine Learning (ML)                         │  │
-│  │  • generate_data.py                                        │  │
-│  │  • train_model.py                                          │  │
-│  │  • models/scenario_classifier.pkl                          │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└───────────────────────────┬──────────────────────────────────────┘
-                            │
-                            │ SQLAlchemy ORM
-                            ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    DATABASE                                      │
-│              (PostgreSQL + TimescaleDB)                          │
-│  • Tables relationnelles (users, devices, rules)                 │
-│  • Hypertables pour time-series (light_readings)                 │
-│  • Partitioning automatique                                      │
-└──────────────────────────────────────────────────────────────────┘
-                       ▲
-                       │
-                       │ HTTP/REST + API Key
-                       │
-┌──────────────────────────────────────────────────────────────────┐
-│              RASPBERRY PI (Multiples)                            │
-│  • Flask API locale                                              │
-│  • Capteurs (mouvement Z-Wave, luminosité)                       │
-│  • Actionneurs (LED, relais)                                     │
-│  • Envoie événements au backend                                  │
-│  • Reçoit commandes du backend                                   │
-└──────────────────────────────────────────────────────────────────┘
-```
+![Architecture globale](0-docs/soutenance/annexes/images/architecture.png)
 
 ### 2.3 Composants Principaux
 
@@ -572,6 +510,8 @@ Détecter automatiquement les profils d'utilisation pour personnaliser le compor
 8. Enregistrement pour apprentissage futur
 ```
 
+![Pipeline IA](0-docs/soutenance/annexes/images/pipeline%20ia.png)
+
 **Performance globale :**
 - Temps total d'inférence : < 300ms
 - Précision globale : > 80% de satisfaction utilisateur
@@ -919,6 +859,8 @@ light_readings (1) ----< (N) dimming_adjustments
 rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
 ```
+
+![Schéma base de données](0-docs/soutenance/annexes/images/base%20de%20données.png)
 
 ### 4.4 Volumétrie Estimée
 
@@ -1843,69 +1785,7 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ### 2.2 Architecture Modulaire
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│     APPLICATION MOBILE (Kotlin + Compose)   │  APPLICATION WEB   │
-│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
-│                                            │  • Dashboard, Admin │
-└──────────────────────┬─────────────────────┴──────────┬───────────┘
-                       │                                │
-                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
-                       └────────────────┬───────────────┘
-                                        ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    BACKEND API (FastAPI)                         │
-│              Architecture Modulaire Monolithique                 │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐            │
-│  │   Routes     │  │   Services   │  │   Models     │            │
-│  │              │  │              │  │              │            │
-│  │ • auth       │  │ • ai_service │  │ • User       │            │
-│  │ • devices    │  │ • device_    │  │ • Device     │            │
-│  │ • rules      │  │   service    │  │ • Rule       │            │
-│  │ • ai         │  │ • rule_      │  │ • Presence   │            │
-│  │ • presence   │  │   engine     │  │ • LightRead  │            │
-│  │ • smart_     │  │ • smart_     │  │              │            │
-│  │   dimming    │  │   dimming    │  │              │            │
-│  └──────────────┘  └──────────────┘  └──────────────┘            │
-│                                                                  │
-│  ┌──────────────┐  ┌──────────────┐                              │ 
-│  │   Schemas    │  │    Utils     │                              │
-│  │  (Pydantic)  │  │              │                              │
-│  │              │  │ • auth (JWT) │                              │
-│  │ • Validation │  │ • validators │                              │
-│  └──────────────┘  └──────────────┘                              │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              Machine Learning (ML)                         │  │
-│  │  • generate_data.py                                        │  │
-│  │  • train_model.py                                          │  │
-│  │  • models/scenario_classifier.pkl                          │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└───────────────────────────┬──────────────────────────────────────┘
-                            │
-                            │ SQLAlchemy ORM
-                            ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                    DATABASE                                      │
-│              (PostgreSQL + TimescaleDB)                          │
-│  • Tables relationnelles (users, devices, rules)                 │
-│  • Hypertables pour time-series (light_readings)                 │
-│  • Partitioning automatique                                      │
-└──────────────────────────────────────────────────────────────────┘
-                       ▲
-                       │
-                       │ HTTP/REST + API Key
-                       │
-┌──────────────────────────────────────────────────────────────────┐
-│              RASPBERRY PI (Multiples)                            │
-│  • Flask API locale                                              │
-│  • Capteurs (PIR, luminosité)                                    │
-│  • Actionneurs (LED, relais)                                     │
-│  • Envoie événements au backend                                  │
-│  • Reçoit commandes du backend                                   │
-└──────────────────────────────────────────────────────────────────┘
-```
+![Architecture globale](0-docs/soutenance/annexes/images/architecture.png)
 
 ### 2.3 Composants Principaux
 
@@ -2293,6 +2173,8 @@ Détecter automatiquement les profils d'utilisation pour personnaliser le compor
 8. Enregistrement pour apprentissage futur
 ```
 
+![Pipeline IA](0-docs/soutenance/annexes/images/pipeline%20ia.png)
+
 **Performance globale :**
 - Temps total d'inférence : < 300ms
 - Précision globale : > 80% de satisfaction utilisateur
@@ -2634,6 +2516,8 @@ light_readings (1) ----< (N) dimming_adjustments
 rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
 ```
+
+![Schéma base de données](0-docs/soutenance/annexes/images/base%20de%20données.png)
 
 ### 4.4 Volumétrie Estimée
 

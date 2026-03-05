@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
 import type { DeviceStatePatch } from "./device-card"
-import { Lightbulb, Plug, SunDim, Loader2, MapPin, Wifi, WifiOff, RefreshCw } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Loader2, MapPin, RefreshCw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
@@ -16,6 +16,8 @@ interface DeviceCardUserProps {
   device: Device
   onUpdate: () => void
   onDeviceUpdated?: (deviceId: number, patch: DeviceStatePatch) => void
+  /** Suppression (avec confirmation) — même comportement que la page admin */
+  onDelete?: (id: number) => void
 }
 
 const deviceIcons = {
@@ -24,7 +26,7 @@ const deviceIcons = {
   socket: Plug,
 }
 
-export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCardUserProps) {
+export function DeviceCardUser({ device, onUpdate, onDeviceUpdated, onDelete }: DeviceCardUserProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [localBrightness, setLocalBrightness] = useState(device.brightness ?? 99)
@@ -38,14 +40,15 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
   const Icon = deviceIcons[device.type] || Lightbulb
   const isOn = device.state === true || device.state === "ON"
   const hasBrightness = device.type === "light" || device.type === "dimmer"
-  const rpiOnline = device.raspberry_pi_online
 
   const handleToggle = async (checked: boolean) => {
     if (isUpdating) return
     
     setIsUpdating(true)
     try {
-      const res = await deviceService.updateState(device.id, checked)
+      // À l'allumage, envoyer la luminosité actuelle pour reprendre la valeur d'avant extinction
+      const brightnessOn = checked && hasBrightness ? (device.brightness ?? 80) : undefined
+      const res = await deviceService.updateState(device.id, checked, brightnessOn)
       onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
@@ -56,12 +59,10 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
       const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue"
       
       let friendlyMessage = errorMessage
-      if (errorMessage.includes("not responding")) {
-        friendlyMessage = "Le Raspberry Pi ne répond pas. Vérifiez qu'il est en ligne."
-      } else if (errorMessage.includes("offline")) {
-        friendlyMessage = "Le Raspberry Pi est hors ligne."
+      if (errorMessage.includes("not responding") || errorMessage.includes("offline")) {
+        friendlyMessage = "L'appareil ne répond pas. Réessayez dans un instant."
       } else if (errorMessage.includes("timeout") || errorMessage.includes("expiré")) {
-        friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
+        friendlyMessage = "La connexion a expiré. Vérifiez votre réseau."
       }
       
       toast({
@@ -83,9 +84,9 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
       const res = await deviceService.getDeviceState(device.id, true)
       onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
-      toast({ title: "État synchronisé", description: `État de ${device.name} rafraîchi depuis le Raspberry Pi.` })
+      toast({ title: "État actualisé", description: `L'état de ${device.name} a été mis à jour.` })
     } catch {
-      toast({ variant: "destructive", title: "Erreur", description: "Impossible de lire l'état depuis le RPi (hors ligne ou timeout)." })
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de récupérer l'état. Réessayez plus tard." })
       onUpdate()
     } finally {
       setIsSyncing(false)
@@ -94,6 +95,12 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
 
   const handleBrightnessChange = (value: number[]) => {
     setLocalBrightness(value[0])
+  }
+
+  const handleDelete = () => {
+    if (onDelete && window.confirm(`Êtes-vous sûr de vouloir supprimer "${device.name}" ?`)) {
+      onDelete(device.id)
+    }
   }
 
   const handleBrightnessCommit = async (value: number[]) => {
@@ -113,12 +120,10 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
       const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue"
       
       let friendlyMessage = errorMessage
-      if (errorMessage.includes("not responding")) {
-        friendlyMessage = "Le Raspberry Pi ne répond pas. Vérifiez qu'il est en ligne."
-      } else if (errorMessage.includes("offline")) {
-        friendlyMessage = "Le Raspberry Pi est hors ligne."
+      if (errorMessage.includes("not responding") || errorMessage.includes("offline")) {
+        friendlyMessage = "L'appareil ne répond pas. Réessayez dans un instant."
       } else if (errorMessage.includes("timeout") || errorMessage.includes("expiré")) {
-        friendlyMessage = "La requête a expiré. Vérifiez votre connexion."
+        friendlyMessage = "La connexion a expiré. Vérifiez votre réseau."
       }
       
       setLocalBrightness(device.brightness ?? 99)
@@ -171,12 +176,6 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
                     {device.location}
                   </span>
                 )}
-                {rpiOnline !== undefined && (
-                  <span className={cn("text-xs flex items-center gap-1", rpiOnline ? "text-green-600" : "text-muted-foreground")} title={rpiOnline ? "Raspberry Pi en ligne" : "Raspberry Pi hors ligne"}>
-                    {rpiOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-                    {rpiOnline ? "RPi en ligne" : "RPi hors ligne"}
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -188,11 +187,24 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated }: DeviceCard
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={handleSyncFromRpi}
               disabled={isSyncing}
-              title="Synchroniser l'état depuis le Raspberry Pi"
-              aria-label="Synchroniser état RPi"
+              title="Actualiser l'état de l'appareil"
+              aria-label="Actualiser l'état"
             >
               {isSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             </Button>
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:bg-destructive hover:text-white"
+                onClick={handleDelete}
+                disabled={isUpdating}
+                title="Supprimer l'appareil"
+                aria-label={`Supprimer ${device.name}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
             {isUpdating ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (

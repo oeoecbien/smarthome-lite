@@ -34,6 +34,19 @@ const DEVICE_TYPES_BASE = [
 ]
 const DEVICE_TYPES_WITH_SENSOR = [...DEVICE_TYPES_BASE, { value: "sensor", label: "Capteur (Z-Wave)" }]
 
+/** Normalise une chaîne pour la recherche : trim, minuscules, sans accents. */
+function normalizeForSearch(s: string): string {
+  return (s ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+}
+
+const TYPE_LABEL: Record<string, string> = Object.fromEntries(
+  DEVICE_TYPES_WITH_SENSOR.map((t) => [t.value, t.label])
+)
+
 interface NewDeviceForm {
   name: string
   type: "light" | "dimmer" | "socket" | "sensor"
@@ -127,9 +140,14 @@ function DevicesContent() {
   useEffect(() => {
     let result = [...devices]
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter((d) => d.name.toLowerCase().includes(query) || d.location?.toLowerCase().includes(query))
+    const q = normalizeForSearch(searchQuery)
+    if (q) {
+      result = result.filter((d) => {
+        const nameNorm = normalizeForSearch(d.name)
+        const locationNorm = d.location ? normalizeForSearch(d.location) : ""
+        const typeLabelNorm = normalizeForSearch(TYPE_LABEL[d.type] ?? "")
+        return nameNorm.includes(q) || locationNorm.includes(q) || typeLabelNorm.includes(q)
+      })
     }
 
     if (filterLocation && filterLocation !== "all") {
@@ -284,7 +302,7 @@ function DevicesContent() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Ajouter un appareil</DialogTitle>
-                <DialogDescription>Configurez un nouvel appareil connecté à votre système.</DialogDescription>
+                <DialogDescription>Ajoutez un appareil (lumière, variateur ou prise) à votre domicile.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreate}>
                 <div className="space-y-4 py-4">
@@ -326,10 +344,10 @@ function DevicesContent() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="rpi">Raspberry Pi</Label>
+                      <Label htmlFor="rpi">Contrôleur</Label>
                       {raspberryPis.length === 0 ? (
                         <div className="text-sm text-muted-foreground p-2 border rounded-md">
-                          Aucun Raspberry Pi disponible. Veuillez contacter un administrateur.
+                          Aucun contrôleur disponible. Contactez l&apos;administrateur.
                         </div>
                       ) : (
                         <Select
@@ -337,7 +355,7 @@ function DevicesContent() {
                           onValueChange={(value) => setFormData({ ...formData, raspberry_pi_id: Number.parseInt(value) })}
                         >
                           <SelectTrigger id="rpi">
-                            <SelectValue placeholder="Sélectionner un Raspberry Pi" />
+                            <SelectValue placeholder="Choisir un contrôleur" />
                           </SelectTrigger>
                           <SelectContent>
                             {raspberryPis.map((rpi) => (
@@ -350,7 +368,7 @@ function DevicesContent() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="gpio">Broche / Node ID</Label>
+                      <Label htmlFor="gpio">Numéro d&apos;appareil</Label>
                       <Input
                         id="gpio"
                         type="number"
@@ -363,7 +381,7 @@ function DevicesContent() {
                       <p className="text-xs text-muted-foreground">
                         {formData.type === "sensor"
                           ? "Node ID Z-Wave (1–255), ex. 5 pour MultiSensor 7."
-                          : "Sur un RPi Z-Wave : node_id du nœud (ex. 3 pour une ampoule). Sinon numéro GPIO (1–40)."}
+                          : "Numéro indiqué sur le contrôleur pour cet appareil (souvent entre 1 et 40)."}
                       </p>
                     </div>
                   </div>
@@ -613,8 +631,8 @@ function DevicesContent() {
         </div>
         <div className="flex gap-2">
           <Select value={filterLocation} onValueChange={setFilterLocation}>
-            <SelectTrigger className="w-[140px]">
-              <Filter className="h-4 w-4 mr-2" />
+            <SelectTrigger className="min-w-[180px]">
+              <Filter className="h-4 w-4 mr-2 shrink-0" />
               <SelectValue placeholder="Lieu" />
             </SelectTrigger>
             <SelectContent>
@@ -627,7 +645,7 @@ function DevicesContent() {
             </SelectContent>
           </Select>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="min-w-[180px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
@@ -678,6 +696,7 @@ function DevicesContent() {
                 key={device.id}
                 device={device}
                 onUpdate={fetchDevices}
+                onDelete={handleDelete}
                 onDeviceUpdated={handleDeviceUpdated}
               />
             ),

@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge"
 import { ruleService } from "@/lib/services/rule-service"
 import type { Rule } from "@/lib/types"
 import { formatRelativeTime } from "@/lib/formatters"
-import { Settings2, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Settings2, Loader2, Edit } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface RuleCardUserProps {
   rule: Rule
   onUpdate: () => void
+  onEdit?: (rule: Rule) => void
 }
 
 // Fonction pour formater une règle en langage naturel
@@ -56,7 +58,7 @@ function formatRuleDescription(rule: Rule): string {
   return desc
 }
 
-export function RuleCardUser({ rule, onUpdate }: RuleCardUserProps) {
+export function RuleCardUser({ rule, onUpdate, onEdit }: RuleCardUserProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleToggle = async () => {
@@ -114,6 +116,16 @@ export function RuleCardUser({ rule, onUpdate }: RuleCardUserProps) {
           </Badge>
           <span className="text-xs text-muted-foreground">Créée {formatRelativeTime(rule.created_at)}</span>
         </div>
+
+        {/* Modifier */}
+        {onEdit && (
+          <div className="mt-4 pt-3 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => onEdit(rule)} className="w-full sm:w-auto">
+              <Edit className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

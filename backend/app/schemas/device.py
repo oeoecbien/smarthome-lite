@@ -94,7 +94,7 @@ class DeviceState(BaseModel):
     Schéma pour changement d'état d'un appareil.
     """
     state: bool = Field(..., description="État ON/OFF")
-    brightness: Optional[int] = Field(None, ge=0, le=99, description="Intensité lumineuse (0-99)")
+    brightness: Optional[int] = Field(None, ge=0, le=100, description="Intensité lumineuse (0-100), pour reprendre la valeur à l'allumage")
     
     class Config:
         json_schema_extra = {

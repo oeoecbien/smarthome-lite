@@ -82,8 +82,9 @@ export default function RulesPage() {
   // Filtre
   const [filterStatus, setFilterStatus] = useState<string>("all")
 
-  // Formulaire
+  // Formulaire (création ou édition)
   const [formData, setFormData] = useState<RuleFormData>(EMPTY_FORM)
+  const [editingRule, setEditingRule] = useState<Rule | null>(null)
 
   const fetchRules = useCallback(async () => {
     try {
@@ -135,7 +136,61 @@ export default function RulesPage() {
   }, [rules, filterStatus])
 
   const openCreateDialog = () => {
+    setEditingRule(null)
     setFormData(EMPTY_FORM)
+    setSaveError(null)
+    setIsDialogOpen(true)
+  }
+
+  /** Remplit le formulaire à partir d'une règle existante (pour édition). */
+  const ruleToFormData = (rule: Rule): RuleFormData => {
+    const cond = rule.condition as any
+    const conditions = cond?.conditions && Array.isArray(cond.conditions) ? cond.conditions : cond ? [cond] : []
+    let useTime = false
+    let startTime = "08:00"
+    let endTime = "18:00"
+    let presenceMode: "any" | "present" | "absent" = "any"
+    let useLight = false
+    let lightOperator: "<" | ">" | "=" = "<"
+    let lightValue = "100"
+    for (const c of conditions) {
+      if (c?.type === "time" && c.operator === "between" && Array.isArray(c.value) && c.value.length >= 2) {
+        useTime = true
+        startTime = String(c.value[0])
+        endTime = String(c.value[1])
+      } else if (c?.type === "presence") {
+        presenceMode = c.value === true ? "present" : "absent"
+      } else if (c?.type === "light") {
+        useLight = true
+        lightOperator = (c.operator === ">" || c.operator === "=" ? c.operator : "<") as "<" | ">" | "="
+        lightValue = String(c.value ?? 100)
+      }
+    }
+    const act = rule.action as any
+    const deviceId = act?.device_id ?? null
+    const actionType = (act?.action === "turn_on" || act?.action === "turn_off" || act?.action === "set_brightness" ? act.action : "set_brightness") as "turn_on" | "turn_off" | "set_brightness"
+    const brightness = typeof act?.brightness === "number" ? act.brightness : 50
+    return {
+      name: rule.name,
+      description: rule.description ?? "",
+      enabled: rule.enabled,
+      priority: rule.priority,
+      useTime,
+      startTime,
+      endTime,
+      presenceMode,
+      useLight,
+      lightOperator,
+      lightValue,
+      deviceId,
+      actionType,
+      brightness,
+    }
+  }
+
+  const openEditDialog = (rule: Rule) => {
+    setEditingRule(rule)
+    setFormData(ruleToFormData(rule))
     setSaveError(null)
     setIsDialogOpen(true)
   }
@@ -217,17 +272,23 @@ export default function RulesPage() {
     setIsSaving(true)
 
     try {
-      await ruleService.createRule({
+      const payload = {
         name: formData.name,
         description: formData.description || undefined,
         condition: conditionJson,
         action: actionJson,
         enabled: formData.enabled,
         priority: formData.priority,
-      })
+      }
+      if (editingRule) {
+        await ruleService.updateRule(editingRule.id, payload)
+      } else {
+        await ruleService.createRule(payload)
+      }
 
       setIsDialogOpen(false)
       setFormData(EMPTY_FORM)
+      setEditingRule(null)
       await fetchRules()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Erreur lors de la sauvegarde de la règle.")
@@ -319,19 +380,20 @@ export default function RulesPage() {
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
           {filteredRules.map((rule) => (
-            <RuleCardUser key={rule.id} rule={rule} onUpdate={fetchRules} />
+            <RuleCardUser key={rule.id} rule={rule} onUpdate={fetchRules} onEdit={openEditDialog} />
           ))}
         </div>
       )}
 
-      {/* Dialogue création règle */}
+      {/* Dialogue création / édition règle */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="w-full max-w-xl sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nouvelle règle</DialogTitle>
+            <DialogTitle>{editingRule ? "Modifier la règle" : "Nouvelle règle"}</DialogTitle>
             <DialogDescription>
-              Choisissez dans quels cas vos lumières doivent réagir, puis ce qu&apos;elles doivent faire. Répondez
-              simplement aux questions ci‑dessous.
+              {editingRule
+                ? "Modifiez les paramètres de votre règle puis enregistrez."
+                : "Choisissez dans quels cas vos lumières doivent réagir, puis ce qu'elles doivent faire. Répondez simplement aux questions ci‑dessous."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSave}>
@@ -575,7 +637,7 @@ export default function RulesPage() {
                 Annuler
               </Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Création..." : "Créer la règle"}
+                {isSaving ? "Enregistrement..." : editingRule ? "Mettre à jour" : "Créer la règle"}
               </Button>
             </DialogFooter>
           </form>

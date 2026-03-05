@@ -31,6 +31,17 @@ const DEVICE_TYPES = [
   { value: "sensor", label: "Capteur (Z-Wave)" },
 ]
 
+/** Normalise une chaîne pour la recherche : trim, minuscules, sans accents. */
+function normalizeForSearch(s: string): string {
+  return (s ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+}
+
+const TYPE_LABEL: Record<string, string> = Object.fromEntries(DEVICE_TYPES.map((t) => [t.value, t.label]))
+
 interface NewDeviceForm {
   name: string
   type: "light" | "dimmer" | "socket" | "sensor"
@@ -100,9 +111,14 @@ export default function AdminDevicesPage() {
   useEffect(() => {
     let result = [...devices]
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter((d) => d.name.toLowerCase().includes(query) || d.location?.toLowerCase().includes(query))
+    const q = normalizeForSearch(searchQuery)
+    if (q) {
+      result = result.filter((d) => {
+        const nameNorm = normalizeForSearch(d.name)
+        const locationNorm = d.location ? normalizeForSearch(d.location) : ""
+        const typeLabelNorm = normalizeForSearch(TYPE_LABEL[d.type] ?? "")
+        return nameNorm.includes(q) || locationNorm.includes(q) || typeLabelNorm.includes(q)
+      })
     }
 
     if (filterLocation && filterLocation !== "all") {
@@ -310,8 +326,8 @@ export default function AdminDevicesPage() {
         </div>
         <div className="flex gap-2">
           <Select value={filterLocation} onValueChange={setFilterLocation}>
-            <SelectTrigger className="w-[140px]">
-              <Filter className="h-4 w-4 mr-2" />
+            <SelectTrigger className="min-w-[180px]">
+              <Filter className="h-4 w-4 mr-2 shrink-0" />
               <SelectValue placeholder="Lieu" />
             </SelectTrigger>
             <SelectContent>
@@ -324,7 +340,7 @@ export default function AdminDevicesPage() {
             </SelectContent>
           </Select>
           <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="min-w-[180px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
