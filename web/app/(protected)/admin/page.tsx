@@ -17,9 +17,17 @@ import {
   ArrowRight,
   Server,
   Radio,
+  Activity,
 } from "lucide-react"
 
 const adminSections = [
+  {
+    title: "Monitoring (Logs & Métriques)",
+    description: "Logs applicatifs et métriques API (requêtes, erreurs, temps de réponse)",
+    href: "/admin/monitoring",
+    icon: Activity,
+    color: "text-orange-500",
+  },
   {
     title: "Gestion Raspberry Pi",
     description: "Gérer les Raspberry Pi connectés, leurs API Keys et leur état",

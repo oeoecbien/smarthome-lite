@@ -43,6 +43,7 @@
   - [5.1 Backend (Serveur)](#51-backend-serveur)
   - [5.2 Raspberry Pi (Contrôleur)](#52-raspberry-pi-contrôleur)
   - [5.3 Application Mobile (Android)](#53-application-mobile-android)
+  - [5.4 Application Web (Next.js)](#54-application-web-nextjs)
 - [6. Communication entre Composants](#6-communication-entre-composants)
   - [6.1 Protocoles](#61-protocoles)
   - [6.2 Flux de Données : Allumage d'une Lampe (Contrôle Manuel)](#62-flux-de-données--allumage-dune-lampe-contrôle-manuel)
@@ -59,8 +60,9 @@
   - [8.1 Environnement de Déploiement](#81-environnement-de-déploiement)
   - [8.2 Installation Backend](#82-installation-backend)
   - [8.3 Installation Raspberry Pi](#83-installation-raspberry-pi)
-  - [8.4 Déploiement Application Mobile](#84-déploiement-application-mobile)
-  - [8.5 Scripts de Déploiement Automatisé](#85-scripts-de-déploiement-automatisé)
+  - [8.4 Application Web (Next.js)](#84-application-web-nextjs)
+  - [8.5 Déploiement Application Mobile](#85-déploiement-application-mobile)
+  - [8.6 Scripts de Déploiement Automatisé](#86-scripts-de-déploiement-automatisé)
 - [9. Livrables](#9-livrables)
   - [9.1 Code Source](#91-code-source)
   - [9.2 Documentation](#92-documentation)
@@ -85,7 +87,7 @@
 - **Matériel disponible :** 
   - Un Raspberry Pi par étudiant
   - Actionneurs : ampoules dimmables, prises connectées
-  - Bluetooth intégré du Raspberry Pi pour détection de présence
+  - Capteur de mouvement Z-Wave (ex. MultiSensor 7) pour détection de présence
   - Capteurs de luminosité (LDR ou BH1750)
 
 ### 1.3 Objectifs Prioritaires
@@ -120,15 +122,14 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    APPLICATION MOBILE                            │
-│              (Kotlin + Jetpack Compose)                          │
-│  • HTTP/REST Client                                              │
-│  • Optimistic UI Updates                                         │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │
-                       │ HTTP/REST
-                       │ JWT
-                       ▼
+│     APPLICATION MOBILE (Kotlin + Compose)  │   APPLICATION WEB   │
+│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
+│                                            │  • Dashboard, Admin │
+└──────────────────────┬─────────────────────┴──────────┬──────────┘
+                       │                                │
+                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
+                       └────────────────┬───────────────┘
+                                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                         │
 │              Architecture Modulaire Monolithique                 │
@@ -176,7 +177,7 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 ┌──────────────────────────────────────────────────────────────────┐
 │              RASPBERRY PI (Multiples)                            │
 │  • Flask API locale                                              │
-│  • Capteurs (Bluetooth, luminosité)                              │
+│  • Capteurs (mouvement Z-Wave, luminosité)                       │
 │  • Actionneurs (LED, relais)                                     │
 │  • Envoie événements au backend                                  │
 │  • Reçoit commandes du backend                                   │
@@ -201,7 +202,7 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 #### Module Intelligence Artificielle
 - Classification de scénarios (Decision Tree)
-- Régression pour prédiction d'intensité (Random Forest) - À implémenter
+- Régression pour prédiction d'intensité (Random Forest)
 - Clustering des habitudes (K-Means) - À implémenter
 - Gestion des modèles ML
 
@@ -235,20 +236,16 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 ### 2.5 Configuration Matérielle Raspberry Pi
 
-#### Détection de Présence Bluetooth
-- **Fonction :** Détection de présence via scan Bluetooth des devices à proximité
-- **Technologie :** Bluetooth Classic (pybluez) ou Bluetooth Low Energy (bleak)
-- **Portée :** Variable selon la force du signal (RSSI)
+#### Détection de présence (capteur Z-Wave)
+- **Fonction :** Détection de présence via capteur de mouvement Z-Wave (ex. Aeotec MultiSensor 7)
+- **Technologie :** Z-Wave JS UI, Binary Sensor (CC 48)
 - **Avantages :**
-  - Identification des personnes via leurs devices (téléphone, montre, etc.)
-  - Pas de matériel supplémentaire requis (Bluetooth intégré au Raspberry Pi)
-  - Détection de la force du signal (RSSI) pour estimer la proximité
-  - Association MAC address → utilisateur pour identification personnalisée
+  - Détection fiable du mouvement dans la pièce
+  - Intégration avec l’API Flask RPi et le backend (POST /api/presence)
+  - Déclenchement des règles d’automatisation et mise à jour du scénario IA
 - **Configuration :**
-  - Intervalle de scan : 30 secondes (configurable)
-  - Durée du scan : 10 secondes (configurable)
-  - Seuil RSSI : -80 dBm par défaut (configurable)
-  - Liste de devices connus : optionnelle (vide = tous les devices)
+  - Variable d’environnement `MULTISENSOR7_NODE_ID` (node_id du capteur sur le réseau Z-Wave)
+  - Si `MULTISENSOR7_NODE_ID=0` ou non défini, la détection de présence est désactivée
 
 #### Capteur de Luminosité BH1750 (I²C)
 - **Fonction :** Mesure de l'intensité lumineuse ambiante
@@ -338,14 +335,13 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 #### F4 : Système de Détection
 **Fonctionnalités :**
-- Détection en temps réel via scan Bluetooth périodique
-- Enregistrement horodaté des événements avec adresse MAC et force du signal (RSSI)
-- Filtrage anti-rebond (ignorer détections < 5 secondes)
-- Association avec la localisation (pièce)
-- Identification des utilisateurs via mapping MAC address → utilisateur (table `bluetooth_devices`)
+- Détection en temps réel via capteur de mouvement Z-Wave (ex. MultiSensor 7)
+- Enregistrement horodaté des événements de présence
+- Association avec la localisation (pièce / Raspberry Pi)
+- Déclenchement automatique des règles et mise à jour du scénario IA
 
 **Implémentation technique :**
-Le Raspberry Pi scanne périodiquement les devices Bluetooth à proximité (toutes les 30 secondes par défaut). Chaque device détecté est identifié par son adresse MAC et sa force de signal (RSSI). Le système peut mapper les adresses MAC aux utilisateurs via la table `bluetooth_devices`, permettant une identification personnalisée. Chaque détection validée génère un événement envoyé immédiatement au serveur backend avec les informations Bluetooth (MAC, RSSI, user_id si mappé).
+L’API Flask sur le Raspberry Pi interroge périodiquement l’état du capteur Z-Wave (Binary Sensor CC 48). À chaque front montant (mouvement détecté), elle envoie un `POST /api/presence` au backend avec l’identifiant du capteur. Le backend enregistre la détection dans la table `presence`, déclenche l’évaluation des règles et met à jour le scénario actif (Day / Away / etc.).
 
 #### F5 : Historique de Présence
 **Fonctionnalités :**
@@ -771,20 +767,17 @@ Référentiel des appareils connectés. Chaque appareil appartient à un utilisa
 - Chaque utilisateur voit uniquement ses propres appareils
 
 #### Table : presence
-Historique des détections de présence via Bluetooth.
+Historique des détections de présence (capteur de mouvement Z-Wave ou autre source).
 
 **Colonnes :**
 - id : Clé primaire auto-incrémentée
 - raspberry_pi_id : Clé étrangère vers raspberry_pis
 - detected_at : Timestamp de la détection
-- device_mac_address : Adresse MAC du device Bluetooth détecté (format: AA:BB:CC:DD:EE:FF, optionnel)
-- signal_strength : Force du signal RSSI en dBm (optionnel)
-- user_id : ID de l'utilisateur associé (optionnel, si MAC mappée dans bluetooth_devices)
+- sensor_node_id : Node ID Z-Wave du capteur (optionnel, si détection via Z-Wave)
 
 **Index :**
 - Index sur detected_at pour requêtes temporelles rapides
-- Index sur device_mac_address pour recherche par MAC
-- Index sur user_id pour recherche par utilisateur
+- Index sur raspberry_pi_id pour recherche par pièce
 
 #### Table : light_readings
 **Nouvelle table pour le smart dimming**
@@ -885,24 +878,6 @@ Enregistrement des ajustements automatiques d'intensité.
 **Intérêt :**
 Permet d'analyser l'efficacité du smart dimming et de détecter les patterns pour l'apprentissage futur.
 
-#### Table : bluetooth_devices
-**Nouvelle table pour l'identification des utilisateurs via Bluetooth**
-
-Association entre adresses MAC Bluetooth et utilisateurs pour identification personnalisée.
-
-**Colonnes :**
-- id : Clé primaire auto-incrémentée
-- user_id : Clé étrangère vers users
-- mac_address : Adresse MAC du device (format: AA:BB:CC:DD:EE:FF, unique)
-- device_name : Nom descriptif (ex: "iPhone de Jean", "Montre de Marie")
-- device_type : Type de device ('phone', 'watch', 'headphones', etc.)
-- is_active : Booléen indiquant si le device est actif
-- created_at : Timestamp de création
-- updated_at : Timestamp de mise à jour
-
-**Utilisation :**
-Lorsqu'une détection Bluetooth est enregistrée, le système tente de mapper l'adresse MAC à un utilisateur via cette table. Si une correspondance est trouvée, le champ `user_id` de la table `presence` est automatiquement rempli, permettant une identification personnalisée.
-
 #### Table : user_preferences
 **Nouvelle table pour l'apprentissage des préférences**
 
@@ -928,14 +903,10 @@ Ces données peuvent alimenter un modèle de régression pour personnaliser le s
 users (1) ----< (N) devices
     |
     +-------< (N) user_preferences
-    |
-    +-------< (N) bluetooth_devices
 
 raspberry_pis (1) ----< (N) devices
     |
     +-------< (N) presence
-    |           |
-    |           +-----> (N) users (via user_id, optionnel)
     |
     +-------< (N) light_readings
 
@@ -944,8 +915,6 @@ devices (1) ----< (N) events
     +-------< (N) dimming_adjustments
 
 light_readings (1) ----< (N) dimming_adjustments
-
-presence (N) ----< (1) bluetooth_devices (via device_mac_address, optionnel)
 
 rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
@@ -1053,9 +1022,11 @@ backend/
 │       └── validators.py          # Validateurs personnalisés
 │
 ├── ml/                            # Machine Learning
-│   ├── generate_data.py           # Génération données synthétiques
+│   ├── generate_data.py           # Génération données synthétiques (classification)
 │   ├── train_model.py             # Entraînement Decision Tree
-│   └── models/                    # Modèles sauvegardés (.pkl)
+│   ├── generate_regression_data.py # Données régression (intensité)
+│   ├── train_regression_model.py   # Entraînement Random Forest (régression)
+│   └── models/                    # Modèles sauvegardés (.pkl, métriques)
 │
 ├── requirements.txt               # Dépendances Python
 ├── .env.example                   # Exemple de configuration
@@ -1067,38 +1038,26 @@ backend/
 **Système d'exploitation :**
 - Raspberry Pi OS Lite (Debian)
 
-**Framework web :**
-- Flask 2.3+
-- Flask-CORS 4.0+
+**Option Z-Wave (implémentation actuelle dans `raspberry/`) :**
+- API Flask (`api_flask_zwave.py`) sur le port 5000, conforme au contrat backend SmartHome Lite
+- Communication avec Z-Wave JS UI (Socket.IO / WebSocket) pour piloter ampoules et prises Z-Wave
+- `gpio_pin` côté backend = `node_id` Z-Wave ; détection de présence via MultiSensor 7 (optionnel)
+- Voir `raspberry/README.md` et `zwave-js/` pour Z-Wave JS UI
 
-**Contrôle GPIO et Bluetooth :**
-- RPi.GPIO 0.7+ (LED, relais)
-- pybluez ou bleak (détection Bluetooth pour présence)
-- smbus2 (communication I²C pour BH1750)
-- spidev (communication SPI pour LDR + MCP3008)
-
-**Structure du projet :**
-
+**Structure du projet (Z-Wave) :**
 ```
-raspberry-pi/
-├── main.py                     # Point d'entrée principal
-├── config.py                   # Configuration GPIO, URLs, API Key
-├── sensors/
-│   ├── bluetooth.py          # Module détection Bluetooth (détection de présence)
-│   ├── light_sensor_i2c.py    # Module BH1750 (I²C)
-│   └── light_sensor_spi.py    # Module LDR + MCP3008 (SPI)
-├── actuators/
-│   ├── led_light.py           # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle module relais
-├── api/
-│   └── local_api.py           # API Flask locale
-├── services/
-│   ├── server_client.py       # Client HTTP vers serveur backend
-│   ├── device_manager.py      # Gestionnaire d'appareils
-│   ├── event_reporter.py      # Reporter événements au backend
-│   └── light_monitor.py       # Service de monitoring luminosité
+raspberry/
+├── api_flask_zwave.py         # API Flask (état, luminosité, présence)
+├── zwave_client.py            # Client Z-Wave JS (Socket.IO / WebSocket)
+├── zwave_cache.py             # Cache nœuds Z-Wave
+├── zwave_constants.py         # Constantes Z-Wave
+├── config.py                  # Configuration (URLs, API Key)
 └── requirements.txt
 ```
+
+**Option GPIO (référence) :**
+- Flask 2.3+, Flask-CORS ; RPi.GPIO (LED, relais), smbus2 (BH1750), spidev (LDR + MCP3008)
+- Structure alternative : `sensors/` (light_sensor_*), `actuators/` (led_light, relay), `api/local_api.py`, `services/` (server_client, device_manager, event_reporter, light_monitor)
 
 **Service light_monitor.py :**
 Ce service lit périodiquement le capteur de luminosité et envoie les valeurs au backend :
@@ -1133,7 +1092,7 @@ Ce service lit périodiquement le capteur de luminosité et envoie les valeurs a
 **Structure du projet :**
 
 ```
-mobile/app/src/main/java/com/smarthome/
+mobile/SmartHome/app/src/main/java/com/example/smarthome/
 ├── data/
 │   ├── model/                  # Modèles de données (Device, Rule, etc.)
 │   ├── remote/                 # Couche réseau (Retrofit)
@@ -1173,6 +1132,10 @@ mobile/app/src/main/java/com/smarthome/
 - Toggle pour activer/désactiver temporairement
 - Liste des derniers ajustements automatiques avec justifications
 - Indicateur du scénario actif
+
+### 5.4 Application Web (Next.js)
+
+**Framework :** Next.js 16+ (App Router), React 19, TypeScript. **UI :** Tailwind CSS 4, Radix UI, Recharts. **Fonctionnalités :** Authentification (login, JWT), tableau de bord (appareils, règles), pages admin (présence), graphiques présence/luminosité. **Structure :** `web/app/(protected)/`, `web/app/login/`, `web/lib/` (services API).
 
 ---
 
@@ -1216,17 +1179,16 @@ mobile/app/src/main/java/com/smarthome/
 
 ### 6.3 Flux de Données : Détection de Présence avec Règle
 
-1. **Module Bluetooth** scanne périodiquement les devices à proximité (toutes les 30s)
-2. **BluetoothSensor** détecte un nouveau device (adresse MAC + RSSI)
-3. **Filtrage anti-rebond** vérifie qu'aucune détection récente pour cette MAC (< 5s)
-4. **BackendClient** envoie immédiatement un POST au backend avec MAC et RSSI
-5. **Backend** tente de mapper la MAC à un utilisateur via la table `bluetooth_devices`
-6. **Backend** enregistre la détection dans la table `presence` (avec MAC, RSSI, user_id si mappé)
-7. **RuleEngine** est déclenché et évalue toutes les règles actives
-8. Si une règle est satisfaite, **DeviceService** exécute l'action définie
-9. **Backend** envoie la commande au Raspberry Pi concerné
-10. **Appareil** change d'état selon l'action (ex: allumage lampe à 70%)
-11. **Backend** enregistre l'événement avec source 'automatic'
+1. **Capteur Z-Wave** (ex. MultiSensor 7) détecte un mouvement (Binary Sensor CC 48)
+2. **API Flask** sur le RPi interroge périodiquement l’état du capteur (toutes les 5 s)
+3. **Front montant** (passage à « mouvement détecté ») déclenche l’envoi vers le backend
+4. **API Flask** envoie `POST /api/presence` avec `sensor_node_id` et header `X-API-Key`
+5. **Backend** enregistre la détection dans la table `presence`
+6. **RuleEngine** est déclenché et évalue toutes les règles actives
+7. Si une règle est satisfaite, **DeviceService** exécute l’action définie
+8. **Backend** envoie la commande au Raspberry Pi concerné
+9. **Appareil** change d’état selon l’action (ex. allumage lampe à 70 %)
+10. **Backend** enregistre l’événement avec source `automatic`
 
 **Temps total estimé :** < 3 secondes
 
@@ -1539,7 +1501,26 @@ python main.py
 **7. Service systemd**
 Créer /etc/systemd/system/smarthome-rpi.service pour démarrage automatique au boot.
 
-### 8.4 Déploiement Application Mobile
+### 8.4 Application Web (Next.js)
+
+**Développement :**
+```bash
+cd web
+npm install
+npm run dev
+```
+Accès : http://localhost:3000
+
+**Build de production :**
+```bash
+cd web
+npm run build
+npm run start
+```
+
+**Configuration :** Définir l’URL de l’API backend (variable d’environnement ou fichier de config) pour que le frontend appelle le bon serveur.
+
+### 8.5 Déploiement Application Mobile
 
 **Build de l'APK :**
 
@@ -1575,7 +1556,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 - Si lenteur : vérifier que le serveur est accessible depuis le réseau mobile
 - Si crash : consulter les logs via Android Studio (adb logcat)
 
-### 8.5 Scripts de Déploiement Automatisé
+### 8.6 Scripts de Déploiement Automatisé
 
 **Création de scripts bash pour automatiser :**
 
@@ -1604,7 +1585,8 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 
 **Repository Git incluant :**
 - Code backend (FastAPI) avec tous les services
-- Code Raspberry Pi (Flask + GPIO + capteurs)
+- Code Raspberry Pi (Flask + Z-Wave ou GPIO/capteurs)
+- Code application web (Next.js)
 - Code application mobile (Kotlin + Compose)
 - Scripts de migration base de données (Alembic)
 - Scripts d'entraînement IA (génération + training)
@@ -1688,8 +1670,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
    - Confirmation visuelle sur lampe physique
 
    **Partie 2 : Détection et automatisation (30s)**
-   - Détection de présence via scan Bluetooth
-   - Identification de l'utilisateur via adresse MAC
+   - Détection de présence via capteur de mouvement Z-Wave
    - Déclenchement automatique d'une règle
    - Lampe s'allume automatiquement
    - Affichage événement dans historique
@@ -1785,6 +1766,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
   - [5.1 Backend (Serveur)](#51-backend-serveur)
   - [5.2 Raspberry Pi (Contrôleur)](#52-raspberry-pi-contrôleur)
   - [5.3 Application Mobile (Android)](#53-application-mobile-android)
+  - [5.4 Application Web (Next.js)](#54-application-web-nextjs)
 - [6. Communication entre Composants](#6-communication-entre-composants)
   - [6.1 Protocoles](#61-protocoles)
   - [6.2 Flux de Données : Allumage d'une Lampe (Contrôle Manuel)](#62-flux-de-données--allumage-dune-lampe-contrôle-manuel)
@@ -1801,8 +1783,9 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
   - [8.1 Environnement de Déploiement](#81-environnement-de-déploiement)
   - [8.2 Installation Backend](#82-installation-backend)
   - [8.3 Installation Raspberry Pi](#83-installation-raspberry-pi)
-  - [8.4 Déploiement Application Mobile](#84-déploiement-application-mobile)
-  - [8.5 Scripts de Déploiement Automatisé](#85-scripts-de-déploiement-automatisé)
+  - [8.4 Application Web (Next.js)](#84-application-web-nextjs)
+  - [8.5 Déploiement Application Mobile](#85-déploiement-application-mobile)
+  - [8.6 Scripts de Déploiement Automatisé](#86-scripts-de-déploiement-automatisé)
 - [9. Livrables](#9-livrables)
   - [9.1 Code Source](#91-code-source)
   - [9.2 Documentation](#92-documentation)
@@ -1862,15 +1845,14 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                    APPLICATION MOBILE                            │
-│              (Kotlin + Jetpack Compose)                          │
-│  • HTTP/REST Client                                              │
-│  • Optimistic UI Updates                                         │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │
-                       │ HTTP/REST
-                       │ JWT
-                       ▼
+│     APPLICATION MOBILE (Kotlin + Compose)   │  APPLICATION WEB   │
+│  • HTTP/REST Client, Optimistic UI         │  (Next.js + React)  │
+│                                            │  • Dashboard, Admin │
+└──────────────────────┬─────────────────────┴──────────┬───────────┘
+                       │                                │
+                       │ HTTP/REST, JWT                 │ HTTP/REST, JWT
+                       └────────────────┬───────────────┘
+                                        ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                    BACKEND API (FastAPI)                         │
 │              Architecture Modulaire Monolithique                 │
@@ -1943,7 +1925,7 @@ Le backend est organisé en modules fonctionnels clairement séparés :
 
 #### Module Intelligence Artificielle
 - Classification de scénarios (Decision Tree)
-- Régression pour prédiction d'intensité (Random Forest) - À implémenter
+- Régression pour prédiction d'intensité (Random Forest)
 - Clustering des habitudes (K-Means) - À implémenter
 - Gestion des modèles ML
 
@@ -2755,9 +2737,11 @@ backend/
 │       └── validators.py          # Validateurs personnalisés
 │
 ├── ml/                            # Machine Learning
-│   ├── generate_data.py           # Génération données synthétiques
+│   ├── generate_data.py           # Génération données synthétiques (classification)
 │   ├── train_model.py             # Entraînement Decision Tree
-│   └── models/                    # Modèles sauvegardés (.pkl)
+│   ├── generate_regression_data.py # Données régression (intensité)
+│   ├── train_regression_model.py   # Entraînement Random Forest (régression)
+│   └── models/                    # Modèles sauvegardés (.pkl, métriques)
 │
 ├── requirements.txt               # Dépendances Python
 ├── .env.example                   # Exemple de configuration
@@ -2773,35 +2757,9 @@ backend/
 - Flask 2.3+
 - Flask-CORS 4.0+
 
-**Contrôle GPIO :**
-- RPi.GPIO 0.7+ (capteur PIR, LED, relais)
-- smbus2 (communication I²C pour BH1750)
-- spidev (communication SPI pour LDR + MCP3008)
+**Option Z-Wave (implémentation actuelle dans `raspberry/`) :** API Flask + Z-Wave JS (voir section 5.2 ci-dessus). **Option GPIO / PIR :** RPi.GPIO (capteur PIR, LED, relais), smbus2 (BH1750), spidev (LDR). Structure alternative : `raspberry-pi/sensors/` (pir_sensor, light_sensor_*), `actuators/`, `api/local_api.py`, `services/` (server_client, device_manager, event_reporter, light_monitor).
 
-**Structure du projet :**
-
-```
-raspberry-pi/
-├── main.py                     # Point d'entrée principal
-├── config.py                   # Configuration GPIO, URLs, API Key
-├── sensors/
-│   ├── pir_sensor.py          # Module capteur PIR
-│   ├── light_sensor_i2c.py    # Module BH1750 (I²C)
-│   └── light_sensor_spi.py    # Module LDR + MCP3008 (SPI)
-├── actuators/
-│   ├── led_light.py           # Contrôle LED avec PWM
-│   └── relay.py               # Contrôle module relais
-├── api/
-│   └── local_api.py           # API Flask locale
-├── services/
-│   ├── server_client.py       # Client HTTP vers serveur backend
-│   ├── device_manager.py      # Gestionnaire d'appareils
-│   ├── event_reporter.py      # Reporter événements au backend
-│   └── light_monitor.py       # Service de monitoring luminosité
-└── requirements.txt
-```
-
-**Service light_monitor.py :**
+**Service light_monitor.py (option GPIO) :**
 Ce service lit périodiquement le capteur de luminosité et envoie les valeurs au backend :
 - Fréquence : toutes les 10 secondes
 - Format : JSON avec lux_value et timestamp
@@ -2834,7 +2792,7 @@ Ce service lit périodiquement le capteur de luminosité et envoie les valeurs a
 **Structure du projet :**
 
 ```
-mobile/app/src/main/java/com/smarthome/
+mobile/SmartHome/app/src/main/java/com/example/smarthome/
 ├── data/
 │   ├── model/                  # Modèles de données (Device, Rule, etc.)
 │   ├── remote/                 # Couche réseau (Retrofit)
@@ -2874,6 +2832,10 @@ mobile/app/src/main/java/com/smarthome/
 - Toggle pour activer/désactiver temporairement
 - Liste des derniers ajustements automatiques avec justifications
 - Indicateur du scénario actif
+
+### 5.4 Application Web (Next.js)
+
+**Framework :** Next.js 16+ (App Router), React 19, TypeScript. **UI :** Tailwind CSS 4, Radix UI, Recharts. **Fonctionnalités :** Authentification (login, JWT), tableau de bord (appareils, règles), pages admin (présence), graphiques présence/luminosité. **Structure :** `web/app/(protected)/`, `web/app/login/`, `web/lib/` (services API).
 
 ---
 
@@ -3239,7 +3201,26 @@ python main.py
 **7. Service systemd**
 Créer /etc/systemd/system/smarthome-rpi.service pour démarrage automatique au boot.
 
-### 8.4 Déploiement Application Mobile
+### 8.4 Application Web (Next.js)
+
+**Développement :**
+```bash
+cd web
+npm install
+npm run dev
+```
+Accès : http://localhost:3000
+
+**Build de production :**
+```bash
+cd web
+npm run build
+npm run start
+```
+
+**Configuration :** Définir l’URL de l’API backend (variable d’environnement ou fichier de config) pour que le frontend appelle le bon serveur.
+
+### 8.5 Déploiement Application Mobile
 
 **Build de l'APK :**
 
@@ -3275,7 +3256,7 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 - Si lenteur : vérifier que le serveur est accessible depuis le réseau mobile
 - Si crash : consulter les logs via Android Studio (adb logcat)
 
-### 8.5 Scripts de Déploiement Automatisé
+### 8.6 Scripts de Déploiement Automatisé
 
 **Création de scripts bash pour automatiser :**
 
@@ -3304,7 +3285,8 @@ Utiliser Android Studio ou jarsigner pour signer l'APK avec un keystore.
 
 **Repository Git incluant :**
 - Code backend (FastAPI) avec tous les services
-- Code Raspberry Pi (Flask + GPIO + capteurs)
+- Code Raspberry Pi (Flask + Z-Wave ou GPIO/capteurs)
+- Code application web (Next.js)
 - Code application mobile (Kotlin + Compose)
 - Scripts de migration base de données (Alembic)
 - Scripts d'entraînement IA (génération + training)

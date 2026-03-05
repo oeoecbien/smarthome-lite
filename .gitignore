@@ -33,6 +33,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+# Sauvegardes BDD (scripts db/backup.sh)
+db/backups/
+
 # Fichiers temporaires globaux
 *.tmp
 *.temp

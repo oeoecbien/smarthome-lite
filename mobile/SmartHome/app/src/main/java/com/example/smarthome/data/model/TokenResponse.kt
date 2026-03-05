@@ -1,4 +1,4 @@
-package com.example.smarthome
+package com.example.smarthome.data.model
 
 data class TokenResponse(
     val access_token: String,

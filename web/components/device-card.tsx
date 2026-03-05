@@ -66,7 +66,9 @@ export function DeviceCard({ device, onUpdate, onDelete, onDeviceUpdated, onEdit
     
     setIsUpdating(true)
     try {
-      const res = await deviceService.updateState(device.id, checked)
+      // À l'allumage, envoyer la luminosité actuelle pour reprendre la valeur d'avant extinction
+      const brightnessOn = checked && hasBrightness ? (device.brightness ?? 80) : undefined
+      const res = await deviceService.updateState(device.id, checked, brightnessOn)
       onDeviceUpdated?.(device.id, { state: res.state, brightness: res.brightness })
       onUpdate()
       toast({
