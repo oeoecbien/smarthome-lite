@@ -3,6 +3,7 @@ package com.example.smarthome.ui.theme
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -13,20 +14,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.runtime.SideEffect
+import com.example.smarthome.ui.theme.*
 
 private val DarkColorScheme = darkColorScheme(
     primary = TextWhite,
-    secondary = AccentOrange,
-    tertiary = AccentPurple,
-    background = DarkBackgroundColor
-
+    secondary = GrayText,
+    tertiary = CardBackground,
+    background = DarkBackground
 )
-
 private val LightColorScheme = lightColorScheme(
-    primary = TextGray,
-    secondary = AccentOrange,
-    tertiary = AccentPurple,
-    background = backgroundColor,
+    primary = BlackText,
+    secondary = GrayText,
+    tertiary = WhiteBack,
+    background = WhiteBackground,
 )
 
 @Composable
@@ -52,12 +52,14 @@ fun SmartHomeTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            //window.statusBarColor = android.graphics.Color.TRANSPARENT
-            //window.navigationBarColor = android.graphics.Color.TRANSPARENT
-            val insetsController = WindowCompat.getInsetsController(window, view)
-            insetsController.isAppearanceLightStatusBars = !darkTheme
-            insetsController.isAppearanceLightNavigationBars = !darkTheme
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                //window.statusBarColor = android.graphics.Color.TRANSPARENT
+                //window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+                insetsController.isAppearanceLightNavigationBars = !darkTheme
+            }
         }
     }
 

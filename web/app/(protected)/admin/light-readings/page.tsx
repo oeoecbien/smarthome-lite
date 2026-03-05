@@ -16,10 +16,6 @@ import type { LightReading } from "@/lib/types"
 import type { RaspberryPi } from "@/lib/services/raspberry-pi-service"
 import { Sun, RefreshCw, AlertCircle, Filter, Gauge } from "lucide-react"
 
-function readingToPercent(lux: number): number {
-  return Math.min(100, Math.round((lux / 65535) * 100))
-}
-
 export default function LightReadingsPage() {
   const isAdmin = useIsAdmin()
   const router = useRouter()
@@ -96,10 +92,6 @@ export default function LightReadingsPage() {
 
   const lastReading = readings[0]
   const avgLux = readings.length > 0 ? readings.reduce((sum, r) => sum + r.lux_value, 0) / readings.length : 0
-  const avgPercent =
-    readings.length > 0
-      ? readings.reduce((sum, r) => sum + readingToPercent(r.lux_value), 0) / readings.length
-      : 0
 
   return (
     <div className="space-y-6">
@@ -116,7 +108,7 @@ export default function LightReadingsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -145,19 +137,6 @@ export default function LightReadingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-secondary/10">
-                <Gauge className="h-6 w-6 text-secondary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{formatNumber(avgPercent, 1)}%</p>
-                <p className="text-sm text-muted-foreground">Moyenne pourcentage</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Chart */}
@@ -222,7 +201,6 @@ export default function LightReadingsPage() {
                       <Sun className="h-4 w-4 text-warning shrink-0" />
                       <span className="font-medium">{formatNumber(reading.lux_value)} lux</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{readingToPercent(reading.lux_value)} %</span>
                     <span className="text-xs text-muted-foreground">
                       {reading.raspberry_pi_name ?? `RPi #${reading.raspberry_pi_id}`}
                       {reading.sensor_type ? ` · ${reading.sensor_type}` : ""}
