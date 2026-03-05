@@ -279,6 +279,7 @@ class SmartHomeViewModel : ViewModel() {
                 registrationError.value = null
                 registrationSuccess.value = false
 
+
                 repository.register(username, email, password)
 
                 registrationSuccess.value = true
