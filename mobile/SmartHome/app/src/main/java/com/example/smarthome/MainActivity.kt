@@ -79,6 +79,8 @@ fun SmartHomeApp(
     
     // NOUVEAU : État pour afficher l'écran IA
     var showAIScreen by rememberSaveable { mutableStateOf(false) }
+
+    var showRuleScreen by rememberSaveable { mutableStateOf(false) }
     
     // Observe lamps to get the name for the title
     val devices by viewModel.devices
@@ -89,7 +91,14 @@ fun SmartHomeApp(
             viewModel = viewModel,
             onBack = { showAIScreen = false }
         )
-    } else {
+    }
+    else if (showRuleScreen) {
+        RulesScreen(
+            viewModel = viewModel,
+            onBack = { showRuleScreen = false }
+        )
+    }
+    else {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.background,
@@ -169,7 +178,7 @@ fun SmartHomeApp(
                         email = viewModel.currentEmail,
                         onLogoutClick = { viewModel.logout() },
                         onAIIntelligenceClick = { showAIScreen = true },
-                        onCreateAccountClick = onCreateAccountClick
+                        onRulesClick = { showRuleScreen = true }
                     )
                 }
             }

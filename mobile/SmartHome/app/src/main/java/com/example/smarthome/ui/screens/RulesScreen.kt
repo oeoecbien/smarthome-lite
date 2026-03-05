@@ -25,7 +25,7 @@ import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RulesScreen(viewModel: SmartHomeViewModel) {
+fun RulesScreen(viewModel: SmartHomeViewModel, onBack: () -> Unit) {
     val rules by viewModel.rules
     val isLoading by viewModel.isRulesLoading
     var showAddRule by remember { mutableStateOf(false) }
@@ -39,8 +39,13 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Règles de gestion", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                    title = { Text("Règles de gestion", color = MaterialTheme.colorScheme.primary) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 )
             },
             floatingActionButton = {
@@ -109,7 +114,7 @@ fun AddRuleScreen(
                 title = { Text("Nouvelle règle", color = MaterialTheme.colorScheme.primary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)

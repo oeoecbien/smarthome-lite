@@ -24,16 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoFixHigh
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -59,7 +52,7 @@ fun ProfileScreen(
     email: String,
     onLogoutClick: () -> Unit,
     onAIIntelligenceClick: () -> Unit,
-    onCreateAccountClick: () -> Unit = {},
+    onRulesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -148,22 +141,13 @@ fun ProfileScreen(
                 )
 
                 ProfileMenuItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notification Preferences",
-                    subtitle = "Push, Email, SMS",
+                    icon = Icons.Outlined.Rule,
+                    title = "Règle de gestion",
+                    subtitle = "Gestion des événements",
                     iconBgColor = AccentOrange.copy(alpha = 0.1f),
-                    iconColor = AccentOrange
+                    iconColor = AccentOrange,
+                    onClick = onRulesClick
                 )
-
-                if (name == "admin") {
-                    ProfileMenuItem(
-                        icon = Icons.Default.Code,
-                        title = "API Configuration",
-                        subtitle = "Keys & Webhooks",
-                        iconBgColor = AccentPurple.copy(alpha = 0.1f),
-                        iconColor = AccentPurple
-                    )
-                }
             }
         }
 
