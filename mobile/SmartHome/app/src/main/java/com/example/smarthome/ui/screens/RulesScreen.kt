@@ -1,6 +1,7 @@
 package com.example.smarthome.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smarthome.data.model.*
 import com.example.smarthome.darkTextFieldColors
+import com.example.smarthome.ui.theme.NeonBlue
 import com.example.smarthome.ui.theme.PrimaryBlue
+import com.example.smarthome.ui.theme.TextWhite
 import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,11 +33,18 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
     val rules by viewModel.rules
     val isLoading by viewModel.isRulesLoading
     var showAddRule by remember { mutableStateOf(false) }
+    var selectedRule by remember { mutableStateOf<RuleResponse?>(null) }
 
     if (showAddRule) {
         AddRuleScreen(
             viewModel = viewModel,
             onBack = { showAddRule = false }
+        )
+    } else if (selectedRule != null) {
+        RuleDetailsScreen(
+            rule = selectedRule!!,
+            viewModel = viewModel,
+            onBack = { selectedRule = null }
         )
     } else {
         Scaffold(
@@ -82,7 +92,8 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
                         items(rules) { rule ->
                             RuleCard(
                                 rule = rule,
-                                onToggle = { enabled -> viewModel.toggleRule(rule.id, enabled) }
+                                onToggle = { enabled -> viewModel.toggleRule(rule.id, enabled) },
+                                onClick = { selectedRule = rule }
                             )
                         }
                     }
@@ -269,7 +280,7 @@ fun AddRuleScreen(
                 enabled = name.isNotBlank() && selectedDeviceId != null && !isAdding
             ) {
                 if (isAdding) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 } else {
                     Text("CRÉER LA RÈGLE", fontWeight = FontWeight.Bold)
                 }
@@ -281,38 +292,47 @@ fun AddRuleScreen(
 @Composable
 fun RuleCard(
     rule: RuleResponse,
-    onToggle: (Boolean) -> Unit
+    onToggle: (Boolean) -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = rule.name,
-                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Switch(
-                    checked = rule.enabled,
-                    onCheckedChange = { onToggle(it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = PrimaryBlue
-                    )
+                Text(
+                    text = rule.description,
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    maxLines = 1
                 )
             }
-            Text(text = rule.description, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+
+            Switch(
+                checked = rule.enabled,
+                onCheckedChange = { onToggle(it) },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = TextWhite,
+                    checkedTrackColor = PrimaryBlue,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.primary,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.background
+                )
+            )
         }
     }
 }
