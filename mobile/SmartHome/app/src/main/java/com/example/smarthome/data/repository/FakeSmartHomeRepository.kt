@@ -1,39 +1,40 @@
 package com.example.smarthome.data.repository
 
 import com.example.smarthome.data.api.UserResponse
-import com.example.smarthome.data.model.SmartDevice
-import com.example.smarthome.data.model.SmartLight
-import com.example.smarthome.data.model.SmartSensor
+import com.example.smarthome.data.model.*
 import kotlinx.coroutines.delay
 
 /**
  * Implémentation FAKE du repository.
- * Retourne des données codées en dur avec un délai pour simuler le réseau.
- *
- * Identifiants valides : admin / admin
  */
 class FakeSmartHomeRepository : SmartHomeRepository {
 
-    // ─── Données fake persistantes (mutable pour simuler les mises à jour) ───────
     private val fakeDevices: MutableList<SmartDevice> = mutableListOf(
         SmartLight(id = 1, name = "Lampe Salon",   isOn = true,  brightness = 0.75f),
         SmartLight(id = 2, name = "Lampe Chambre", isOn = false, brightness = 0.50f),
         SmartLight(id = 3, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 4, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 5, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 6, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 7, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 8, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 9, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
+        SmartLight(id = 10, name = "Lampe Cuisine", isOn = true,  brightness = 1.00f),
         SmartSensor(
-            id          = 4,
+            id          = 11,
             name        = "Capteur Entrée",
             temperature = 21.5f,
             humidity    = 55,
             illuminance = 342,
-            motion      = false,
+            motion      = true,
             battery     = 87
         )
     )
 
-    // ─── Login ────────────────────────────────────────────────────────────────────
-    override suspend fun login(username: String, password: String): LoginResult {
-        delay(600) // Simule la latence réseau
+    private val fakeRules = mutableListOf<RuleResponse>()
 
+    override suspend fun login(username: String, password: String): LoginResult {
+        delay(600)
         if (username == "admin" && password == "admin") {
             return LoginResult(
                 token = "Bearer fake-token",
@@ -45,34 +46,52 @@ class FakeSmartHomeRepository : SmartHomeRepository {
                 )
             )
         }
-        // Simule une erreur HTTP 401
-        throw Exception("Identifiants incorrects (utilisez admin / admin en mode fake)")
+        throw Exception("Identifiants incorrects")
     }
 
-    // ─── Devices ──────────────────────────────────────────────────────────────────
+    override suspend fun forgotPassword(usernameOrEmail: String): String {
+        delay(500)
+        return "Un e-mail de réinitialisation a été envoyé à $usernameOrEmail. Votre token est : FAKE-123456 (Simulé)"
+    }
+
+    override suspend fun resetPassword(newPassword: String, token: String): String {
+        delay(500)
+        return "Opération réussie (Simulé)"
+    }
+
     override suspend fun getDevices(token: String): List<SmartDevice> {
         delay(400)
-        return fakeDevices.toList() // Copie défensive
+        return fakeDevices.toList()
     }
 
-    // ─── updateState ──────────────────────────────────────────────────────────────
-    override suspend fun updateState(
-        token: String, deviceId: Int, state: Boolean, brightness: Int
-    ) {
+    override suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): ApiDevice {
+        delay(500)
+        val newId = (fakeDevices.maxOfOrNull { it.id } ?: 0) + 1
+        val newDevice = if (type == "sensor") {
+            SmartSensor(id = newId, name = name, temperature = 0f, humidity = 0, illuminance = 0, motion = false, battery = 100)
+        } else {
+            SmartLight(id = newId, name = name, isOn = false, brightness = 0.5f)
+        }
+        fakeDevices.add(newDevice)
+        return ApiDevice(id = newId, name = name, state = false, brightness = 50, type = type)
+    }
+
+    override suspend fun deleteDevice(token: String, deviceId: Int) {
+        delay(300)
+        fakeDevices.removeAll { it.id == deviceId }
+    }
+
+    override suspend fun updateState(token: String, deviceId: Int, state: Boolean, brightness: Int) {
         delay(200)
         val index = fakeDevices.indexOfFirst { it.id == deviceId }
         if (index != -1) {
             val current = fakeDevices[index]
             if (current is SmartLight) {
-                fakeDevices[index] = current.copy(
-                    isOn       = state,
-                    brightness = brightness / 100f
-                )
+                fakeDevices[index] = current.copy(isOn = state, brightness = brightness / 100f)
             }
         }
     }
 
-    // ─── updateBrightness ─────────────────────────────────────────────────────────
     override suspend fun updateBrightness(token: String, deviceId: Int, intensity: Float) {
         delay(200)
         val index = fakeDevices.indexOfFirst { it.id == deviceId }
@@ -84,91 +103,77 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         }
     }
 
-    // ─── Smart Dimming (Fake) ─────────────────────────────────────────────────────
-    private var fakeSmartDimmingEnabled = false
-
-    override suspend fun getSmartDimmingStatus(token: String): com.example.smarthome.data.model.SmartDimmingStatus {
+    override suspend fun getSmartDimmingStatus(token: String): SmartDimmingStatus {
         delay(300)
-        return com.example.smarthome.data.model.SmartDimmingStatus(
-            enabled = fakeSmartDimmingEnabled,
-            message = if(fakeSmartDimmingEnabled) "Smart Dimming activé" else "Smart Dimming désactivé",
-            adjustments_today = 12,
-            active_devices = listOf(1, 2)
-        )
+        return SmartDimmingStatus(enabled = false, message = "Désactivé", adjustments_today = 0, active_devices = emptyList())
     }
 
-    override suspend fun getSmartDimmingHistory(token: String): List<com.example.smarthome.data.model.SmartDimmingAdjustment> {
-        delay(400)
-        return listOf(
-            com.example.smarthome.data.model.SmartDimmingAdjustment(
-                id = 101,
-                device_id = 1,
-                device_name = "Lampe Salon",
-                scenario = 0,
-                brightness_before = 20,
-                brightness_after = 45,
-                reason = "ML prediction",
-                timestamp = "2026-03-04T10:15:00Z"
-            ),
-            com.example.smarthome.data.model.SmartDimmingAdjustment(
-                id = 102,
-                device_id = 2,
-                device_name = "Lampe Chambre",
-                scenario = 0,
-                brightness_before = 80,
-                brightness_after = 30,
-                reason = "Time of day",
-                timestamp = "2026-03-04T09:30:00Z"
-            )
-        )
-    }
-
-    override suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): com.example.smarthome.data.model.SmartDimmingStatus {
+    override suspend fun getSmartDimmingHistory(token: String): List<SmartDimmingAdjustment> {
         delay(300)
-        fakeSmartDimmingEnabled = enabled
-        return com.example.smarthome.data.model.SmartDimmingStatus(
-            enabled = enabled,
-            message = if(enabled) "Smart Dimming activé" else "Smart Dimming désactivé",
-            adjustments_today = 12,
-            active_devices = listOf(1, 2)
-        )
+        return emptyList()
     }
 
-    // ─── Événements (Fake) ────────────────────────────────────────────────────────
-    override suspend fun getEvents(token: String): List<com.example.smarthome.data.model.ApiEvent> {
+    override suspend fun updateSmartDimmingStatus(token: String, enabled: Boolean): SmartDimmingStatus {
         delay(300)
-        return listOf(
-            com.example.smarthome.data.model.ApiEvent(
-                id = 4283,
-                device_id = 17,
-                device_name = "Lampe du Salon",
-                event_type = "brightness_changed",
-                value = "11->27",
-                source = "smart_dimming_ml",
-                timestamp = "2026-03-04T11:06:28.138892+01:00"
-            ),
-            com.example.smarthome.data.model.ApiEvent(
-                id = 4282,
-                device_id = 17,
-                device_name = "Lampe du Salon",
-                event_type = "brightness_changed",
-                value = "56->11",
-                source = "manual",
-                timestamp = "2026-03-04T10:29:45.229031+01:00"
-            )
-        )
+        return SmartDimmingStatus(enabled = enabled, message = "OK", adjustments_today = 0, active_devices = emptyList())
     }
 
-    // ─── Register (Fake) ──────────────────────────────────────────────────────────
+    override suspend fun getEvents(token: String): List<ApiEvent> {
+        delay(300)
+        return emptyList()
+    }
+
     override suspend fun register(username: String, email: String, password: String): UserResponse {
         delay(600)
-        return UserResponse(
-            id = 42,
-            username = username,
-            email = email,
-            full_name = null,
-            role = "user",
-            created_at = "2026-03-04T12:00:00Z"
+        return UserResponse(id = 42, username = username, email = email)
+    }
+
+    override suspend fun getCurrentScenario(token: String): AIScenarioResponse {
+        delay(500)
+        return AIScenarioResponse(
+            scenario = 1,
+            scenarioName = "Soirée Cinéma",
+            confidence = 0.85,
+            method = "ML",
+            context = AIContext(20, 5, true, true, "pi", emptyList(), emptyList(), 1)
         )
+    }
+
+    override suspend fun getRules(token: String): List<RuleResponse> {
+        delay(400)
+        return fakeRules.toList()
+    }
+
+    override suspend fun createRule(token: String, rule: RuleRequest): RuleResponse {
+        delay(500)
+        val newRule = RuleResponse(
+            id = (fakeRules.maxOfOrNull { it.id } ?: 0) + 1,
+            name = rule.name,
+            description = rule.description,
+            enabled = rule.enabled,
+            priority = rule.priority,
+            condition = rule.condition,
+            action = rule.action,
+            createdAt = "2026-03-05T12:00:00Z",
+            updatedAt = "2026-03-05T12:00:00Z"
+        )
+        fakeRules.add(newRule)
+        return newRule
+    }
+
+    override suspend fun updateRule(token: String, ruleId: Int, enabled: Boolean): RuleResponse {
+        delay(300)
+        val index = fakeRules.indexOfFirst { it.id == ruleId }
+        if (index != -1) {
+            val updated = fakeRules[index].copy(enabled = enabled, updatedAt = "2026-03-05T12:30:00Z")
+            fakeRules[index] = updated
+            return updated
+        }
+        throw Exception("Rule not found")
+    }
+
+    override suspend fun deleteRule(token: String, ruleId: Int) {
+        delay(300)
+        fakeRules.removeAll { it.id == ruleId }
     }
 }

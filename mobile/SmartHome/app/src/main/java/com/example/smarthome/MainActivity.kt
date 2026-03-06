@@ -4,24 +4,33 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material3.*
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
-import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.example.smarthome.data.api.TokenManager
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
 import com.example.smarthome.ui.screens.*
@@ -33,12 +42,27 @@ import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Active le rendu bord à bord
         enableEdgeToEdge()
+        
+        // Configuration pour masquer les boutons de navigation (Mode Immersif)
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+
+        val tokenManager = TokenManager(this)
         setContent {
             SmartHomeTheme(dynamicColor = false) {
                 val viewModel: SmartHomeViewModel = viewModel()
 
+                // Initialisation de l'authentification au démarrage
+                LaunchedEffect(Unit) {
+                    viewModel.initAuth(tokenManager)
+                }
+
                 var showRegisterScreen by remember { mutableStateOf(false) }
+                var showResetPasswordScreen by remember { mutableStateOf(false) }
 
                 if (viewModel.isLoggedIn) {
                     SmartHomeApp(
@@ -53,10 +77,16 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onBackToLogin = { showRegisterScreen = false }
                     )
+                } else if (showResetPasswordScreen) {
+                    ResetPasswordScreen(
+                        viewModel = viewModel,
+                        onBackToLogin = { showResetPasswordScreen = false }
+                    )
                 } else {
                     LoginScreen(
                         viewModel = viewModel,
-                        onCreateAccountClick = { showRegisterScreen = true }
+                        onCreateAccountClick = { showRegisterScreen = true },
+                        onForgotPasswordClick = { showResetPasswordScreen = true }
                     )
                 }
             }
@@ -72,68 +102,127 @@ fun SmartHomeApp(
     onCreateAccountClick: () -> Unit = {}
 ) {
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
-    // Hoisted state for Lamp detail navigation
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
-    // Observe lamps to get the name for the title
+    var showAIScreen by rememberSaveable { mutableStateOf(false) }
+    var showEventsScreen by rememberSaveable { mutableStateOf(false) }
+    var showAddDevice by rememberSaveable { mutableStateOf(false) }
+    
     val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.tertiary
-            ) {
-                AppDestinations.entries.forEach { dest ->
-                    NavigationBarItem(
-                        icon = {
-                            Icon(
-                                dest.icon,
-                                contentDescription = dest.label,
-                                tint = if (dest == currentDestination) PrimaryBlue else GrayText
-                            )
-                        },
-                        label = {
-                            Text(
-                                dest.label,
-                                color = if (dest == currentDestination) PrimaryBlue else GrayText
-                            )
-                        },
-                        selected = dest == currentDestination,
-                        onClick = {
-                            currentDestination = dest
-                            selectedLampId = null
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = Color.Transparent
-                        )
+    if (showAIScreen) {
+        AIScreen(
+            viewModel = viewModel,
+            onBack = { showAIScreen = false }
+        )
+    } else if (showEventsScreen) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Événements") },
+                    navigationIcon = {
+                        IconButton(onClick = { showEventsScreen = false }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
-                }
+                )
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                EventsScreen(viewModel = viewModel)
             }
         }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (currentDestination) {
-                AppDestinations.HOME -> HomeScreen(
-                    viewModel = viewModel,
-                    selectedLampId = selectedLampId,
-                    onLampSelect = { selectedLampId = it }
-                )
-                AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
-                AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
-                AppDestinations.PROFILE -> ProfileScreen(
-                    name = viewModel.currentUsername,
-                    email = viewModel.currentEmail,
-                    onLogoutClick = { viewModel.logout() },
-                    onCreateAccountClick = onCreateAccountClick
-                )
+    }
+    else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+
+            bottomBar = {
+                NavigationBar(
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 16.dp, bottom = 30.dp) // Encore plus haut
+                        .shadow(
+                            elevation = 8.dp, 
+                            shape = RoundedCornerShape(24.dp),
+                            clip = false
+                        )
+                        .height(64.dp) 
+                        .clip(RoundedCornerShape(24.dp)),
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    tonalElevation = 0.dp,
+                    windowInsets = WindowInsets(0.dp) 
+                ) {
+                    AppDestinations.entries.forEach { dest ->
+                        val isSelected = dest == currentDestination
+                        NavigationBarItem(
+                            icon = {
+                                AnimatedVisibility(
+                                    visible = isSelected,
+                                    enter = fadeIn() + scaleIn() + expandVertically(),
+                                    exit = fadeOut() + scaleOut() + shrinkVertically()
+                                ) {
+                                    Icon(
+                                        dest.icon,
+                                        contentDescription = dest.label,
+                                        tint = PrimaryBlue,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(
+                                    dest.label,
+                                    color = if (isSelected) PrimaryBlue else GrayText,
+                                    fontSize = 10.sp
+                                )
+                            },
+                            selected = isSelected,
+                            alwaysShowLabel = true, 
+                            onClick = {
+                                currentDestination = dest
+                                selectedLampId = null
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
+            }
+        ) { innerPadding ->
+            val layoutDirection = LocalLayoutDirection.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        top = innerPadding.calculateTopPadding(),
+                        start = innerPadding.calculateStartPadding(layoutDirection),
+                        end = innerPadding.calculateEndPadding(layoutDirection)
+                    )
+            ) {
+                when (currentDestination) {
+                    AppDestinations.HOME -> HomeScreen(
+                        viewModel = viewModel,
+                        selectedLampId = selectedLampId,
+                        onLampSelect = { selectedLampId = it },
+                        showAddDevice = showAddDevice,
+                        onShowAddDeviceChange = { showAddDevice = it }
+                    )
+                    AppDestinations.RULES -> RulesScreen (viewModel = viewModel)
+                    AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
+                    AppDestinations.PROFILE -> ProfileScreen(
+                        name = viewModel.currentUsername,
+                        email = viewModel.currentEmail,
+                        onLogoutClick = { viewModel.logout() },
+                        onAIIntelligenceClick = { showAIScreen = true },
+                        onRulesClick = { showEventsScreen = true }
+                    )
+                }
             }
         }
     }
@@ -142,7 +231,7 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
-    EVENTS("Événements", Icons.Default.Notifications),
+    RULES("Règles", Icons.Default.Rule),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
     PROFILE("Profil", Icons.Default.AccountBox),
 }
@@ -151,8 +240,8 @@ enum class AppDestinations(val label: String, val icon: ImageVector) {
 fun darkTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color(0xFF2979FF),
     unfocusedBorderColor = Color(0xFF2A3245),
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
+    focusedTextColor = MaterialTheme.colorScheme.primary,
+    unfocusedTextColor = MaterialTheme.colorScheme.primary,
     focusedLabelColor = Color(0xFF9AA4B2),
     unfocusedLabelColor = Color(0xFF9AA4B2),
     cursorColor = Color(0xFF2979FF),

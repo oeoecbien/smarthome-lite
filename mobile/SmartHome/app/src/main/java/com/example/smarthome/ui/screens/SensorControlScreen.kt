@@ -6,6 +6,7 @@ import com.example.smarthome.ui.viewmodel.*
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +20,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,113 +35,137 @@ import com.example.smarthome.ui.theme.NeonBlue
 @Composable
 fun SensorControlScreen(
     sensor: SmartSensor,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: SmartHomeViewModel
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // Dark background
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp)
-    ) {
+    var showSettings by remember { mutableStateOf(false) }
 
-        // ─── TOP BAR (←  Titre  ⚙) ──────────────────────────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
-                    contentDescription = "Retour",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+    if (showSettings) {
+        SensorSettingsScreen(
+            sensor = sensor,
+            onBack = { showSettings = false },
+            onDelete = {
+                viewModel.deleteDevice(sensor.id)
+                showSettings = false
+                onBack()
             }
+        )
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(20.dp)
+        ) {
 
-            Text(
-                text = sensor.name,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-
-            IconButton(onClick = { /* Settings */ }) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.tertiary),
-                    contentAlignment = Alignment.Center
-                ) {
+            // ─── TOP BAR (←  Titre  ⚙) ──────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Paramètres",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(20.dp)
+                        imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                        contentDescription = "Retour",
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = sensor.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
 
-        // --- Grid of Sensors ---
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            // Column 1
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                SensorDetailCard(
-                    icon = Icons.Default.Thermostat,
-                    iconColor = AccentOrange,
-                    label = "TEMP",
-                    value = "${sensor.temperature}",
-                    unit = "°C",
-                    subText = "Normal" // Placeholder logic
-                )
-                SensorDetailCard(
-                    icon = Icons.Default.WbSunny,
-                    iconColor = Color.Yellow,
-                    label = "LIGHT",
-                    value = "${sensor.illuminance}",
-                    unit = " Lux",
-                    subText = "Natural Light"
-                )
-                SensorDetailCard(
-                    icon = Icons.Default.WbSunny, // UV Placeholder
-                    iconColor = Color(0xFFE91E63), // Pink for UV
-                    label = "UV INDEX",
-                    value = "0",
-                    unit = "",
-                    subText = "Low"
-                )
+                IconButton(onClick = { showSettings = true }) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Paramètres",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
 
-            // Column 2
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                SensorDetailCard(
-                    icon = Icons.Default.Opacity,
-                    iconColor = NeonBlue,
-                    label = "HUMIDITY",
-                    value = "${sensor.humidity}",
-                    unit = "%",
-                    subText = "Optimal Range"
-                )
-                SensorDetailCard(
-                    icon = Icons.Filled.DirectionsRun, // Vibration Placeholder
-                    iconColor = Color.Magenta,
-                    label = "VIBRATION",
-                    value = "None",
-                    unit = "",
-                    subText = "Stable Surface"
-                )
-                SensorDetailCard(
-                    icon = Icons.Default.BatteryFull,
-                    iconColor = Color.Green,
-                    label = "BATTERY",
-                    value = "${sensor.battery}",
-                    unit = "%",
-                    subText = "Status: Excellent"
-                )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            //MotionStatusCard(isActive = sensor.motion)
+
+            //Spacer(modifier = Modifier.height(20.dp))
+
+            // --- Grid of Sensors ---
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Column 1
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SensorDetailCard(
+                        icon = Icons.Default.Thermostat,
+                        iconColor = AccentOrange,
+                        label = "TEMP",
+                        value = "${sensor.temperature}",
+                        unit = "°C",
+                        subText = "Normal"
+                    )
+                    SensorDetailCard(
+                        icon = Icons.Default.WbSunny,
+                        iconColor = Color.Yellow,
+                        label = "LIGHT",
+                        value = "${sensor.illuminance}",
+                        unit = " Lux",
+                        subText = "Natural Light"
+                    )
+                    SensorDetailCard(
+                        icon = Icons.Default.WbSunny,
+                        iconColor = Color(0xFFE91E63),
+                        label = "UV INDEX",
+                        value = "0",
+                        unit = "",
+                        subText = "Low"
+                    )
+                }
+
+                // Column 2
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SensorDetailCard(
+                        icon = Icons.Default.Opacity,
+                        iconColor = NeonBlue,
+                        label = "HUMIDITY",
+                        value = "${sensor.humidity}",
+                        unit = "%",
+                        subText = "Optimal Range"
+                    )
+                    SensorDetailCard(
+                        icon = Icons.Filled.DirectionsRun,
+                        iconColor = Color.Magenta,
+                        label = "VIBRATION",
+                        value = "None",
+                        unit = "",
+                        subText = "Stable Surface"
+                    )
+                    SensorDetailCard(
+                        icon = Icons.Default.BatteryFull,
+                        iconColor = Color.Green,
+                        label = "BATTERY",
+                        value = "${sensor.battery}",
+                        unit = "%",
+                        subText = "Status: Excellent"
+                    )
+                }
             }
         }
     }
@@ -150,7 +175,7 @@ fun SensorControlScreen(
 fun MotionStatusCard(isActive: Boolean) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A2A)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary),
         modifier = Modifier.fillMaxWidth().height(100.dp)
     ) {
         Row(
@@ -161,10 +186,10 @@ fun MotionStatusCard(isActive: Boolean) {
                 modifier = Modifier
                     .size(50.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NeonBlue),
+                    .background(if (isActive) NeonBlue else Color.Gray.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = Color.White)
+                Icon(Icons.Filled.DirectionsRun, contentDescription = null, tint = if (isActive) Color.White else Color.Gray)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -217,7 +242,7 @@ fun SensorDetailCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1E1E1E)),
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(20.dp))

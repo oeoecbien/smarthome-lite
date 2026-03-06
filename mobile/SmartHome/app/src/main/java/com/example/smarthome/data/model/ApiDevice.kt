@@ -12,6 +12,14 @@ data class ApiDevice(
     val brightness: Int?,
     val type: String?
 )
+
+data class AddDeviceRequest(
+    val gpio_pin: Int,
+    val name: String,
+    val raspberry_pi_id: Int,
+    val type: String
+)
+
 data class ApiSensor(
     val success: Boolean,
     val device_id: Int,

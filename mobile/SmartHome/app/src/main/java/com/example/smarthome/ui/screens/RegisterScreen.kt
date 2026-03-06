@@ -1,6 +1,7 @@
 package com.example.smarthome.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.smarthome.ui.viewmodel.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -61,6 +62,15 @@ fun RegisterScreen(
     val isRegistering by viewModel.isRegistering
     val registrationError by viewModel.registrationError
     val registrationSuccess by viewModel.registrationSuccess
+    
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // Validation logic
+    val isUsernameValid = username.length in 3..50 && username.all { it.isLetterOrDigit() || it == '_' }
+    val isEmailValid = email.isEmpty() || android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    val isPasswordValid = password.length >= 8 && password.any { it.isUpperCase() } && password.any { it.isDigit() }
+    
+    val canRegister = isUsernameValid && isEmailValid && isPasswordValid && !isRegistering
 
     // Quand l'inscription réussit, on revient à l'écran de connexion
     LaunchedEffect(registrationSuccess) {
@@ -70,17 +80,29 @@ fun RegisterScreen(
         }
     }
 
+    // Définition du fond selon le thème
+    val backgroundModifier = if (isDarkTheme) {
+        Modifier.background(
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xFF0A1A33),
+                    Color(0xFF060B16)
+                )
+            )
+        )
+    } else {
+        Modifier.background(MaterialTheme.colorScheme.background)
+    }
+
+    // Couleurs adaptatives
+    val titleColor = if (isDarkTheme) Color.White else MaterialTheme.colorScheme.onBackground
+    val subtitleColor = if (isDarkTheme) Color(0xFF9AA4B2) else MaterialTheme.colorScheme.onSurfaceVariant
+    val backToLoginColor = if (isDarkTheme) TextWhite else MaterialTheme.colorScheme.primary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0A1A33),
-                        Color(0xFF060B16)
-                    )
-                )
-            ),
+            .then(backgroundModifier),
     ) {
         Column(
             modifier = Modifier
@@ -96,7 +118,7 @@ fun RegisterScreen(
                 modifier = Modifier
                     .size(72.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF121826)),
+                    .background(if (isDarkTheme) Color(0xFF121826) else MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
@@ -111,7 +133,7 @@ fun RegisterScreen(
 
             Text(
                 text = "Créer un compte",
-                color = Color.White,
+                color = titleColor,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -120,7 +142,7 @@ fun RegisterScreen(
 
             Text(
                 text = "Remplissez les informations ci-dessous",
-                color = Color(0xFF9AA4B2),
+                color = subtitleColor,
                 fontSize = 14.sp
             )
 
@@ -131,12 +153,18 @@ fun RegisterScreen(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Nom d'utilisateur") },
+                supportingText = {
+                    if (username.isNotEmpty() && !isUsernameValid) {
+                        Text("3-50 caractères (lettres, chiffres, _)")
+                    }
+                },
+                isError = username.isNotEmpty() && !isUsernameValid,
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Default.Person, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
+                colors = if (isDarkTheme) darkTextFieldColors() else androidx.compose.material3.OutlinedTextFieldDefaults.colors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -146,12 +174,18 @@ fun RegisterScreen(
                 value = email,
                 onValueChange = { email = it },
                 label = { Text("Email") },
+                supportingText = {
+                    if (email.isNotEmpty() && !isEmailValid) {
+                        Text("Format d'email invalide")
+                    }
+                },
+                isError = email.isNotEmpty() && !isEmailValid,
                 singleLine = true,
                 leadingIcon = {
                     Icon(Icons.Default.Email, contentDescription = null)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
+                colors = if (isDarkTheme) darkTextFieldColors() else androidx.compose.material3.OutlinedTextFieldDefaults.colors()
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -161,6 +195,12 @@ fun RegisterScreen(
                 value = password,
                 onValueChange = { password = it },
                 label = { Text("Mot de passe") },
+                supportingText = {
+                    if (password.isNotEmpty() && !isPasswordValid) {
+                        Text("Min. 8 caractères, 1 majuscule, 1 chiffre")
+                    }
+                },
+                isError = password.isNotEmpty() && !isPasswordValid,
                 leadingIcon = {
                     Icon(Icons.Default.Lock, contentDescription = null)
                 },
@@ -180,7 +220,7 @@ fun RegisterScreen(
                 else
                     PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
-                colors = darkTextFieldColors()
+                colors = if (isDarkTheme) darkTextFieldColors() else androidx.compose.material3.OutlinedTextFieldDefaults.colors()
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -196,8 +236,8 @@ fun RegisterScreen(
 
             // Bouton d'inscription
             Button(
-                onClick = { viewModel.register(username, email, password) },
-                enabled = !isRegistering && username.isNotBlank() && email.isNotBlank() && password.isNotBlank(),
+                onClick = { viewModel.register(username.trim(), email.trim(), password) },
+                enabled = canRegister,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -231,7 +271,7 @@ fun RegisterScreen(
                 Text(
                     text = "Déjà un compte ? Se connecter",
                     fontSize = 14.sp,
-                    color = TextWhite
+                    color = backToLoginColor
                 )
             }
 
