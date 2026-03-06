@@ -354,9 +354,11 @@ class DeviceService:
             "state": device.state,
             "brightness": min(100, max(0, device.brightness)),
             "gpio_pin": device.gpio_pin,
+            "raspberry_pi_id": device.raspberry_pi_id,
             "raspberry_pi_name": device.raspberry_pi.name,
             "location": device.raspberry_pi.location,
             "raspberry_pi_online": device.raspberry_pi.is_online,
+            "user_id": device.user_id,
             "created_at": device.created_at,
             "updated_at": device.updated_at
         }
