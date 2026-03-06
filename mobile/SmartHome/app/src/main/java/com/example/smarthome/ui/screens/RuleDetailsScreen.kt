@@ -127,22 +127,6 @@ fun RuleDetailsScreen(
             // Technical Info
             TechnicalInfoSection(currentRule)
 
-            // Bouton de suppression en bas
-            Button(
-                onClick = { showDeleteDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.1f)),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("SUPPRIMER LA RÈGLE", color = Color.Red, fontWeight = FontWeight.Bold)
-            }
-
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
