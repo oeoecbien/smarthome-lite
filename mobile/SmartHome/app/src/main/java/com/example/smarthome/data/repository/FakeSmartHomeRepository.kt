@@ -66,6 +66,11 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         return ApiDevice(id = newId, name = name, state = false, brightness = 50, type = type)
     }
 
+    override suspend fun deleteDevice(token: String, deviceId: Int) {
+        delay(300)
+        fakeDevices.removeAll { it.id == deviceId }
+    }
+
     override suspend fun updateState(token: String, deviceId: Int, state: Boolean, brightness: Int) {
         delay(200)
         val index = fakeDevices.indexOfFirst { it.id == deviceId }

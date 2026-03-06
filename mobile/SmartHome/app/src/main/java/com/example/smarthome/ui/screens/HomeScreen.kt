@@ -101,7 +101,8 @@ fun HomeScreen(
                         is SmartSensor -> {
                             SensorControlScreen(
                                 sensor = activeDevice,
-                                onBack = { onLampSelect(null) }
+                                onBack = { onLampSelect(null) },
+                                viewModel = viewModel
                             )
                         }
                     }

@@ -236,6 +236,26 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    fun deleteDevice(deviceId: Int) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                
+                // Optimistic UI update
+                val currentDevices = devices.value.filter { it.id != deviceId }
+                devices.value = currentDevices
+
+                repository.deleteDevice(token!!, deviceId)
+            } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
+                e.printStackTrace()
+                // Rollback
+                fetchDevices()
+                errorMessage.value = "Erreur lors de la suppression de l'appareil."
+            }
+        }
+    }
+
     // ─── Refresh manuel ──────────────────────────────────────────────────────────
     fun refreshDevices() {
         if (token == null) return

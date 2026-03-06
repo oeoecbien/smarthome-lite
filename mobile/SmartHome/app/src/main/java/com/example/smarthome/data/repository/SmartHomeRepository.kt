@@ -19,6 +19,8 @@ interface SmartHomeRepository {
 
     suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): ApiDevice
 
+    suspend fun deleteDevice(token: String, deviceId: Int)
+
     suspend fun updateState(token: String, deviceId: Int, state: Boolean, brightness: Int)
 
     suspend fun updateBrightness(token: String, deviceId: Int, intensity: Float)

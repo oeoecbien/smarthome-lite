@@ -34,6 +34,12 @@ interface SmartHomeApi {
         @Body request: AddDeviceRequest
     ): ApiDevice
 
+    @DELETE("api/devices/{device_id}")
+    suspend fun deleteDevice(
+        @Header("Authorization") token: String,
+        @Path("device_id") deviceId: Int
+    )
+
     @PUT("api/devices/{device_id}/brightness")
     suspend fun updateBrightness(
         @Header("Authorization") token: String,

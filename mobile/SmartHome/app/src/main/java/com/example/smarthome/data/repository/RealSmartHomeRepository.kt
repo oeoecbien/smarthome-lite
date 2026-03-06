@@ -64,6 +64,10 @@ class RealSmartHomeRepository : SmartHomeRepository {
         return api.addDevice(token, request)
     }
 
+    override suspend fun deleteDevice(token: String, deviceId: Int) {
+        api.deleteDevice(token, deviceId)
+    }
+
     override suspend fun updateState(
         token: String, deviceId: Int, state: Boolean, brightness: Int
     ) {
