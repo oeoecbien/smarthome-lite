@@ -341,7 +341,7 @@ export default function RulesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-balance">Règles d&apos;automatisation</h1>
           <p className="text-muted-foreground">
-            {enabledCount} règle(s) active(s) sur {rules.length}. Ajoutez et gérez simplement vos règles d&apos;éclairage.
+            {enabledCount} règle(s) active(s) sur {rules.length}. Définissez quand allumer, éteindre ou régler l&apos;intensité selon l&apos;heure, la présence ou la luminosité.
           </p>
         </div>
         <div className="flex items-center gap-2">

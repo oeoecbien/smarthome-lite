@@ -187,6 +187,11 @@ export default function AdminAIPage() {
             ) : scenario ? (
               <div className="space-y-4">
                 <ScenarioChip scenario={scenario.scenario} confidence={scenario.confidence} className="text-base" />
+                {scenario.confidence !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    Certitude du modèle (heure, présence, lampes). Plus le % est élevé, plus le scénario est fiable.
+                  </p>
+                )}
                 {scenario.features && (
                   <div className="mt-4">
                     <p className="text-sm font-medium text-muted-foreground mb-2">Features utilisées:</p>

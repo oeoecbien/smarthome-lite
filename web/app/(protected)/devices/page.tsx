@@ -287,7 +287,9 @@ function DevicesContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-balance">Appareils</h1>
-          <p className="text-muted-foreground">{devices.length} appareil(s) configuré(s)</p>
+          <p className="text-muted-foreground">
+            {devices.length} appareil(s). Allumez, éteignez ou réglez l&apos;intensité (curseur sur chaque lampe).
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={fetchDevices}>
@@ -495,7 +497,12 @@ function DevicesContent() {
                     </div>
                     {editForm.controlled_by_sensor_id != null && editForm.controlled_by_sensor_id > 0 && (
                       <div className="rounded-lg border p-3 space-y-3 text-sm">
-                        <Label>Règles capteur</Label>
+                        <div>
+                          <Label>Règles capteur</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Mouvement : intensité à l&apos;allumage et délai avant extinction. Luminosité : seuils en lux pour allumer ou éteindre.
+                          </p>
+                        </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <span className="text-muted-foreground">Mouvement : intensité</span>

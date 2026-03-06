@@ -8,8 +8,9 @@ import { Slider } from "@/components/ui/slider"
 import { deviceService } from "@/lib/services/device-service"
 import type { Device } from "@/lib/types"
 import type { DeviceStatePatch } from "./device-card"
-import { Lightbulb, Plug, SunDim, Loader2, MapPin, RefreshCw, Trash2 } from "lucide-react"
+import { Lightbulb, Plug, SunDim, Loader2, MapPin, RefreshCw, Trash2, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/hooks/use-toast"
 
 interface DeviceCardUserProps {
@@ -222,7 +223,17 @@ export function DeviceCardUser({ device, onUpdate, onDeviceUpdated, onDelete }: 
         {hasBrightness && isOn && (
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Intensité</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-sm text-muted-foreground inline-flex items-center gap-1 cursor-help">
+                    Intensité
+                    <Info className="h-3.5 w-3.5 opacity-70" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Luminosité de la lampe (0–100 %).
+                </TooltipContent>
+              </Tooltip>
               <span className="text-sm font-medium">{isDragging ? localBrightness : (device.brightness ?? 99)}%</span>
             </div>
             <Slider
