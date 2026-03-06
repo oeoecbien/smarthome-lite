@@ -7,12 +7,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,8 +28,33 @@ import com.example.smarthome.ui.theme.NeonBlue
 @Composable
 fun LampSettingsScreen(
     lamp: SmartLight,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDelete: () -> Unit
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer la lampe", color = MaterialTheme.colorScheme.primary) },
+            text = { Text("Êtes-vous sûr de vouloir supprimer cette lampe ? Cette action est irréversible.", color = MaterialTheme.colorScheme.primary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    onDelete()
+                }) {
+                    Text("Supprimer", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Annuler", color = Color.Gray)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.tertiary
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -39,6 +65,15 @@ fun LampSettingsScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Retour",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Supprimer",
+                            tint = Color.Red
                         )
                     }
                 },
@@ -82,7 +117,7 @@ fun LampSettingsScreen(
                 SettingsRow("Mis à jour le", "15 janv. 2025, 14:30")
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

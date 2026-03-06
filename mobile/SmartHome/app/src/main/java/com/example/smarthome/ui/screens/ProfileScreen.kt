@@ -142,8 +142,8 @@ fun ProfileScreen(
 
                 ProfileMenuItem(
                     icon = Icons.Outlined.Rule,
-                    title = "Règle de gestion",
-                    subtitle = "Gestion des événements",
+                    title = "Événements",
+                    subtitle = "Liste des événements",
                     iconBgColor = AccentOrange.copy(alpha = 0.1f),
                     iconColor = AccentOrange,
                     onClick = onRulesClick

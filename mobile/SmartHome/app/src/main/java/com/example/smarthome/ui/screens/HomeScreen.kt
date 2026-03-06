@@ -95,7 +95,8 @@ fun HomeScreen(
                             LampControlScreen(
                                 lamp = activeDevice,
                                 onBack = { onLampSelect(null) },
-                                onUpdate = { viewModel.updateDevice(it) }
+                                onUpdate = { viewModel.updateDevice(it) },
+                                viewModel = viewModel
                             )
                         }
                         is SmartSensor -> {

@@ -1,6 +1,7 @@
 package com.example.smarthome.ui.screens
 
 import com.example.smarthome.data.model.*
+import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -55,7 +56,8 @@ import com.example.smarthome.ui.theme.TextGreen
 fun LampControlScreen(
     lamp: SmartLight,
     onBack: () -> Unit,
-    onUpdate: (SmartLight) -> Unit
+    onUpdate: (SmartLight) -> Unit,
+    viewModel: SmartHomeViewModel
 ) {
     // État local pour le slider pendant le drag
     var isDragging by remember { mutableStateOf(false) }
@@ -72,7 +74,12 @@ fun LampControlScreen(
     if (showSettings) {
         LampSettingsScreen(
             lamp = lamp,
-            onBack = { showSettings = false }
+            onBack = { showSettings = false },
+            onDelete = {
+                viewModel.deleteDevice(lamp.id)
+                showSettings = false
+                onBack()
+            }
         )
     } else {
         Column(
