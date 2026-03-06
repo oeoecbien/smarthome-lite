@@ -153,6 +153,7 @@ class DeviceWithLocation(BaseModel):
                 "type": "dimmer",
                 "state": True,
                 "brightness": 75,
+                "raspberry_pi_id": 1,
                 "raspberry_pi_name": "RPi Salon",
                 "location": "Salon",
                 "raspberry_pi_online": True,
