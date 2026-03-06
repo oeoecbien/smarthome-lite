@@ -8,13 +8,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +43,33 @@ fun RuleDetailsScreen(
     val rules by viewModel.rules
     val currentRule = rules.find { it.id == rule.id } ?: rule
     
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer la règle", color = MaterialTheme.colorScheme.primary) },
+            text = { Text("Êtes-vous sûr de vouloir supprimer cette règle ? Cette action est irréversible.", color = MaterialTheme.colorScheme.primary) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteRule(currentRule.id)
+                        showDeleteDialog = false
+                        onBack()
+                    }
+                ) {
+                    Text("Supprimer", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Annuler", color = Color.Gray)
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.tertiary,
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -53,6 +80,15 @@ fun RuleDetailsScreen(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Retour",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Supprimer",
+                            tint = Color.Red
                         )
                     }
                 },
@@ -90,6 +126,22 @@ fun RuleDetailsScreen(
 
             // Technical Info
             TechnicalInfoSection(currentRule)
+
+            // Bouton de suppression en bas
+            Button(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red.copy(alpha = 0.5f))
+            ) {
+                Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("SUPPRIMER LA RÈGLE", color = Color.Red, fontWeight = FontWeight.Bold)
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
         }

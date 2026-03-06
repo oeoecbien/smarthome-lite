@@ -1,5 +1,7 @@
 package com.example.smarthome.ui.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,18 +13,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smarthome.data.model.*
 import com.example.smarthome.darkTextFieldColors
-import com.example.smarthome.ui.theme.NeonBlue
 import com.example.smarthome.ui.theme.PrimaryBlue
 import com.example.smarthome.ui.theme.TextWhite
 import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
@@ -34,6 +37,7 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
     val isLoading by viewModel.isRulesLoading
     var showAddRule by remember { mutableStateOf(false) }
     var selectedRule by remember { mutableStateOf<RuleResponse?>(null) }
+    var ruleToDelete by remember { mutableStateOf<RuleResponse?>(null) }
 
     if (showAddRule) {
         AddRuleScreen(
@@ -47,6 +51,28 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
             onBack = { selectedRule = null }
         )
     } else {
+        if (ruleToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { ruleToDelete = null },
+                title = { Text("Supprimer la règle", color = MaterialTheme.colorScheme.primary) },
+                text = { Text("Voulez-vous vraiment supprimer la règle '${ruleToDelete?.name}' ?", color = MaterialTheme.colorScheme.primary) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        ruleToDelete?.let { viewModel.deleteRule(it.id) }
+                        ruleToDelete = null
+                    }) {
+                        Text("Supprimer", color = Color.Red)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { ruleToDelete = null }) {
+                        Text("Annuler", color = Color.Gray)
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.tertiary
+            )
+        }
+
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -58,7 +84,8 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
                 FloatingActionButton(
                     onClick = { showAddRule = true },
                     containerColor = PrimaryBlue,
-                    contentColor = Color.White
+                    contentColor = Color.White,
+                    modifier = Modifier.padding(bottom = 90.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Ajouter une règle")
                 }
@@ -76,7 +103,7 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()), // Permet le pull to refresh même si vide
+                            .verticalScroll(rememberScrollState()),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("Aucune règle configurée. Tirez pour rafraîchir.", color = Color.Gray)
@@ -87,14 +114,61 @@ fun RulesScreen(viewModel: SmartHomeViewModel) {
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 120.dp)
                     ) {
-                        items(rules) { rule ->
-                            RuleCard(
-                                rule = rule,
-                                onToggle = { enabled -> viewModel.toggleRule(rule.id, enabled) },
-                                onClick = { selectedRule = rule }
+                        items(
+                            items = rules,
+                            key = { it.id }
+                        ) { rule ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = {
+                                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                                        ruleToDelete = rule
+                                        false // Empêche le dismiss immédiat pour montrer la boîte de dialogue
+                                    } else {
+                                        false
+                                    }
+                                },
+                                positionalThreshold = { totalDistance -> totalDistance * 0.5f } // Seuil à 50%
                             )
+
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false,
+                                backgroundContent = {
+                                    val color by animateColorAsState(
+                                        when (dismissState.targetValue) {
+                                            SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
+                                            else -> Color.Transparent
+                                        }, label = "backgroundColor"
+                                    )
+                                    val scale by animateFloatAsState(
+                                        if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) 0.75f else 1f,
+                                        label = "scale"
+                                    )
+
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(color, RoundedCornerShape(16.dp))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Supprimer",
+                                            modifier = Modifier.scale(scale),
+                                            tint = Color.White
+                                        )
+                                    }
+                                }
+                            ) {
+                                RuleCard(
+                                    rule = rule,
+                                    onToggle = { enabled -> viewModel.toggleRule(rule.id, enabled) },
+                                    onClick = { selectedRule = rule }
+                                )
+                            }
                         }
                     }
                 }
@@ -216,7 +290,7 @@ fun AddRuleScreen(
                     readOnly = true,
                     label = { Text("Appareil") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDevices) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true).fillMaxWidth(),
                     colors = darkTextFieldColors(),
                     shape = RoundedCornerShape(12.dp)
                 )

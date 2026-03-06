@@ -156,4 +156,9 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         }
         throw Exception("Rule not found")
     }
+
+    override suspend fun deleteRule(token: String, ruleId: Int) {
+        delay(300)
+        fakeRules.removeAll { it.id == ruleId }
+    }
 }

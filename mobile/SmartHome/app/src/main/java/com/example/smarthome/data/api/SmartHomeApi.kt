@@ -94,4 +94,10 @@ interface SmartHomeApi {
         @Path("rule_id") ruleId: Int,
         @Body request: UpdateRuleRequest
     ): RuleResponse
+
+    @DELETE("api/rules/{rule_id}")
+    suspend fun deleteRule(
+        @Header("Authorization") token: String,
+        @Path("rule_id") ruleId: Int
+    )
 }

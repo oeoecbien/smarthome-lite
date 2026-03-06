@@ -41,4 +41,5 @@ interface SmartHomeRepository {
     suspend fun getRules(token: String): List<RuleResponse>
     suspend fun createRule(token: String, rule: RuleRequest): RuleResponse
     suspend fun updateRule(token: String, ruleId: Int, enabled: Boolean): RuleResponse
+    suspend fun deleteRule(token: String, ruleId: Int)
 }

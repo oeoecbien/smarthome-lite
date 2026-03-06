@@ -334,6 +334,26 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    fun deleteRule(ruleId: Int) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                
+                // Optimistic UI update
+                val currentRules = rules.value.filter { it.id != ruleId }
+                rules.value = currentRules
+
+                repository.deleteRule(token!!, ruleId)
+            } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
+                e.printStackTrace()
+                // Rollback on error
+                fetchRules()
+                errorMessage.value = "Erreur lors de la suppression de la règle."
+            }
+        }
+    }
+
     // ─── Fetch Smart Dimming ──────────────────────────────────────────────────────
     private suspend fun fetchSmartDimmingData() {
         if (token == null) return

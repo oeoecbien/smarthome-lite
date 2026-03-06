@@ -111,4 +111,8 @@ class RealSmartHomeRepository : SmartHomeRepository {
     override suspend fun updateRule(token: String, ruleId: Int, enabled: Boolean): RuleResponse {
         return api.updateRule(token, ruleId, UpdateRuleRequest(enabled))
     }
+
+    override suspend fun deleteRule(token: String, ruleId: Int) {
+        api.deleteRule(token, ruleId)
+    }
 }
