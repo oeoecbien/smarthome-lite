@@ -24,7 +24,9 @@ import {
   ChevronRight,
   AlertCircle,
   Loader2,
+  Info,
 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { useIsAdmin } from "@/hooks/use-is-admin"
@@ -185,7 +187,11 @@ export default function DashboardPage() {
               </div>
               <div>
                 {data.scenario ? (
-                  <ScenarioChip scenario={data.scenario.scenario} confidence={data.scenario.confidence} />
+                  <ScenarioChip
+                    scenario={data.scenario.scenario}
+                    confidence={data.scenario.confidence}
+                    compact
+                  />
                 ) : (
                   <p className="text-sm text-muted-foreground">Non disponible</p>
                 )}
@@ -203,9 +209,17 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-semibold">{data.smartDimming?.adjustments_today ?? 0}</p>
-                <p className="text-sm text-muted-foreground">
-                  Ajustements ({data.smartDimming?.enabled ? "Actif" : "Inactif"})
-                </p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 cursor-help">
+                      Ajustements ({data.smartDimming?.enabled ? "Actif" : "Inactif"})
+                      <Info className="h-3.5 w-3.5 opacity-70" />
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[240px]">
+                    Nombre de réglages automatiques d&apos;intensité effectués aujourd&apos;hui par le Smart Dimming.
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardContent>
@@ -217,7 +231,12 @@ export default function DashboardPage() {
         {/* Devices Section */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg font-medium">Appareils</CardTitle>
+            <div>
+              <CardTitle className="text-lg font-medium">Appareils</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Le % affiché est l&apos;intensité lumineuse (0–100 %) de chaque lampe.
+              </p>
+            </div>
             <Link href={isAdmin ? "/admin/devices" : "/devices"}>
               <Button variant="ghost" size="sm">
                 Voir tout

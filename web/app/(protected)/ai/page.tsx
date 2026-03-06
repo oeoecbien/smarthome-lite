@@ -109,6 +109,11 @@ export default function AIPage() {
           ) : scenario ? (
             <div className="space-y-4">
               <ScenarioChip scenario={scenario.scenario} confidence={scenario.confidence} className="text-base" />
+              {scenario.confidence !== undefined && (
+                <p className="text-xs text-muted-foreground">
+                  Ce pourcentage indique à quel point le système est sûr du scénario (heure, présence, état des lampes). Il peut varier légèrement selon la situation.
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 {scenario.scenario === 0 && "Mode Jour - Lumière naturelle suffisante"}
                 {scenario.scenario === 1 && "Mode Nuit - Éclairage minimal nécessaire"}

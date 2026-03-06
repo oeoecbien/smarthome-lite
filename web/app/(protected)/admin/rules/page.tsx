@@ -231,7 +231,7 @@ export default function AdminRulesPage() {
         <div>
           <h1 className="text-2xl font-semibold text-balance">Gestion Règles Avancée (Admin)</h1>
           <p className="text-muted-foreground">
-            {enabledCount} règle(s) active(s) sur {rules.length} - Édition JSON complète
+            {enabledCount} règle(s) active(s) sur {rules.length}. Conditions et actions en JSON (time, presence, light, device_id, action, brightness).
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -123,7 +123,7 @@ export default function EventsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-balance">Journal des événements</h1>
-            <p className="text-muted-foreground">Historique complet des activités système</p>
+            <p className="text-muted-foreground">Historique des changements (état, intensité, règles, présence, IA). Filtrez par type ou source.</p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />
