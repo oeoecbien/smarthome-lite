@@ -8,6 +8,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Home
@@ -96,7 +97,7 @@ fun SmartHomeApp(
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.HOME) }
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
     var showAIScreen by rememberSaveable { mutableStateOf(false) }
-    var showRuleScreen by rememberSaveable { mutableStateOf(false) }
+    var showEventsScreen by rememberSaveable { mutableStateOf(false) }
     var showAddDevice by rememberSaveable { mutableStateOf(false) }
     
     val devices by viewModel.devices
@@ -107,6 +108,26 @@ fun SmartHomeApp(
             viewModel = viewModel,
             onBack = { showAIScreen = false }
         )
+    } else if (showEventsScreen) {
+        Scaffold(
+            topBar = {
+                CenterAlignedTopAppBar(
+                    title = { Text("Événements") },
+                    navigationIcon = {
+                        IconButton(onClick = { showEventsScreen = false }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+            }
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                EventsScreen(viewModel = viewModel)
+            }
+        }
     }
     else {
         Scaffold(
@@ -192,7 +213,7 @@ fun SmartHomeApp(
                         email = viewModel.currentEmail,
                         onLogoutClick = { viewModel.logout() },
                         onAIIntelligenceClick = { showAIScreen = true },
-                        onRulesClick = { showRuleScreen = true }
+                        onRulesClick = { showEventsScreen = true }
                     )
                 }
             }
