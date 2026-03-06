@@ -49,6 +49,16 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         throw Exception("Identifiants incorrects")
     }
 
+    override suspend fun forgotPassword(usernameOrEmail: String): String {
+        delay(500)
+        return "Un e-mail de réinitialisation a été envoyé à $usernameOrEmail. Votre token est : FAKE-123456 (Simulé)"
+    }
+
+    override suspend fun resetPassword(newPassword: String, token: String): String {
+        delay(500)
+        return "Opération réussie (Simulé)"
+    }
+
     override suspend fun getDevices(token: String): List<SmartDevice> {
         delay(400)
         return fakeDevices.toList()

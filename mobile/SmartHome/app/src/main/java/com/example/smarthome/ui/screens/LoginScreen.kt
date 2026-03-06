@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -26,6 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +52,11 @@ import com.example.smarthome.ui.theme.PrimaryBlue
 import com.example.smarthome.ui.theme.CardBackground
 
 @Composable
-fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit = {}) {
+fun LoginScreen(
+    viewModel: SmartHomeViewModel, 
+    onCreateAccountClick: () -> Unit = {},
+    onForgotPasswordClick: () -> Unit = {}
+) {
     // Variables locales pour les champs de texte
     var username by remember { mutableStateOf("admin") } // Pré-rempli pour tester vite
     var password by remember { mutableStateOf("admin123") }
@@ -198,7 +204,8 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
                 if (isLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color.White
+                        color = Color.White,
+                        strokeWidth = 2.dp
                     )
                 } else {
                     Text("Se connecter",
@@ -210,7 +217,7 @@ fun LoginScreen(viewModel: SmartHomeViewModel, onCreateAccountClick: () -> Unit 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { /* TODO */ },
+                onClick = onForgotPasswordClick,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent,
                     )

@@ -1,6 +1,8 @@
 package com.example.smarthome.data.repository
 
 import com.example.smarthome.data.api.DeviceStateRequest
+import com.example.smarthome.data.api.ForgotPasswordRequest
+import com.example.smarthome.data.api.ResetPasswordRequest
 import com.example.smarthome.data.api.RetrofitInstance
 import com.example.smarthome.data.api.UpdateRuleRequest
 import com.example.smarthome.data.api.UserResponse
@@ -23,6 +25,16 @@ class RealSmartHomeRepository : SmartHomeRepository {
         val bearerToken = "Bearer ${tokenResponse.access_token}"
         val userInfo = api.getUserInfo(bearerToken)
         return LoginResult(token = bearerToken, userInfo = userInfo)
+    }
+
+    override suspend fun forgotPassword(usernameOrEmail: String): String {
+        val request = ForgotPasswordRequest(usernameOrEmail)
+        return api.forgotPassword(request).message
+    }
+
+    override suspend fun resetPassword(newPassword: String, token: String): String {
+        val request = ResetPasswordRequest(new_password = newPassword, token = token)
+        return api.resetPassword(request).message
     }
 
     override suspend fun getDevices(token: String): List<SmartDevice> = coroutineScope {

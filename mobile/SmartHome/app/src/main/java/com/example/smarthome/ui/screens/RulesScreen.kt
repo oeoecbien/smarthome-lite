@@ -283,7 +283,8 @@ fun AddRuleScreen(
                 onExpandedChange = { expandedDevices = it },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                val selectedDeviceName = devices.find { it.id == selectedDeviceId }?.name ?: "Sélectionner un appareil"
+                val selectedDevice = devices.find { it.id == selectedDeviceId }
+                val selectedDeviceName = selectedDevice?.name ?: "Sélectionner un appareil"
                 OutlinedTextField(
                     value = selectedDeviceName,
                     onValueChange = {},
@@ -299,7 +300,7 @@ fun AddRuleScreen(
                     onDismissRequest = { expandedDevices = false },
                     modifier = Modifier.background(MaterialTheme.colorScheme.tertiary)
                 ) {
-                    devices.filterIsInstance<SmartLight>().forEach { device ->
+                    devices.forEach { device ->
                         DropdownMenuItem(
                             text = { Text(device.name, color = MaterialTheme.colorScheme.primary) },
                             onClick = {
@@ -354,11 +355,13 @@ fun AddRuleScreen(
                 enabled = name.isNotBlank() && selectedDeviceId != null && !isAdding
             ) {
                 if (isAdding) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("CRÉER LA RÈGLE", fontWeight = FontWeight.Bold)
+                    Text("CRÉER LA RÈGLE", fontWeight = FontWeight.Bold, color = Color.White)
                 }
+
             }
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

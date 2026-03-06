@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var showRegisterScreen by remember { mutableStateOf(false) }
+                var showResetPasswordScreen by remember { mutableStateOf(false) }
 
                 if (viewModel.isLoggedIn) {
                     SmartHomeApp(
@@ -76,10 +77,16 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onBackToLogin = { showRegisterScreen = false }
                     )
+                } else if (showResetPasswordScreen) {
+                    ResetPasswordScreen(
+                        viewModel = viewModel,
+                        onBackToLogin = { showResetPasswordScreen = false }
+                    )
                 } else {
                     LoginScreen(
                         viewModel = viewModel,
-                        onCreateAccountClick = { showRegisterScreen = true }
+                        onCreateAccountClick = { showRegisterScreen = true },
+                        onForgotPasswordClick = { showResetPasswordScreen = true }
                     )
                 }
             }

@@ -148,6 +148,62 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    // ─── Forgot Password ──────────────────────────────────────────────────────────
+    var forgotPasswordSuccess = mutableStateOf<String?>(null)
+        private set
+
+    fun forgotPassword(usernameOrEmail: String) {
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+                errorMessage.value = null
+                forgotPasswordSuccess.value = null
+
+                val message = repository.forgotPassword(usernameOrEmail)
+                forgotPasswordSuccess.value = message
+            } catch (e: Exception) {
+                e.printStackTrace()
+                errorMessage.value = "Erreur lors de la réinitialisation du mot de passe."
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
+    fun resetForgotPasswordStatus() {
+        forgotPasswordSuccess.value = null
+        errorMessage.value = null
+    }
+
+    // ─── Reset Password ───────────────────────────────────────────────────────────
+    var resetPasswordSuccess = mutableStateOf<String?>(null)
+        private set
+
+    fun resetPassword(newPassword: String, token: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                isLoading.value = true
+                errorMessage.value = null
+                resetPasswordSuccess.value = null
+
+                val message = repository.resetPassword(newPassword, token)
+                resetPasswordSuccess.value = message
+                delay(2000)
+                onSuccess()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                errorMessage.value = "Erreur lors du changement de mot de passe."
+            } finally {
+                isLoading.value = false
+            }
+        }
+    }
+
+    fun resetResetPasswordStatus() {
+        resetPasswordSuccess.value = null
+        errorMessage.value = null
+    }
+
     // ─── Intelligence Artificielle ──────────────────────────────────────────────
     fun fetchAIScenario() {
         if (token == null) return

@@ -15,6 +15,10 @@ interface SmartHomeRepository {
 
     suspend fun login(username: String, password: String): LoginResult
 
+    suspend fun forgotPassword(usernameOrEmail: String): String
+
+    suspend fun resetPassword(newPassword: String, token: String): String
+
     suspend fun getDevices(token: String): List<SmartDevice>
 
     suspend fun addDevice(token: String, gpioPin: Int, name: String, raspberryPiId: Int, type: String): ApiDevice

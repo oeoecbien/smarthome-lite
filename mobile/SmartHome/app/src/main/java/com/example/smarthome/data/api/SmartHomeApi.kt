@@ -21,9 +21,28 @@ data class UpdateRuleRequest(
     val enabled: Boolean
 )
 
+data class ForgotPasswordRequest(
+    val username_or_email: String
+)
+
+data class ResetPasswordRequest(
+    val new_password: String,
+    val token: String
+)
+
+data class MessageResponse(
+    val message: String
+)
+
 interface SmartHomeApi {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
+
+    @POST("api/auth/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): MessageResponse
+
+    @POST("api/auth/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): MessageResponse
 
     @GET("api/devices/")
     suspend fun getDevices(@Header("Authorization") token: String): List<ApiDevice>
