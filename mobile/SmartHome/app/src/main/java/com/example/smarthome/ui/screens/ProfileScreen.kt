@@ -24,15 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -57,7 +51,8 @@ fun ProfileScreen(
     name: String,
     email: String,
     onLogoutClick: () -> Unit,
-    onCreateAccountClick: () -> Unit = {},
+    onAIIntelligenceClick: () -> Unit,
+    onRulesClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -103,23 +98,6 @@ fun ProfileScreen(
                         tint = Color.Gray
                     )
                 }
-
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(PrimaryBlue)
-                        .border(3.dp, MaterialTheme.colorScheme.background, CircleShape)
-                        .clickable { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Change photo",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
             }
         }
 
@@ -135,14 +113,6 @@ fun ProfileScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit name",
-                    tint = PrimaryBlue,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable { }
-                )
             }
         }
 
@@ -162,30 +132,22 @@ fun ProfileScreen(
 
 
                 ProfileMenuItem(
-                    icon = Icons.Default.Lock,
-                    title = "Account Security",
-                    subtitle = "Password, 2FA",
+                    icon = Icons.Default.AutoFixHigh,
+                    title = "Intelligence",
+                    subtitle = "IA",
                     iconBgColor = PrimaryBlue.copy(alpha = 0.1f),
-                    iconColor = PrimaryBlue
+                    iconColor = PrimaryBlue,
+                    onClick = onAIIntelligenceClick
                 )
 
                 ProfileMenuItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notification Preferences",
-                    subtitle = "Push, Email, SMS",
+                    icon = Icons.Outlined.Rule,
+                    title = "Événements",
+                    subtitle = "Liste des événements",
                     iconBgColor = AccentOrange.copy(alpha = 0.1f),
-                    iconColor = AccentOrange
+                    iconColor = AccentOrange,
+                    onClick = onRulesClick
                 )
-
-                if (name == "admin") {
-                    ProfileMenuItem(
-                        icon = Icons.Default.Code,
-                        title = "API Configuration",
-                        subtitle = "Keys & Webhooks",
-                        iconBgColor = AccentPurple.copy(alpha = 0.1f),
-                        iconColor = AccentPurple
-                    )
-                }
             }
         }
 
@@ -214,7 +176,7 @@ fun ProfileScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Log Out",
+                    text = "Déconnexion",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -234,6 +196,7 @@ fun ProfileMenuItem(
     subtitle: String,
     iconBgColor: Color,
     iconColor: Color,
+    onClick: () -> Unit = {},
     trailingContent: @Composable (() -> Unit)? = null
 ) {
     Row(
@@ -242,7 +205,7 @@ fun ProfileMenuItem(
             .height(80.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.tertiary)
-            .clickable { }
+            .clickable { onClick() }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

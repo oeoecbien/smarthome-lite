@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -36,7 +37,7 @@ import com.example.smarthome.R
 
 
 @Composable
-fun HeaderSection(name: String) {
+fun HeaderSection(name: String, onAddClick: () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -63,13 +64,13 @@ fun HeaderSection(name: String) {
         }
         // Cloche Notification
         IconButton(
-            onClick = {},
+            onClick = onAddClick,
             modifier = Modifier
                 .size(45.dp)
                 .clip(CircleShape)
-                .background(CardBackground)
+                .background(Color(0xFF2979FF))
         ) {
-            Icon(Icons.Outlined.Notifications, contentDescription = "Alerts", tint = TextWhite)
+            Icon(Icons.Outlined.Add, contentDescription = "Add Device", tint = TextWhite)
         }
     }
 }
@@ -160,7 +161,8 @@ fun DeviceGrid(
         columns = GridCells.Fixed(2),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxHeight()
+        modifier = Modifier.fillMaxHeight(),
+        contentPadding = PaddingValues(bottom = 140.dp) // Ajoute l'espace pour que le scroll finisse au dessus de la barre
     ) {
         // --- LAMPES & CAPTEURS (Depuis l'API) ---
         items(devices.size, span = { index ->
@@ -289,7 +291,7 @@ fun ThermostatCard(
                     .clip(CircleShape), // Fond orange très sombre
                 contentAlignment = Alignment.Center
             ) {
-                Image(painter = painterResource(R.drawable.sensor_svg), contentDescription = null)
+                Icon(painter = painterResource(R.drawable.sensor_svg), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column {
