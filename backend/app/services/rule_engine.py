@@ -47,9 +47,10 @@ class RuleEngine:
         Returns:
             Liste des règles exécutées avec leurs résultats
         """
-        # Récupérer toutes les règles actives, triées par priorité (décroissante)
+        # Récupérer toutes les règles actives et non supprimées, triées par priorité (décroissante)
         rules = self.db.query(Rule).filter(
-            Rule.enabled == True
+            Rule.enabled == True,
+            Rule.deleted_at.is_(None),
         ).order_by(Rule.priority.desc()).all()
         
         executed_rules = []
@@ -84,7 +85,7 @@ class RuleEngine:
                     self.db.add(event)
                     self.db.commit()
                     
-                    logger.info(f"[OK] Règle '{rule.name}' (ID: {rule.id}) exécutée")
+                    logger.debug(f"[OK] Règle '{rule.name}' (ID: {rule.id}) exécutée")
             except Exception as e:
                 logger.error(f"Erreur lors de l'évaluation de la règle {rule.id}: {e}")
                 executed_rules.append({

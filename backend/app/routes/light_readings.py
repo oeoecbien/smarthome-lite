@@ -62,7 +62,7 @@ async def create_light_reading(
         adjustments = await smart_dimming_service.process_light_reading(reading)
         
         if adjustments:
-            logger.info(f"Smart Dimming: {len(adjustments)} ajustements effectués")
+            logger.debug(f"Smart Dimming: {len(adjustments)} ajustements effectués")
     except Exception as e:
         # Ne pas faire échouer l'enregistrement si le Smart Dimming échoue
         import logging

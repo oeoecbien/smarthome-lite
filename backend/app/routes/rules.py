@@ -189,13 +189,10 @@ async def delete_rule(
     if current_user.role != "admin" and rule.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     
-    # Soft delete
+    # Soft delete (ne pas appeler db.delete pour conserver l'enregistrement)
     from datetime import datetime, timezone
     rule.deleted_at = datetime.now(timezone.utc)
-    
-    db.delete(rule)
     db.commit()
-    
     return None
 
 

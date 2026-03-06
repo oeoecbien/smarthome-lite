@@ -98,7 +98,7 @@ async def create_presence(
                     sensor_device.id,
                     {"motion": True},
                 )
-                logger.info(
+                logger.debug(
                     "Règles capteur→lampe appliquées pour le détecteur (device_id=%s, node_id=%s)",
                     sensor_device.id,
                     sensor_node_id,
@@ -118,7 +118,7 @@ async def create_presence(
             trigger_data=trigger_data
         )
         if executed_rules:
-            logger.info("Règles exécutées après détection de mouvement: %s", len(executed_rules))
+            logger.debug("Règles exécutées après détection de mouvement: %s", len(executed_rules))
     except Exception as e:
         logger.error("Erreur lors de l'évaluation des règles: %s", e)
 

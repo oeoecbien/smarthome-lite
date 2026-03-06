@@ -12,7 +12,8 @@ import { getApiBaseUrl } from "@/lib/api"
 import { deviceService } from "@/lib/services/device-service"
 import { formatRelativeTime } from "@/lib/formatters"
 import type { SmartDimmingStatus, SmartDimmingAdjustment, Device } from "@/lib/types"
-import { SunDim, RefreshCw, AlertCircle, Pause, ArrowRight, Lightbulb, Filter } from "lucide-react"
+import { SunDim, RefreshCw, AlertCircle, Pause, ArrowRight, Lightbulb, Filter, Info } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 
@@ -142,6 +143,9 @@ export default function SmartDimmingPage() {
         <div>
           <h1 className="text-2xl font-semibold text-balance">Smart Dimming</h1>
           <p className="text-muted-foreground">Ajustement automatique de l&apos;intensité lumineuse</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            L&apos;intensité des lampes suit la luminosité ambiante et le scénario IA (Jour, Nuit, Soirée, Absence).
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -186,7 +190,17 @@ export default function SmartDimmingPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{status?.adjustments_today ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Ajustements aujourd&apos;hui</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 cursor-help w-fit">
+                      Ajustements aujourd&apos;hui
+                      <Info className="h-3.5 w-3.5 opacity-70" />
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[260px]">
+                    Nombre de fois où le système a modifié l&apos;intensité d&apos;une lampe aujourd&apos;hui pour suivre la cible (luminosité + scénario).
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardContent>
@@ -200,7 +214,17 @@ export default function SmartDimmingPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{status?.active_devices?.length ?? 0}</p>
-                <p className="text-sm text-muted-foreground">Appareils actifs</p>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 cursor-help w-fit">
+                      Appareils actifs
+                      <Info className="h-3.5 w-3.5 opacity-70" />
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[240px]">
+                    Lampes dont l&apos;intensité est pilotée automatiquement par le Smart Dimming.
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardContent>
@@ -251,7 +275,9 @@ export default function SmartDimmingPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-lg">Historique des ajustements</CardTitle>
-              <CardDescription>Dernières modifications automatiques d&apos;intensité</CardDescription>
+              <CardDescription>
+                Dernières modifications automatiques. Chaque ligne : intensité avant → après, selon le scénario IA.
+              </CardDescription>
             </div>
             <div className="flex gap-2">
               <Select value={filterDeviceId} onValueChange={setFilterDeviceId}>

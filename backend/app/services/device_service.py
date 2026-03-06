@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Any, Dict, Optional, Literal
 
 from app.models import Device, RaspberryPi, Event, SensorControlState
@@ -63,7 +63,7 @@ class DeviceService:
             kwargs["headers"] = headers
         timeout_sec = timeout_override if timeout_override is not None else settings.raspberry_pi_timeout
         if "/sensor" in endpoint:
-            logger.info("RPi sensor request: %s %s (timeout=%ss)", method, url, timeout_sec)
+            logger.debug("RPi sensor request: %s %s (timeout=%ss)", method, url, timeout_sec)
         try:
             async with httpx.AsyncClient(timeout=timeout_sec) as client:
                 if method.upper() == "GET":
@@ -81,7 +81,7 @@ class DeviceService:
                     motion = result.get("motion")
                     temp = result.get("temperature_c")
                     cached = result.get("cached", False)
-                    logger.info(
+                    logger.debug(
                         "RPi sensor response OK: node_id=%s motion=%s temp=%s cached=%s",
                         result.get("node_id"), motion, temp, cached,
                     )
@@ -237,8 +237,12 @@ class DeviceService:
         self.db.commit()
         self.db.refresh(device)
         
-        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
-        if source != "automatic":
+        # Ne pas déclencher l'évaluation des règles après une action manuelle :
+        # le bouton ON/OFF a la priorité sur les règles (les règles passent en dessous).
+        # Après une action automatique, on ne relance pas non plus pour éviter les boucles.
+        if source == "manual":
+            logger.debug(f"Device {device.name} state changed to {state} (manual): rules not re-evaluated (manual has priority)")
+        elif source != "automatic":
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)
@@ -247,11 +251,11 @@ class DeviceService:
                     trigger_data={"device_id": device.id, "state": state}
                 )
                 if executed_rules:
-                    logger.info(f"Règles exécutées après changement d'état: {len(executed_rules)}")
+                    logger.debug(f"Règles exécutées après changement d'état: {len(executed_rules)}")
             except Exception as e:
                 logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
         
-        logger.info(f"Device {device.name} state changed to {state} (source: {source})")
+        logger.debug(f"Device {device.name} state changed to {state} (source: {source})")
         
         return device
     
@@ -306,8 +310,10 @@ class DeviceService:
         self.db.commit()
         self.db.refresh(device)
         
-        # Déclencher l'évaluation des règles (si source != automatic pour éviter les boucles)
-        if source != "automatic":
+        # Ne pas déclencher l'évaluation des règles après une action manuelle (priorité au contrôle manuel).
+        if source == "manual":
+            logger.debug(f"Device {device.name} brightness changed (manual): rules not re-evaluated")
+        elif source != "automatic":
             try:
                 from app.services.rule_engine import RuleEngine
                 rule_engine = RuleEngine(self.db)
@@ -316,11 +322,11 @@ class DeviceService:
                     trigger_data={"device_id": device.id, "brightness": brightness_stored}
                 )
                 if executed_rules:
-                    logger.info(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
+                    logger.debug(f"Règles exécutées après changement d'intensité: {len(executed_rules)}")
             except Exception as e:
                 logger.warning(f"Erreur lors de l'évaluation des règles: {e}")
         
-        logger.info(
+        logger.debug(
             f"Device {device.name} brightness changed "
             f"{previous_brightness}% → {brightness_stored}% (source: {source})"
         )
@@ -331,16 +337,20 @@ class DeviceService:
         """
         Récupère un appareil avec informations de localisation (exclut les appareils soft-deleted).
         """
-        query = self.db.query(Device).filter(
-            Device.id == device_id,
-            Device.deleted_at.is_(None),
+        query = (
+            self.db.query(Device)
+            .options(joinedload(Device.raspberry_pi))
+            .filter(
+                Device.id == device_id,
+                Device.deleted_at.is_(None),
+            )
         )
         if user_id:
             query = query.filter(Device.user_id == user_id)
         device = query.first()
         if not device:
             raise ValueError(f"Device {device_id} not found")
-        
+        rpi = device.raspberry_pi
         out = {
             "id": device.id,
             "name": device.name,
@@ -348,11 +358,13 @@ class DeviceService:
             "state": device.state,
             "brightness": min(100, max(0, device.brightness)),
             "gpio_pin": device.gpio_pin,
-            "raspberry_pi_name": device.raspberry_pi.name,
-            "location": device.raspberry_pi.location,
-            "raspberry_pi_online": device.raspberry_pi.is_online,
+            "raspberry_pi_id": device.raspberry_pi_id,
+            "raspberry_pi_name": rpi.name if rpi else "",
+            "location": rpi.location if rpi else "",
+            "raspberry_pi_online": rpi.is_online if rpi else False,
+            "user_id": device.user_id,
             "created_at": device.created_at,
-            "updated_at": device.updated_at
+            "updated_at": device.updated_at,
         }
         if device.controlled_by_sensor_id is not None:
             out["controlled_by_sensor_id"] = device.controlled_by_sensor_id

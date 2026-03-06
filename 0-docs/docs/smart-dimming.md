@@ -1,11 +1,3 @@
 # Smart Dimming
 
-Ajuste l’intensité des lampes (light/dimmer) selon la luminosité ambiante (lux) et le scénario IA. Déclenché à chaque nouvelle mesure `light_readings` (RPi envoie les lux).
-
-**Config** : `app/config.py` → `dimming_params` par scénario (0=Day, 1=Night, 2=Away, 3=Evening). Seuils lux + intensités min/max. Scénario Away = smart dimming désactivé (fixed_brightness 0).
-
-**Fichiers** : `app/services/smart_dimming_service.py`, `app/routes/smart_dimming.py`. Activation globale : `SMART_DIMMING_ENABLED` (config) ou endpoint `PUT /api/smart-dimming/enable`.
-
-Endpoints : `GET /api/smart-dimming/status` (activé, adjustments_today, active_devices), `PUT /api/smart-dimming/enable` (body `{ "enabled": true }`), `POST /api/smart-dimming/simulate` (optionnel, body `{ "lux_value": 400 }` pour forcer un run).
-
-`GET /health` n’expose pas le smart dimming ; voir `GET /api/smart-dimming/status`.
+Le smart dimming adapte l’intensité des lampes à la **luminosité ambiante** (lux) et au **scénario IA**. Il est déclenché à chaque nouvelle mesure de luminosité enregistrée (table `light_readings`), que ces mesures viennent du RPi ou de la lecture des capteurs par le backend. Le service `SmartDimmingService` (`smart_dimming_service.py`) reçoit une lecture (`process_light_reading`) : il détermine le scénario actuel (via AIService ou des règles horaires en secours), récupère les paramètres du scénario dans la configuration (seuils de lux, intensités min/max, transition), calcule l’intensité cible (interpolation ou modèle de régression si disponible) et, pour chaque lampe concernée (smart dimming activé et non en pause utilisateur), appelle `DeviceService` pour régler l’intensité (source automatique) et enregistre les ajustements et événements. Le flux global est donc : **luminosité (RPi ou capteur) → backend → SmartDimmingService + scénario IA → commande d’intensité vers le RPi**.

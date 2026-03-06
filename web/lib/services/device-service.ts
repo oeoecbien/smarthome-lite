@@ -39,8 +39,16 @@ export const deviceService = {
     return api.patch<Device>(`/api/devices/${id}`, data)
   },
 
-  async updateState(id: number, state: boolean): Promise<DeviceStateResponse> {
-    return api.put<DeviceStateResponse>(`/api/devices/${id}/state`, { state })
+  /**
+   * Met à jour l'état ON/OFF. À l'allumage, passer brightness pour reprendre la dernière luminosité.
+   */
+  async updateState(
+    id: number,
+    state: boolean,
+    brightness?: number
+  ): Promise<DeviceStateResponse> {
+    const body = state && brightness != null ? { state, brightness } : { state }
+    return api.put<DeviceStateResponse>(`/api/devices/${id}/state`, body)
   },
 
   async updateBrightness(id: number, brightness: number, transition?: "immediate" | "fade"): Promise<DeviceStateResponse> {

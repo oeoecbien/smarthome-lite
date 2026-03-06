@@ -7,12 +7,15 @@ import { Badge } from "@/components/ui/badge"
 import { ruleService } from "@/lib/services/rule-service"
 import type { Rule } from "@/lib/types"
 import { formatRelativeTime } from "@/lib/formatters"
-import { Settings2, Loader2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Settings2, Loader2, Edit, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface RuleCardUserProps {
   rule: Rule
   onUpdate: () => void
+  onEdit?: (rule: Rule) => void
+  onDelete?: (id: number) => void
 }
 
 // Fonction pour formater une règle en langage naturel
@@ -56,7 +59,7 @@ function formatRuleDescription(rule: Rule): string {
   return desc
 }
 
-export function RuleCardUser({ rule, onUpdate }: RuleCardUserProps) {
+export function RuleCardUser({ rule, onUpdate, onEdit, onDelete }: RuleCardUserProps) {
   const [isUpdating, setIsUpdating] = useState(false)
 
   const handleToggle = async () => {
@@ -68,6 +71,12 @@ export function RuleCardUser({ rule, onUpdate }: RuleCardUserProps) {
       console.error("Failed to toggle rule:", error)
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const handleDelete = () => {
+    if (onDelete && window.confirm(`Êtes-vous sûr de vouloir supprimer la règle « ${rule.name } » ?`)) {
+      onDelete(rule.id)
     }
   }
 
@@ -113,6 +122,28 @@ export function RuleCardUser({ rule, onUpdate }: RuleCardUserProps) {
             {rule.enabled ? "Activée" : "Désactivée"}
           </Badge>
           <span className="text-xs text-muted-foreground">Créée {formatRelativeTime(rule.created_at)}</span>
+        </div>
+
+        {/* Modifier / Supprimer */}
+        <div className="mt-4 pt-3 border-t border-border flex flex-wrap items-center gap-2">
+          {onEdit && (
+            <Button variant="outline" size="sm" onClick={() => onEdit(rule)} className="w-full sm:w-auto">
+              <Edit className="h-4 w-4 mr-2" />
+              Modifier
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isUpdating}
+              className="text-muted-foreground hover:bg-destructive hover:text-white"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Supprimer
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

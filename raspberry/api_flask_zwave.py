@@ -188,6 +188,7 @@ def set_device_state(device_id):
 def set_device_brightness(device_id):
     """
     Intensité. Corps: { "brightness": 0-100, "transition": "immediate"|"fade" (optionnel) }
+    À l'extinction (brightness=0) on force toujours transition immédiate (0s).
     """
     try:
         data = request.get_json(force=True, silent=True) or {}
@@ -198,7 +199,11 @@ def set_device_brightness(device_id):
         if not 0 <= brightness <= 100:
             return _api_error("Brightness must be between 0 and 100", 400)
 
-        duration = "5s" if transition == "fade" else None
+        # Extinction (brightness 0) : toujours instantanée, pas de fade
+        if brightness <= 0:
+            duration = "0s"
+        else:
+            duration = "5s" if transition == "fade" else None
         result = run_async(
             zwave_client.set_brightness(node_id, brightness, transition_duration=duration)
         )
