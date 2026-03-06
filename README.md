@@ -120,7 +120,7 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ### 2.2 Architecture Modulaire
 
-![Architecture globale](0-docs/soutenance/annexes/images/architecture.png)
+![Architecture globale](0-docs/docs/annexes/images/architecture.png)
 
 ### 2.3 Composants Principaux
 
@@ -510,7 +510,7 @@ Détecter automatiquement les profils d'utilisation pour personnaliser le compor
 8. Enregistrement pour apprentissage futur
 ```
 
-![Pipeline IA](0-docs/soutenance/annexes/images/pipeline%20ia.png)
+![Pipeline IA](0-docs/docs/annexes/images/pipeline%20ia.png)
 
 **Performance globale :**
 - Temps total d'inférence : < 300ms
@@ -860,7 +860,7 @@ rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
 ```
 
-![Schéma base de données](0-docs/soutenance/annexes/images/base%20de%20données.png)
+![Schéma base de données](0-docs/docs/annexes/images/base%20de%20données.png)
 
 ### 4.4 Volumétrie Estimée
 
@@ -1785,7 +1785,7 @@ Le système SmartHome Lite est organisé en **architecture modulaire monolithiqu
 
 ### 2.2 Architecture Modulaire
 
-![Architecture globale](0-docs/soutenance/annexes/images/architecture.png)
+![Architecture globale](0-docs/docs/annexes/images/architecture.png)
 
 ### 2.3 Composants Principaux
 
@@ -2173,7 +2173,7 @@ Détecter automatiquement les profils d'utilisation pour personnaliser le compor
 8. Enregistrement pour apprentissage futur
 ```
 
-![Pipeline IA](0-docs/soutenance/annexes/images/pipeline%20ia.png)
+![Pipeline IA](0-docs/docs/annexes/images/pipeline%20ia.png)
 
 **Performance globale :**
 - Temps total d'inférence : < 300ms
@@ -2517,7 +2517,7 @@ rules (standalone, références JSONB vers devices)
 training_data (standalone, apprentissage automatique)
 ```
 
-![Schéma base de données](0-docs/soutenance/annexes/images/base%20de%20données.png)
+![Schéma base de données](0-docs/docs/annexes/images/base%20de%20données.png)
 
 ### 4.4 Volumétrie Estimée
 

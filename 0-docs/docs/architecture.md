@@ -1,0 +1,3 @@
+# Vue d’ensemble de l’architecture
+
+Le système repose sur **trois niveaux** : les **clients** (application mobile Kotlin/Compose et application web Next.js), le **backend** FastAPI (Python) et le **Raspberry Pi** (API Flask + Z-Wave). Les clients communiquent avec le backend en HTTP REST en s’authentifiant par **JWT**. Le backend communique avec le Raspberry Pi en HTTP sur le port 5000, avec une **clé API** (X-API-Key) si elle est configurée. Le Raspberry Pi dialogue avec l’écosystème Z-Wave via **WebSocket** (zwave-js-server) ou **Socket.IO** (Z-Wave JS UI) selon disponibilité — voir la clarification en section 4 — pour piloter les lampes et lire les capteurs Z-Wave.
