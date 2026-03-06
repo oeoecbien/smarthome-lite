@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timezone
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Any, Dict, Optional, Literal
 
 from app.models import Device, RaspberryPi, Event, SensorControlState
@@ -337,16 +337,20 @@ class DeviceService:
         """
         Récupère un appareil avec informations de localisation (exclut les appareils soft-deleted).
         """
-        query = self.db.query(Device).filter(
-            Device.id == device_id,
-            Device.deleted_at.is_(None),
+        query = (
+            self.db.query(Device)
+            .options(joinedload(Device.raspberry_pi))
+            .filter(
+                Device.id == device_id,
+                Device.deleted_at.is_(None),
+            )
         )
         if user_id:
             query = query.filter(Device.user_id == user_id)
         device = query.first()
         if not device:
             raise ValueError(f"Device {device_id} not found")
-        
+        rpi = device.raspberry_pi
         out = {
             "id": device.id,
             "name": device.name,
@@ -354,11 +358,13 @@ class DeviceService:
             "state": device.state,
             "brightness": min(100, max(0, device.brightness)),
             "gpio_pin": device.gpio_pin,
-            "raspberry_pi_name": device.raspberry_pi.name,
-            "location": device.raspberry_pi.location,
-            "raspberry_pi_online": device.raspberry_pi.is_online,
+            "raspberry_pi_id": device.raspberry_pi_id,
+            "raspberry_pi_name": rpi.name if rpi else "",
+            "location": rpi.location if rpi else "",
+            "raspberry_pi_online": rpi.is_online if rpi else False,
+            "user_id": device.user_id,
             "created_at": device.created_at,
-            "updated_at": device.updated_at
+            "updated_at": device.updated_at,
         }
         if device.controlled_by_sensor_id is not None:
             out["controlled_by_sensor_id"] = device.controlled_by_sensor_id
