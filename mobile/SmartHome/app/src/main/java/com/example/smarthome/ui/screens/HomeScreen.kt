@@ -8,7 +8,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,18 +25,17 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: SmartHomeViewModel = viewModel(),
     selectedLampId: Int?,
-    onLampSelect: (Int?) -> Unit
+    onLampSelect: (Int?) -> Unit,
+    showAddDevice: Boolean,
+    onShowAddDeviceChange: (Boolean) -> Unit
 ) {
     val devices by viewModel.devices
     val isDevicesLoading by viewModel.isDevicesLoading
-    val error by viewModel.errorMessage
-
-    var showAddDevice by remember { mutableStateOf(false) }
 
     if (showAddDevice) {
         AddDeviceScreen(
             viewModel = viewModel,
-            onBack = { showAddDevice = false }
+            onBack = { onShowAddDeviceChange(false) }
         )
     } else {
         // Navigation entre Liste et Détail
@@ -59,7 +57,7 @@ fun HomeScreen(
                         // 1. En-tête (Profil + Notif)
                         HeaderSection(
                             name = "${viewModel.currentUsername}",
-                            onAddClick = { showAddDevice = true }
+                            onAddClick = { onShowAddDeviceChange(true) }
                         )
 
                         Spacer(modifier = Modifier.height(24.dp))

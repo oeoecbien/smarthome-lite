@@ -23,7 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.smarthome.data.api.TokenManager
 import com.example.smarthome.data.model.*
 import com.example.smarthome.ui.components.*
@@ -36,8 +40,16 @@ import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val tokenManager = TokenManager(this)
+        
+        // Active le rendu bord à bord
         enableEdgeToEdge()
+        
+        // Configuration pour masquer les boutons de navigation (Mode Immersif)
+        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(WindowInsetsCompat.Type.navigationBars())
+
+        val tokenManager = TokenManager(this)
         setContent {
             SmartHomeTheme(dynamicColor = false) {
                 val viewModel: SmartHomeViewModel = viewModel()
@@ -84,6 +96,7 @@ fun SmartHomeApp(
     var selectedLampId by rememberSaveable { mutableStateOf<Int?>(null) }
     var showAIScreen by rememberSaveable { mutableStateOf(false) }
     var showRuleScreen by rememberSaveable { mutableStateOf(false) }
+    var showAddDevice by rememberSaveable { mutableStateOf(false) }
     
     val devices by viewModel.devices
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,13 +122,14 @@ fun SmartHomeApp(
             bottomBar = {
                 NavigationBar(
                     modifier = Modifier
-                        .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 30.dp) // Encore plus haut
                         .shadow(
-                            elevation = 12.dp, 
-                            shape = RoundedCornerShape(28.dp),
+                            elevation = 8.dp, 
+                            shape = RoundedCornerShape(24.dp),
                             clip = false
                         )
-                        .clip(RoundedCornerShape(28.dp)),
+                        .height(64.dp) 
+                        .clip(RoundedCornerShape(24.dp)),
                     containerColor = MaterialTheme.colorScheme.tertiary,
                     tonalElevation = 0.dp,
                     windowInsets = WindowInsets(0.dp) 
@@ -132,14 +146,16 @@ fun SmartHomeApp(
                                     Icon(
                                         dest.icon,
                                         contentDescription = dest.label,
-                                        tint = PrimaryBlue
+                                        tint = PrimaryBlue,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             },
                             label = {
                                 Text(
                                     dest.label,
-                                    color = if (isSelected) PrimaryBlue else GrayText
+                                    color = if (isSelected) PrimaryBlue else GrayText,
+                                    fontSize = 10.sp
                                 )
                             },
                             selected = isSelected,
@@ -170,7 +186,9 @@ fun SmartHomeApp(
                     AppDestinations.HOME -> HomeScreen(
                         viewModel = viewModel,
                         selectedLampId = selectedLampId,
-                        onLampSelect = { selectedLampId = it }
+                        onLampSelect = { selectedLampId = it },
+                        showAddDevice = showAddDevice,
+                        onShowAddDeviceChange = { showAddDevice = it }
                     )
                     AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
                     AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
