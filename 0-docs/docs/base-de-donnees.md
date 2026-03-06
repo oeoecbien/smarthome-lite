@@ -1,0 +1,3 @@
+# Base de données (PostgreSQL)
+
+La base de données stocke l’ensemble des données métier : utilisateurs, Raspberry Pi, appareils, événements, règles, présences, mesures de luminosité, ajustements du smart dimming et données d’entraînement pour l’IA. L’accès se fait via **SQLAlchemy** (ORM) avec une session par requête fournie par `get_db`. Les scripts dans le dossier `db/` permettent de configurer PostgreSQL, de recréer la base (`recreate_database.sh`, `init_database.sql`) et d’effectuer des sauvegardes et restaurations. Les paramètres de connexion peuvent être lus depuis le fichier `.env` à la racine du projet.
