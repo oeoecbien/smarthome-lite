@@ -145,4 +145,15 @@ class FakeSmartHomeRepository : SmartHomeRepository {
         fakeRules.add(newRule)
         return newRule
     }
+
+    override suspend fun updateRule(token: String, ruleId: Int, enabled: Boolean): RuleResponse {
+        delay(300)
+        val index = fakeRules.indexOfFirst { it.id == ruleId }
+        if (index != -1) {
+            val updated = fakeRules[index].copy(enabled = enabled, updatedAt = "2026-03-05T12:30:00Z")
+            fakeRules[index] = updated
+            return updated
+        }
+        throw Exception("Rule not found")
+    }
 }

@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +26,7 @@ import com.example.smarthome.ui.viewmodel.SmartHomeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RulesScreen(viewModel: SmartHomeViewModel, onBack: () -> Unit) {
+fun RulesScreen(viewModel: SmartHomeViewModel) {
     val rules by viewModel.rules
     val isLoading by viewModel.isRulesLoading
     var showAddRule by remember { mutableStateOf(false) }
@@ -40,11 +41,6 @@ fun RulesScreen(viewModel: SmartHomeViewModel, onBack: () -> Unit) {
             topBar = {
                 TopAppBar(
                     title = { Text("Règles de gestion", color = MaterialTheme.colorScheme.primary) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour", tint = MaterialTheme.colorScheme.primary)
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 )
             },
@@ -59,25 +55,36 @@ fun RulesScreen(viewModel: SmartHomeViewModel, onBack: () -> Unit) {
             },
             containerColor = MaterialTheme.colorScheme.background
         ) { innerPadding ->
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PrimaryBlue)
-                }
-            } else if (rules.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Aucune règle configurée", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    items(rules) { rule ->
-                        RuleCard(rule)
+            PullToRefreshBox(
+                isRefreshing = isLoading,
+                onRefresh = { viewModel.fetchRules() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                if (rules.isEmpty() && !isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState()), // Permet le pull to refresh même si vide
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Aucune règle configurée. Tirez pour rafraîchir.", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        items(rules) { rule ->
+                            RuleCard(
+                                rule = rule,
+                                onToggle = { enabled -> viewModel.toggleRule(rule.id, enabled) }
+                            )
+                        }
                     }
                 }
             }
@@ -272,7 +279,10 @@ fun AddRuleScreen(
 }
 
 @Composable
-fun RuleCard(rule: RuleResponse) {
+fun RuleCard(
+    rule: RuleResponse,
+    onToggle: (Boolean) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -289,42 +299,20 @@ fun RuleCard(rule: RuleResponse) {
             ) {
                 Text(
                     text = rule.name,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Switch(
                     checked = rule.enabled,
-                    onCheckedChange = { /* Logic to toggle rule */ },
+                    onCheckedChange = { onToggle(it) },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = PrimaryBlue
                     )
                 )
             }
-            
-            Text(
-                text = rule.description,
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
-            
-            HorizontalDivider(color = Color(0xFF2A3245), thickness = 1.dp)
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text("Priorité", color = Color.Gray, fontSize = 12.sp)
-                    Text(rule.priority.toString(), color = PrimaryBlue, fontWeight = FontWeight.Bold)
-                }
-                
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Action", color = Color.Gray, fontSize = 12.sp)
-                    Text(rule.action.action, color = Color.White, fontWeight = FontWeight.Medium)
-                }
-            }
+            Text(text = rule.description, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
         }
     }
 }

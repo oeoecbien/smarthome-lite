@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,12 +108,6 @@ fun SmartHomeApp(
             onBack = { showAIScreen = false }
         )
     }
-    else if (showRuleScreen) {
-        RulesScreen(
-            viewModel = viewModel,
-            onBack = { showRuleScreen = false }
-        )
-    }
     else {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -190,7 +185,7 @@ fun SmartHomeApp(
                         showAddDevice = showAddDevice,
                         onShowAddDeviceChange = { showAddDevice = it }
                     )
-                    AppDestinations.EVENTS -> EventsScreen(viewModel = viewModel)
+                    AppDestinations.RULES -> RulesScreen (viewModel = viewModel)
                     AppDestinations.DIMMING -> SmartDimmingScreen(viewModel = viewModel)
                     AppDestinations.PROFILE -> ProfileScreen(
                         name = viewModel.currentUsername,
@@ -208,7 +203,7 @@ fun SmartHomeApp(
 
 enum class AppDestinations(val label: String, val icon: ImageVector) {
     HOME("Accueil", Icons.Default.Home),
-    EVENTS("Événements", Icons.Default.Notifications),
+    RULES("Règles", Icons.Default.Rule),
     DIMMING("Dimming", Icons.Default.AutoAwesome),
     PROFILE("Profil", Icons.Default.AccountBox),
 }

@@ -31,6 +31,7 @@ fun EventsScreen(viewModel: SmartHomeViewModel) {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 20.dp)
+
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -71,7 +72,7 @@ fun EventsScreen(viewModel: SmartHomeViewModel) {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
+                contentPadding = PaddingValues(bottom = 100.dp)
             ) {
                 items(events) { event ->
                     EventItemCard(event)

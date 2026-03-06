@@ -311,6 +311,29 @@ class SmartHomeViewModel : ViewModel() {
         }
     }
 
+    fun toggleRule(ruleId: Int, enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                if (token == null) return@launch
+                
+                // Optimistic UI update
+                val currentRules = rules.value.toMutableList()
+                val index = currentRules.indexOfFirst { it.id == ruleId }
+                if (index != -1) {
+                    currentRules[index] = currentRules[index].copy(enabled = enabled)
+                    rules.value = currentRules
+                }
+
+                repository.updateRule(token!!, ruleId, enabled)
+            } catch (e: Exception) {
+                if (e is HttpException && e.code() == 401) handleUnauthorized()
+                e.printStackTrace()
+                // Rollback on error
+                fetchRules()
+            }
+        }
+    }
+
     // ─── Fetch Smart Dimming ──────────────────────────────────────────────────────
     private suspend fun fetchSmartDimmingData() {
         if (token == null) return
@@ -367,7 +390,7 @@ class SmartHomeViewModel : ViewModel() {
                         fetchSmartDimmingData()
                         fetchEvents()
                         fetchAIScenario()
-                        fetchRules()
+                        // fetchRules() a été retiré pour permettre un rechargement manuel uniquement
                     }
                 } catch (e: Exception) {
                     if (e is HttpException && e.code() == 401) handleUnauthorized()

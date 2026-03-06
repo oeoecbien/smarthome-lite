@@ -2,6 +2,7 @@ package com.example.smarthome.data.repository
 
 import com.example.smarthome.data.api.DeviceStateRequest
 import com.example.smarthome.data.api.RetrofitInstance
+import com.example.smarthome.data.api.UpdateRuleRequest
 import com.example.smarthome.data.api.UserResponse
 import com.example.smarthome.data.model.*
 import kotlinx.coroutines.async
@@ -105,5 +106,9 @@ class RealSmartHomeRepository : SmartHomeRepository {
 
     override suspend fun createRule(token: String, rule: RuleRequest): RuleResponse {
         return api.createRule(token, rule)
+    }
+
+    override suspend fun updateRule(token: String, ruleId: Int, enabled: Boolean): RuleResponse {
+        return api.updateRule(token, ruleId, UpdateRuleRequest(enabled))
     }
 }

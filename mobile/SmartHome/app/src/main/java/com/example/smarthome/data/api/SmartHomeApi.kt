@@ -17,6 +17,10 @@ data class DeviceStateRequest(
     val brightness: Int
 )
 
+data class UpdateRuleRequest(
+    val enabled: Boolean
+)
+
 interface SmartHomeApi {
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
@@ -82,5 +86,12 @@ interface SmartHomeApi {
     suspend fun createRule(
         @Header("Authorization") token: String,
         @Body request: RuleRequest
+    ): RuleResponse
+
+    @PUT("api/rules/{rule_id}")
+    suspend fun updateRule(
+        @Header("Authorization") token: String,
+        @Path("rule_id") ruleId: Int,
+        @Body request: UpdateRuleRequest
     ): RuleResponse
 }
