@@ -51,7 +51,7 @@ async def raspberry_pi_heartbeat(
     en base, met à jour ip_address pour que les prochains pings backend ciblent la bonne machine.
     Retourne 204 No Content.
     """
-    # Mise à jour de l'IP si le RPi appelle depuis une adresse différente (ex. typo 10.103 vs 10.109)
+    # Mise à jour de l'IP si le RPi appelle depuis une adresse différente (ex. typo sur le dernier octet)
     client_ip = _client_ip(request)
     if client_ip and client_ip != rpi.ip_address:
         pi = db.query(RaspberryPi).filter(RaspberryPi.id == rpi.id).first()

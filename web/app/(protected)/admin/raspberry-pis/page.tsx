@@ -399,7 +399,7 @@ export default function AdminRaspberryPisPage() {
                 />
                 <p className="text-xs text-muted-foreground">
                   Le backend utilise cette adresse pour vérifier si le RPi est en ligne (ping GET / sur le port 5000). 
-                  Si <em>is_online</em> reste à false, vérifiez que l’IP correspond bien à celle du RPi (ex. 10.109.150.133).
+                  Si <em>is_online</em> reste à false, vérifiez que l’IP correspond bien à celle du RPi (ex. 192.168.1.50).
                 </p>
               </div>
               {editingRpi && (
@@ -412,7 +412,7 @@ export default function AdminRaspberryPisPage() {
                       autoComplete="off"
                       value={newApiKey}
                       onChange={(e) => setNewApiKey(e.target.value)}
-                      placeholder="Ex: smarthome2025 (celle du .env du RPi)"
+                      placeholder="Clé RASPBERRY_API_KEY du RPi (.env)"
                     />
                     <p className="text-xs text-muted-foreground">
                       Renseignez la clé définie dans RASPBERRY_API_KEY sur le RPi pour que heartbeat et appels backend correspondent.

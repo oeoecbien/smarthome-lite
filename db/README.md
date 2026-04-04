@@ -4,13 +4,12 @@ Ces scripts permettent de configurer PostgreSQL et de recréer complètement la 
 
 ## Configuration
 
-Les scripts utilisent les paramètres suivants :
+Les scripts lisent les paramètres depuis le fichier **`.env`** à la racine du projet (`DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`). En développement local typique :
 
-- **Host**: 10.109.150.75
-- **Port**: 5432
-- **Database**: smarthome
-- **User**: postgres
-- **Password**: smarthome2025
+- **Host** : `localhost`
+- **Port** : `5432`
+- **Database** : `smarthome`
+- **User / Password** : ceux de votre instance PostgreSQL (ne pas versionner de mots de passe réels)
 
 ## Utilisation Rapide (Recommandé)
 
@@ -93,7 +92,7 @@ Ajoutez une ligne pour autoriser les connexions :
 ```
 host    all             all             0.0.0.0/0               md5
 # ou pour une IP spécifique :
-host    all             all             10.109.150.0/24          md5
+host    all             all             192.168.1.0/24          md5
 ```
 
 ### 3. Redémarrer PostgreSQL
@@ -142,9 +141,9 @@ Un index est créé sur `reset_token` (`idx_users_reset_token`) pour optimiser l
 Si le script ne fonctionne pas, vous pouvez exécuter manuellement :
 
 ```bash
-# 1. Se connecter au serveur PostgreSQL
-export PGPASSWORD="smarthome2025"
-psql -h 10.109.150.75 -p 5432 -U postgres -d postgres
+# 1. Se connecter au serveur PostgreSQL (adapter host / user / mot de passe)
+export PGPASSWORD="votre_mot_de_passe"
+psql -h localhost -p 5432 -U postgres -d postgres
 
 # 2. Dans psql, supprimer et recréer la base
 DROP DATABASE IF EXISTS smarthome;
@@ -152,5 +151,5 @@ CREATE DATABASE smarthome WITH OWNER = postgres ENCODING = 'UTF8' LC_COLLATE = '
 \q
 
 # 3. Exécuter le script d'initialisation (sans les lignes 1-23)
-psql -h 10.109.150.75 -p 5432 -U postgres -d smarthome -f sae_s5/db/init_database.sql
+psql -h localhost -p 5432 -U postgres -d smarthome -f sae_s5/db/init_database.sql
 ```

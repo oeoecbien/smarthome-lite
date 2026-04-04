@@ -1,5 +1,14 @@
 # SmartHome Lite
 
+> **Vitrine portfolio** — Dépôt public à des fins de démonstration (projet SAE, domotique, backend FastAPI, Next.js, Android, Raspberry Pi / Z-Wave). Le projet n’est pas maintenu comme produit ouvert aux contributions ; voir [CONTRIBUTING.md](CONTRIBUTING.md). Licence : [MIT](LICENSE).  
+> **Configuration locale :** copier [`.env.example`](.env.example) vers `.env` à la racine et renseigner vos propres secrets (mots de passe, clés API, URLs). Ne jamais committer `.env`.
+
+## Publier sur GitHub (lecture seule pour les visiteurs)
+
+1. Créer un dépôt **public** et y pousser cette branche.
+2. Dans **Settings → General**, cocher **Archive this repository** si vous voulez indiquer clairement que le projet est figé (plus de pushes possibles de votre côté non plus).
+3. Alternative sans archivage : **Settings → General → Features** — désactiver **Issues** et **Wiki** si vous ne souhaitez pas d’interactions ; les visiteurs restent libres de forker.
+
 ## Table des Matières
 
 - [1. Contexte et Objectifs](#1-contexte-et-objectifs)

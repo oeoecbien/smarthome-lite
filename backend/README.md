@@ -291,7 +291,7 @@ SECRET_KEY=your-secret-key-minimum-32-characters-long
 ```
 
 **Configuration par défaut** (dans `app/config.py`) :
-- Base de données : `postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome`
+- Base de données : `postgresql://postgres:postgres@localhost:5432/smarthome` (à surcharger via `.env`)
 - Port API : `8000`
 - Host API : `0.0.0.0`
 
@@ -810,7 +810,7 @@ Les clients peuvent être l’**application mobile** (Kotlin) ou l’**applicati
 - `PUT /api/devices/{id}/state` → allumer/éteindre (body: `{"state": true}` ou `{"state": false}`).
 - `PUT /api/devices/{id}/brightness` → régler l’intensité (body: `{"brightness": 0-100}`).
 
-**Prérequis :** un **Raspberry Pi** enregistré en base (avec l’IP du RPi qui héberge l’API Flask Z-Wave, ex. 10.109.150.133), et un **device** lié à ce RPi avec `gpio_pin` = node_id Z-Wave de la lampe (ex. 3 pour l’ampoule ABUS).
+**Prérequis :** un **Raspberry Pi** enregistré en base (avec l’IP du RPi qui héberge l’API Flask Z-Wave, ex. `192.168.1.50`), et un **device** lié à ce RPi avec `gpio_pin` = node_id Z-Wave de la lampe (ex. 3 pour l’ampoule ABUS).
 
 ## Communication avec Raspberry Pi
 

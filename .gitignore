@@ -1,6 +1,13 @@
 # Fichiers globaux du projet
 # Les .gitignore spécifiques sont dans chaque sous-dossier
 
+# Secrets et environnement (ne jamais versionner)
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+
 # IDE / Éditeurs (globaux)
 .vscode/
 !.vscode/settings.json

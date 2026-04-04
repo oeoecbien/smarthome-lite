@@ -51,9 +51,9 @@ class UserCreate(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "jean",
-                "email": "jean.dupont@example.com",
-                "password": "Password123"
+                "username": "demo_user",
+                "email": "demo@example.com",
+                "password": "DemoUser_Pass1"
             }
         }
 
@@ -68,8 +68,8 @@ class UserLogin(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "jean",
-                "password": "Password123"
+                "username": "demo_user",
+                "password": "DemoUser_Pass1"
             }
         }
 

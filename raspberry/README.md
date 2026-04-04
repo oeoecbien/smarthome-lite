@@ -13,7 +13,7 @@ API Flask déployée sur le Raspberry Pi qui héberge **Z-Wave JS UI**. Elle exp
 ## Architecture
 
 ```
-Backend (FastAPI, ex: 10.109.150.75:8000)
+Backend (FastAPI, ex: http://192.168.1.10:8000)
     │
     │  HTTP  →  http://<rpi.ip>:5000/api/devices/{gpio_pin}/state
     │           http://<rpi.ip>:5000/api/devices/{gpio_pin}/brightness
@@ -65,7 +65,7 @@ Via l’API admin ou la BDD, créer un Raspberry Pi avec :
 
 - **name** : ex. `RPi Z-Wave`
 - **location** : ex. `Salon`
-- **ip_address** : IP du RPi où tournent Z-Wave JS UI et cette API (ex. `10.109.150.133`)
+- **ip_address** : IP du RPi où tournent Z-Wave JS UI et cette API (ex. `192.168.1.50`)
 
 ### 3. Créer les appareils (node_id = gpio_pin)
 
@@ -184,4 +184,4 @@ Le backend enregistre la présence en BDD (table `presence`), déclenche les rè
 - **Timeout / connexion refusée** : Z-Wave JS UI doit écouter sur `http://localhost:8091` sur le même RPi que cette API. Vérifier `docker compose ps` et les ports dans `zwave-js/docker-compose.yml`.
 - **Backend ne reçoit pas de réponse** : API Flask en `0.0.0.0:5000`, pare-feu du RPi autorisant le port 5000 depuis l’IP du backend.
 - **Nœud non reconnu** : Dans Z-Wave JS UI, vérifier que le nœud est interviewé et supporte Multilevel Switch (CC 38) pour dimmers.
-- **« Raspberry Pi RPI Salon not responding » (500 sur PUT /api/devices/7/state)** : Le backend appelle l’API Flask du RPi à l’adresse enregistrée (Admin → Raspberry Pis). Vérifier que **`api_flask_zwave.py` tourne bien sur la machine dont l’IP est enregistrée** (ex. 10.109.150.133). Si vous lancez Flask sur une autre machine (ex. votre PC), soit mettre à jour l’IP du RPi dans l’admin, soit lancer Flask sur le RPi (SSH sur 10.109.150.133 puis `python api_flask_zwave.py`). Vérifier aussi que le port 5000 est accessible depuis le serveur backend (pare-feu, réseau).
+- **« Raspberry Pi RPI Salon not responding » (500 sur PUT /api/devices/7/state)** : Le backend appelle l’API Flask du RPi à l’adresse enregistrée (Admin → Raspberry Pis). Vérifier que **`api_flask_zwave.py` tourne bien sur la machine dont l’IP est enregistrée** (ex. `192.168.1.50`). Si vous lancez Flask sur une autre machine (ex. votre PC), soit mettre à jour l’IP du RPi dans l’admin, soit lancer Flask sur le RPi (SSH sur cette IP puis `python api_flask_zwave.py`). Vérifier aussi que le port 5000 est accessible depuis le serveur backend (pare-feu, réseau).

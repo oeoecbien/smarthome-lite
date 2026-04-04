@@ -23,17 +23,12 @@ Application Android développée en Kotlin avec Jetpack Compose. Elle est le **c
 
 1. Ouvrir le projet avec Android Studio (`mobile/SmartHome/`)
 2. Synchroniser Gradle
-3. Configurer l'URL du backend dans `app/src/main/res/values/config.xml`
+3. Configurer l’URL du backend dans `app/build.gradle.kts` : champ **`API_BASE_URL`** dans `defaultConfig` → `buildConfigField` (par défaut `http://10.0.2.2:8000/` pour l’émulateur ; sur appareil physique, mettre l’IP LAN de votre machine, ex. `http://192.168.1.10:8000/`, avec le slash final)
 4. Build & Run
 
 ## Configuration
 
-Éditer `SmartHome/app/src/main/res/values/config.xml` :
-
-```xml
-<string name="backend_url">http://votre-serveur:8000</string>
-<string name="websocket_url">ws://votre-serveur:8000/ws</string>
-```
+L’URL REST est lue depuis **`BuildConfig.API_BASE_URL`** (`RetrofitInstance.kt`), définie dans `app/build.gradle.kts`.
 
 ## Build APK
 

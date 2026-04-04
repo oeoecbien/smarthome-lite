@@ -98,7 +98,7 @@ yarn install
 
 ### Variables d'Environnement
 
-L’URL du backend est lue depuis le **fichier `.env` à la racine du projet** (sae_s5/.env), via la variable **`BACKEND_URL`** (ex. `BACKEND_URL=http://10.109.150.75:8000`). Next charge ce fichier au démarrage et expose la valeur au client. Aucun `.env.local` dans `web/` n’est nécessaire.
+L’URL du backend est lue depuis le **fichier `.env` à la racine du projet** (sae_s5/.env), via la variable **`BACKEND_URL`** (ex. `BACKEND_URL=http://localhost:8000` en local). Next charge ce fichier au démarrage et expose la valeur au client. Aucun `.env.local` dans `web/` n’est nécessaire.
 
 Le timeout des requêtes API utilise **`API_TIMEOUT`** dans le même `.env` (optionnel, défaut 10000 ms).
 

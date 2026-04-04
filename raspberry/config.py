@@ -37,7 +37,7 @@ API_PORT = ZWAVE_API_PORT
 # Optionnel : clé API pour /api/devices/* (header X-API-Key)
 API_KEY = os.environ.get("RASPBERRY_API_KEY") or None
 
-# Backend SmartHome Lite : URL pour le heartbeat (RPi s'annonce en ligne). Ex: http://10.109.150.75:8000
+# Backend SmartHome Lite : URL pour le heartbeat (RPi s'annonce en ligne). Ex: http://192.168.1.10:8000
 BACKEND_URL = (os.environ.get("BACKEND_URL") or os.environ.get("SMARTHOME_BACKEND_URL") or "").rstrip("/")
 # Intervalle en secondes entre chaque appel GET /api/raspberry-pis/heartbeat
 BACKEND_HEARTBEAT_INTERVAL = int(os.environ.get("BACKEND_HEARTBEAT_INTERVAL", "30"))

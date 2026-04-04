@@ -19,6 +19,9 @@ _env_file = str(_env_root) if _env_root.exists() else (str(_env_backend) if _env
 # Luminosité max des lampes (jamais 100 pour éviter usure / contraintes matérielles)
 BRIGHTNESS_MAX = 99
 
+# Valeur par défaut « template » : si inchangée, l’URL est reconstruite depuis DATABASE_* (.env)
+_DEFAULT_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/smarthome"
+
 
 class Settings(BaseSettings):
     """Configuration du backend (serveur FastAPI)."""
@@ -30,15 +33,13 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Base de données
-    database_url: str = Field(
-        default="postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome"
-    )
-    database_host: str = Field(default="10.109.150.75")
+    # Base de données (définir DATABASE_* ou DATABASE_URL dans .env — voir .env.example à la racine)
+    database_url: str = Field(default=_DEFAULT_DATABASE_URL)
+    database_host: str = Field(default="localhost")
     database_port: int = Field(default=5432)
     database_name: str = Field(default="smarthome")
     database_user: str = Field(default="postgres")
-    database_password: str = Field(default="smarthome2025")
+    database_password: str = Field(default="postgres")
     database_echo: bool = Field(default=False)
     database_pool_size: int = Field(default=10)
     database_max_overflow: int = Field(default=20)
@@ -58,7 +59,7 @@ class Settings(BaseSettings):
     
     # CORS : en .env chaîne séparée par des virgules (pas de JSON). Exposé en liste via property.
     cors_origins_str: str = Field(
-        default="http://localhost:3000,http://localhost:5173,http://10.109.150.75:3000",
+        default="http://localhost:3000,http://localhost:5173",
         alias="cors_origins",
     )
     cors_allow_credentials: bool = Field(default=True)
@@ -140,7 +141,7 @@ class Settings(BaseSettings):
     @classmethod
     def construct_database_url(cls, v, info):
         """Reconstruit l'URL si les composants individuels sont fournis."""
-        if v and v != "postgresql://postgres:smarthome2025@10.109.150.75:5432/smarthome":
+        if v and v != _DEFAULT_DATABASE_URL:
             return v
         
         data = info.data
